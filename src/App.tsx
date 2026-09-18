@@ -8,6 +8,7 @@ import { repository } from "./storage/service.ts";
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTab>("generator");
   const [historyCount, setHistoryCount] = useState<number>(0);
+  const [updateKey, setUpdateKey] = useState<number>(0);
 
   const refreshHistoryBadge = async () => {
     try {
@@ -16,6 +17,11 @@ export default function App() {
     } catch {
       // IndexedDB fallback
     }
+  };
+
+  const handleDataInvalidated = async () => {
+    setUpdateKey((k) => k + 1);
+    await refreshHistoryBadge();
   };
 
   useEffect(() => {
@@ -34,10 +40,10 @@ export default function App() {
       {/* Conteúdo Central */}
       <main className="grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {currentTab === "generator" && (
-          <GeneratorView onRecordUpdated={refreshHistoryBadge} />
+          <GeneratorView onRecordUpdated={handleDataInvalidated} />
         )}
-        {currentTab === "history" && <HistoryView />}
-        {currentTab === "audit" && <AuditView onImportSuccess={refreshHistoryBadge} />}
+        {currentTab === "history" && <HistoryView updateTrigger={updateKey} />}
+        {currentTab === "audit" && <AuditView onImportSuccess={handleDataInvalidated} />}
       </main>
 
       {/* Rodapé Sóbrio e Técnico */}

@@ -19,9 +19,10 @@ import { ContestDetailModal } from "./ContestDetailModal.tsx";
 
 interface HistoryViewProps {
   onSelectContest?: (contestNumber: number) => void;
+  updateTrigger?: number;
 }
 
-export const HistoryView: React.FC<HistoryViewProps> = () => {
+export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) => {
   const [records, setRecords] = useState<ContestRecord[]>([]);
   const [summary, setSummary] = useState<HistorySummary | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -45,7 +46,7 @@ export const HistoryView: React.FC<HistoryViewProps> = () => {
 
   useEffect(() => {
     loadHistoryData();
-  }, []);
+  }, [updateTrigger]);
 
   const handleVerifyIndividual = async (contestNumber: number): Promise<StoredContestVerification> => {
     return await repository.verifyStoredContest(contestNumber);

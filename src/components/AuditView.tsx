@@ -21,6 +21,7 @@ import type { HistoryAuditResult } from "../storage/types.ts";
 import { repository, downloadJsonFile } from "../storage/service.ts";
 import { generateDiagnosticFilename } from "../storage/contestRepository.ts";
 import { ImportBackupSection } from "./ImportBackupSection.tsx";
+import { ReconciliationSection } from "./ReconciliationSection.tsx";
 import {
   runSelfDiagnostic,
   type SelfDiagnosticResult,
@@ -546,6 +547,9 @@ export const AuditView: React.FC<AuditViewProps> = ({ onImportSuccess }) => {
           </div>
         )}
       </div>
+
+      {/* Seção de Reconciliação com Fonte Oficial CAIXA (Seção 32) */}
+      <ReconciliationSection />
 
       {/* Seção de Backup */}
       <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xl space-y-5">

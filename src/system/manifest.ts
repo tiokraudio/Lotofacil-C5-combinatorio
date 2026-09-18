@@ -13,7 +13,7 @@
 import { C5_SLOTS } from "../c5/constants.ts";
 import { C5_ALGORITHM_VERSION } from "../c5/version.ts";
 
-export const APP_VERSION = "1.3.0";
+export const APP_VERSION = "1.4.0";
 export const APP_NAME = "Lotofácil C5 Combinatório";
 
 export interface StructuralCertificates {
