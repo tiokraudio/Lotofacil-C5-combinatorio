@@ -59,7 +59,7 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
     const draft = createContestDraft(3300, {
       rng: createMulberry32(101),
       clock: clock1,
-      generationId: "uuid-3300",
+      generationId: "a3300000-0000-4000-8000-000000003300",
     });
 
     // 1.1 Salvar DRAFT
@@ -69,7 +69,7 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
       recDRAFT !== null &&
         recDRAFT.status === "DRAFT" &&
         recDRAFT.contestNumber === 3300 &&
-        recDRAFT.generationId === "uuid-3300",
+        recDRAFT.generationId === "a3300000-0000-4000-8000-000000003300",
       "1.1. Salvar e recuperar DRAFT com sucesso"
     );
 

@@ -41,13 +41,13 @@ export async function runRecordTests(): Promise<{ passed: number; failed: number
     const draft = createContestDraft(3200, {
       rng: createMulberry32(12345),
       clock: clock1,
-      generationId: "gen-test-uuid-1",
+      generationId: "a1111111-1111-4111-8111-111111111111",
     });
 
     const draftOk =
       draft.status === "DRAFT" &&
       draft.contestNumber === 3200 &&
-      draft.generationId === "gen-test-uuid-1" &&
+      draft.generationId === "a1111111-1111-4111-8111-111111111111" &&
       draft.algorithmVersion === C5_ALGORITHM_VERSION &&
       draft.generatedAt === fixedDate1.toISOString() &&
       draft.frozenAt === undefined &&
@@ -59,7 +59,7 @@ export async function runRecordTests(): Promise<{ passed: number; failed: number
     const frozenOk =
       frozen.status === "FROZEN" &&
       frozen.contestNumber === 3200 &&
-      frozen.generationId === "gen-test-uuid-1" &&
+      frozen.generationId === "a1111111-1111-4111-8111-111111111111" &&
       frozen.generatedAt === fixedDate1.toISOString() &&
       frozen.frozenAt === fixedDate2.toISOString() &&
       typeof frozen.integrityHash === "string" &&
@@ -78,7 +78,7 @@ export async function runRecordTests(): Promise<{ passed: number; failed: number
     const scoredOk =
       scored.status === "SCORED" &&
       scored.contestNumber === 3200 &&
-      scored.generationId === "gen-test-uuid-1" &&
+      scored.generationId === "a1111111-1111-4111-8111-111111111111" &&
       scored.frozenAt === fixedDate2.toISOString() &&
       scored.scoredAt === fixedDate3.toISOString() &&
       scored.integrityHash === frozen.integrityHash &&

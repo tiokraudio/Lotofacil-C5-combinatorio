@@ -293,7 +293,7 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
                 Backup importado com sucesso.
               </h4>
               <p className="text-xs text-emerald-400/90 mt-0.5">
-                {successResult.importedCount} registros importados • {successResult.skippedCount} registros idênticos ignorados • {successResult.conflictsCount} conflitos preservados • Integridade do histórico: OK
+                {successResult.importedCount} registros importados • {successResult.skippedIdenticalCount} registros idênticos ignorados • {successResult.conflictCount} conflitos preservados • Integridade do histórico: OK
               </p>
             </div>
           </div>

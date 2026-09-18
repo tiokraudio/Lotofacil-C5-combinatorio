@@ -10,7 +10,7 @@
 import { validateC5 } from "../c5/validator.ts";
 import { verifyContestIntegrity } from "../c5/integrity.ts";
 import { verifyScoreIntegrity } from "../c5/record.ts";
-import { validateOfficialResult } from "../c5/scorer.ts";
+import { validateOfficialResult, scoreC5 } from "../c5/scorer.ts";
 import { C5_SLOTS } from "../c5/constants.ts";
 import {
   ContestRepository,
@@ -90,8 +90,8 @@ export interface BackupValidationResult {
 export interface ImportExecutionResult {
   success: boolean;
   importedCount: number;
-  skippedCount: number;
-  conflictsCount: number;
+  skippedIdenticalCount: number;
+  conflictCount: number;
   historyAudit: HistoryAuditResult;
 }
 
@@ -115,20 +115,17 @@ export function isValidIsoDate(str: unknown): str is string {
   return isoRegex.test(str);
 }
 
+const UUID_V4_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /**
- * Valida se o generationId possui formato compatível com os UUIDs do sistema.
- * Suporta UUID v4 RFC 4122 e identificadores padronizados de teste do sistema.
+ * Valida se o generationId possui formato UUID v4 RFC 4122 estrito.
  */
 export function isValidGenerationId(id: unknown): id is string {
   if (typeof id !== "string" || id.trim().length === 0) {
     return false;
   }
-  // UUID RFC 4122 padrão (8-4-4-4-12 hex)
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-  // Identificadores de teste compatíveis gerados internamente (ex: gen-test-uuid-1, auth-uuid-777, uuid-3300)
-  const systemTestIdRegex = /^(?:uuid|gen|auth)-[a-zA-Z0-9_-]{3,64}$/i;
-
-  return uuidRegex.test(id) || systemTestIdRegex.test(id);
+  return UUID_V4_REGEX.test(id);
 }
 
 /**
@@ -241,8 +238,11 @@ function sanitizeScore(raw: any, contestNumber: number, errors: string[]): C5Sco
       errors.push(`Concurso ${contestNumber}: 'score.games[${i}]' inválido.`);
       return null;
     }
+    if (g.gameIndex !== (i + 1)) {
+      errors.push(`Concurso ${contestNumber}: 'score.games[${i}].gameIndex' deve ser ${i + 1}.`);
+    }
     cleanScoreGames.push({
-      gameIndex: (i + 1) as 1 | 2 | 3 | 4 | 5,
+      gameIndex: g.gameIndex,
       hits: Number(g.hits) as HitCount,
       matchedNumbers: Array.isArray(g.matchedNumbers) ? [...g.matchedNumbers] : [],
       missedNumbers: Array.isArray(g.missedNumbers) ? [...g.missedNumbers] : [],
@@ -294,13 +294,24 @@ export function areContestRecordsIdentical(r1: ContestRecord, r2: ContestRecord)
   // Comparação de score
   if (Boolean(r1.score) !== Boolean(r2.score)) return false;
   if (r1.score && r2.score) {
-    if (r1.score.maxHits !== r2.score.maxHits) return false;
-    if (r1.score.has11Plus !== r2.score.has11Plus) return false;
-    if (r1.score.has12Plus !== r2.score.has12Plus) return false;
-    if (r1.score.has13Plus !== r2.score.has13Plus) return false;
-    if (r1.score.has14Plus !== r2.score.has14Plus) return false;
-    if (r1.score.has15 !== r2.score.has15) return false;
+    // 1. score.result
+    if (!r1.score.result || !r2.score.result) return false;
+    if (r1.score.result.length !== r2.score.result.length) return false;
+    for (let i = 0; i < r1.score.result.length; i++) {
+      if (r1.score.result[i] !== r2.score.result[i]) return false;
+    }
 
+    // 2. score.maxHits
+    if (r1.score.maxHits !== r2.score.maxHits) return false;
+
+    // 3. score.bestGameIndexes
+    if (!r1.score.bestGameIndexes || !r2.score.bestGameIndexes) return false;
+    if (r1.score.bestGameIndexes.length !== r2.score.bestGameIndexes.length) return false;
+    for (let i = 0; i < r1.score.bestGameIndexes.length; i++) {
+      if (r1.score.bestGameIndexes[i] !== r2.score.bestGameIndexes[i]) return false;
+    }
+
+    // 4. score.prizeCounts
     if (Boolean(r1.score.prizeCounts) !== Boolean(r2.score.prizeCounts)) return false;
     if (r1.score.prizeCounts && r2.score.prizeCounts) {
       if (
@@ -314,15 +325,29 @@ export function areContestRecordsIdentical(r1: ContestRecord, r2: ContestRecord)
       }
     }
 
+    // 5. flags
+    if (r1.score.has11Plus !== r2.score.has11Plus) return false;
+    if (r1.score.has12Plus !== r2.score.has12Plus) return false;
+    if (r1.score.has13Plus !== r2.score.has13Plus) return false;
+    if (r1.score.has14Plus !== r2.score.has14Plus) return false;
+    if (r1.score.has15 !== r2.score.has15) return false;
+
+    // 6. score.games (gameIndex, hits, matchedNumbers, missedNumbers)
+    if (!r1.score.games || !r2.score.games || r1.score.games.length !== 5 || r2.score.games.length !== 5) {
+      return false;
+    }
     for (let i = 0; i < 5; i++) {
-      if (r1.score.games[i].hits !== r2.score.games[i].hits) return false;
-      if (r1.score.games[i].matchedNumbers.length !== r2.score.games[i].matchedNumbers.length) return false;
-      for (let m = 0; m < r1.score.games[i].matchedNumbers.length; m++) {
-        if (r1.score.games[i].matchedNumbers[m] !== r2.score.games[i].matchedNumbers[m]) return false;
+      const g1 = r1.score.games[i];
+      const g2 = r2.score.games[i];
+      if (g1.gameIndex !== g2.gameIndex) return false;
+      if (g1.hits !== g2.hits) return false;
+      if (g1.matchedNumbers.length !== g2.matchedNumbers.length) return false;
+      for (let m = 0; m < g1.matchedNumbers.length; m++) {
+        if (g1.matchedNumbers[m] !== g2.matchedNumbers[m]) return false;
       }
-      if (r1.score.games[i].missedNumbers.length !== r2.score.games[i].missedNumbers.length) return false;
-      for (let m = 0; m < r1.score.games[i].missedNumbers.length; m++) {
-        if (r1.score.games[i].missedNumbers[m] !== r2.score.games[i].missedNumbers[m]) return false;
+      if (g1.missedNumbers.length !== g2.missedNumbers.length) return false;
+      for (let m = 0; m < g1.missedNumbers.length; m++) {
+        if (g1.missedNumbers[m] !== g2.missedNumbers[m]) return false;
       }
     }
   }
@@ -347,6 +372,38 @@ export function areContestRecordsIdentical(r1: ContestRecord, r2: ContestRecord)
 // ============================================================================
 // ETAPA 1: PARSER DEFENSIVO
 // ============================================================================
+
+/**
+ * Detecta chaves potencialmente perigosas (__proto__, constructor, prototype)
+ * em qualquer profundidade da árvore de objetos.
+ */
+export function hasDangerousKeys(obj: unknown): boolean {
+  if (!obj || typeof obj !== "object") {
+    return false;
+  }
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      if (hasDangerousKeys(item)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  const keys = Object.getOwnPropertyNames(obj);
+  for (const k of keys) {
+    if (k === "__proto__" || k === "constructor" || k === "prototype") {
+      return true;
+    }
+    try {
+      if (hasDangerousKeys((obj as any)[k])) {
+        return true;
+      }
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Lê e analisa defensivamente o texto JSON de um backup.
@@ -374,16 +431,19 @@ export function parseHistoryBackup(jsonText: string): unknown {
     throw new Error("Arquivo de backup vazio. Nenhum dado para processar.");
   }
 
-  // 3. Parse seguro com reviver neutralizando vetores de prototype pollution
+  // 3. Parse seguro com reviver detectando e rejeitando vetores de prototype pollution
   let parsed: unknown;
   try {
     parsed = JSON.parse(jsonText, (key, value) => {
       if (key === "__proto__" || key === "constructor" || key === "prototype") {
-        return undefined; // Descarte seguro
+        throw new Error("Backup rejeitado: chave potencialmente perigosa detectada.");
       }
       return value;
     });
   } catch (err: any) {
+    if (err?.message?.includes("chave potencialmente perigosa detectada")) {
+      throw err;
+    }
     throw new Error(`JSON malformado: erro de sintaxe ao interpretar o arquivo: ${err?.message ?? "sintaxe inválida"}.`);
   }
 
@@ -427,6 +487,13 @@ export function parseHistoryBackup(jsonText: string): unknown {
  */
 export async function validateHistoryBackup(data: unknown): Promise<BackupValidationResult> {
   const errors: string[] = [];
+
+  if (hasDangerousKeys(data)) {
+    return {
+      valid: false,
+      errors: ["Backup rejeitado: chave potencialmente perigosa detectada."],
+    };
+  }
 
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return {
@@ -739,6 +806,71 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
           );
         }
 
+        // Comparação exaustiva de TODOS os campos do score recalculado (Prompt 11.2 - Requisito 9)
+        const recomputedScore = scoreC5(candidateScored.generation, validatedOfficialResult);
+        const storedScore = candidateScored.score!;
+
+        if (
+          recomputedScore.result.length !== storedScore.result.length ||
+          recomputedScore.result.some((num, idx) => num !== storedScore.result[idx])
+        ) {
+          errors.push(`Concurso ${contestNumber}: 'score.result' diverge do resultado oficial recalculado.`);
+        }
+
+        if (recomputedScore.maxHits !== storedScore.maxHits) {
+          errors.push(`Concurso ${contestNumber}: 'score.maxHits' diverge do valor recalculado.`);
+        }
+
+        if (
+          recomputedScore.bestGameIndexes.length !== storedScore.bestGameIndexes.length ||
+          recomputedScore.bestGameIndexes.some((idx, i) => idx !== storedScore.bestGameIndexes[i])
+        ) {
+          errors.push(`Concurso ${contestNumber}: 'score.bestGameIndexes' diverge do valor recalculado.`);
+        }
+
+        if (
+          recomputedScore.prizeCounts.hits11 !== storedScore.prizeCounts.hits11 ||
+          recomputedScore.prizeCounts.hits12 !== storedScore.prizeCounts.hits12 ||
+          recomputedScore.prizeCounts.hits13 !== storedScore.prizeCounts.hits13 ||
+          recomputedScore.prizeCounts.hits14 !== storedScore.prizeCounts.hits14 ||
+          recomputedScore.prizeCounts.hits15 !== storedScore.prizeCounts.hits15
+        ) {
+          errors.push(`Concurso ${contestNumber}: 'score.prizeCounts' diverge do valor recalculado.`);
+        }
+
+        if (
+          recomputedScore.has11Plus !== storedScore.has11Plus ||
+          recomputedScore.has12Plus !== storedScore.has12Plus ||
+          recomputedScore.has13Plus !== storedScore.has13Plus ||
+          recomputedScore.has14Plus !== storedScore.has14Plus ||
+          recomputedScore.has15 !== storedScore.has15
+        ) {
+          errors.push(`Concurso ${contestNumber}: flags de premiação do score divergem do valor recalculado.`);
+        }
+
+        for (let i = 0; i < 5; i++) {
+          const rg = recomputedScore.games[i];
+          const sg = storedScore.games[i];
+          if (rg.gameIndex !== sg.gameIndex) {
+            errors.push(`Concurso ${contestNumber}: 'score.games[${i}].gameIndex' diverge do recalculado.`);
+          }
+          if (rg.hits !== sg.hits) {
+            errors.push(`Concurso ${contestNumber}: 'score.games[${i}].hits' diverge do recalculado.`);
+          }
+          if (
+            rg.matchedNumbers.length !== sg.matchedNumbers.length ||
+            rg.matchedNumbers.some((num, m) => num !== sg.matchedNumbers[m])
+          ) {
+            errors.push(`Concurso ${contestNumber}: 'score.games[${i}].matchedNumbers' diverge do recalculado.`);
+          }
+          if (
+            rg.missedNumbers.length !== sg.missedNumbers.length ||
+            rg.missedNumbers.some((num, m) => num !== sg.missedNumbers[m])
+          ) {
+            errors.push(`Concurso ${contestNumber}: 'score.games[${i}].missedNumbers' diverge do recalculado.`);
+          }
+        }
+
         sanitizedRecords.push(candidateScored);
       }
     }
@@ -803,12 +935,31 @@ export async function prepareHistoryImport(
 ): Promise<ImportPlan> {
   const repo = repository ?? contestRepository;
 
+  let parsedData = data;
+  if (typeof data === "string") {
+    try {
+      parsedData = parseHistoryBackup(data);
+    } catch (err: any) {
+      return {
+        valid: false,
+        totalBackupRecords: 0,
+        newRecords: 0,
+        identicalRecords: 0,
+        conflicts: 0,
+        invalidRecords: 1,
+        records: [],
+        errors: [err?.message ?? "Falha ao interpretar JSON do backup."],
+        preparedRecordsToImport: [],
+      };
+    }
+  }
+
   // 1. Executa validação prévia integral
-  const validation = await validateHistoryBackup(data);
+  const validation = await validateHistoryBackup(parsedData);
   if (!validation.valid || !validation.data) {
     const totalRaw =
-      data && typeof data === "object" && Array.isArray((data as any).records)
-        ? (data as any).records.length
+      parsedData && typeof parsedData === "object" && Array.isArray((parsedData as any).records)
+        ? (parsedData as any).records.length
         : 0;
 
     return {
@@ -980,8 +1131,8 @@ export async function importHistory(
     return {
       success: true,
       importedCount: 0,
-      skippedCount: plan.identicalRecords,
-      conflictsCount: plan.conflicts,
+      skippedIdenticalCount: plan.identicalRecords,
+      conflictCount: plan.conflicts,
       historyAudit: audit,
     };
   }
@@ -1053,8 +1204,8 @@ export async function importHistory(
   return {
     success: true,
     importedCount: plan.newRecords,
-    skippedCount: plan.identicalRecords,
-    conflictsCount: plan.conflicts,
+    skippedIdenticalCount: plan.identicalRecords,
+    conflictCount: plan.conflicts,
     historyAudit: postAudit,
   };
 }

@@ -20,6 +20,8 @@ import {
   prepareHistoryImport,
   importHistory,
   areContestRecordsIdentical,
+  isValidGenerationId,
+  hasDangerousKeys,
   MAX_JSON_SIZE_BYTES,
 } from "../import.ts";
 import type { HistoryExportData } from "../types.ts";
@@ -92,7 +94,7 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
 
     const importResult = await importHistory(validation.data, repoB);
     assert(
-      importResult.success && importResult.importedCount === 3 && importResult.skippedCount === 0,
+      importResult.success && importResult.importedCount === 3 && importResult.skippedIdenticalCount === 0,
       "1.3. Importação atômica no Banco B concluída com 3 registros importados"
     );
 
@@ -385,7 +387,7 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
 
       const importRes = await importHistory(backupE, repo);
       assert(
-        importRes.success && importRes.importedCount === 1 && importRes.conflictsCount === 1,
+        importRes.success && importRes.importedCount === 1 && importRes.conflictCount === 1,
         "3.E.2. importHistory importa somente os novos (1) e preserva conflitos (1)"
       );
 
@@ -473,26 +475,83 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
   // 6. TESTE DE PROTOTYPE POLLUTION E LIMITES DEFENSIVOS
   // =========================================================================
   {
-    // A. Prototype pollution em JSON
-    const maliciousJson = `
-    {
-      "__proto__": { "polluted": true },
-      "constructor": { "prototype": { "polluted2": true } },
-      "schemaVersion": 1,
-      "exportedAt": "2026-09-17T12:00:00.000Z",
-      "algorithmVersions": ["C5-1.0.0"],
-      "records": []
+    // 6.1 Detecção de {"__proto__": {"polluted": true}} -> REJECT
+    let protoRejected = false;
+    try {
+      parseHistoryBackup('{"__proto__": {"polluted": true}}');
+    } catch (e: any) {
+      protoRejected = e.message.includes("chave potencialmente perigosa detectada");
     }
-    `;
+    assert(protoRejected, "6.1. Detecção e rejeição imediata de __proto__ via reviver");
 
-    const parsed = parseHistoryBackup(maliciousJson);
-    const isProtoPolluted = (Object.prototype as any).polluted !== undefined || (Object.prototype as any).polluted2 !== undefined;
-    assert(!isProtoPolluted, "6.1. Proteção contra Prototype Pollution: Object.prototype não foi contaminado");
+    // 6.2 Detecção de {"constructor": {"prototype": {"polluted2": true}}} -> REJECT
+    let ctorRejected = false;
+    try {
+      parseHistoryBackup('{"constructor": {"prototype": {"polluted2": true}}}');
+    } catch (e: any) {
+      ctorRejected = e.message.includes("chave potencialmente perigosa detectada");
+    }
+    assert(ctorRejected, "6.2. Detecção e rejeição imediata de constructor/prototype via reviver");
 
-    const val = await validateHistoryBackup(parsed);
-    assert(val.valid, "6.2. Backup sanitizado é processado sem propagar propriedades poluídas");
+    // 6.3 Ocorrência aninhada dentro de records[]
+    let recordsProtoRejected = false;
+    try {
+      parseHistoryBackup('{"schemaVersion": 1, "exportedAt": "2026-09-17T12:00:00.000Z", "algorithmVersions": ["C5-1.0.0"], "records": [{"__proto__": {"polluted": true}}]}');
+    } catch (e: any) {
+      recordsProtoRejected = e.message.includes("chave potencialmente perigosa detectada");
+    }
+    assert(recordsProtoRejected, "6.3. Detecção e rejeição de __proto__ aninhado em records[]");
 
-    // B. Limite de tamanho
+    // 6.4 Ocorrência aninhada dentro de generation
+    let genProtoRejected = false;
+    try {
+      parseHistoryBackup('{"schemaVersion": 1, "exportedAt": "2026-09-17T12:00:00.000Z", "algorithmVersions": ["C5-1.0.0"], "records": [{"contestNumber": 1, "generation": {"__proto__": {"polluted": true}}}]}');
+    } catch (e: any) {
+      genProtoRejected = e.message.includes("chave potencialmente perigosa detectada");
+    }
+    assert(genProtoRejected, "6.4. Detecção e rejeição de __proto__ aninhado em generation");
+
+    // 6.5 Ocorrência aninhada dentro de slotAssignments
+    let slotProtoRejected = false;
+    try {
+      parseHistoryBackup('{"schemaVersion": 1, "exportedAt": "2026-09-17T12:00:00.000Z", "algorithmVersions": ["C5-1.0.0"], "records": [{"contestNumber": 1, "generation": {"slotAssignments": {"__proto__": {"polluted": true}}}}]}');
+    } catch (e: any) {
+      slotProtoRejected = e.message.includes("chave potencialmente perigosa detectada");
+    }
+    assert(slotProtoRejected, "6.5. Detecção e rejeição de __proto__ aninhado em slotAssignments");
+
+    // 6.6 Ocorrência aninhada dentro de score
+    let scoreProtoRejected = false;
+    try {
+      parseHistoryBackup('{"schemaVersion": 1, "exportedAt": "2026-09-17T12:00:00.000Z", "algorithmVersions": ["C5-1.0.0"], "records": [{"contestNumber": 1, "score": {"__proto__": {"polluted": true}}}]}');
+    } catch (e: any) {
+      scoreProtoRejected = e.message.includes("chave potencialmente perigosa detectada");
+    }
+    assert(scoreProtoRejected, "6.6. Detecção e rejeição de __proto__ aninhado em score");
+
+    // 6.7 Confirmação de que Object.prototype permanece intocado e limpo
+    const isProtoPolluted =
+      (Object.prototype as any).polluted !== undefined ||
+      (Object.prototype as any).polluted2 !== undefined;
+    assert(!isProtoPolluted, "6.7. Object.prototype permanece completamente limpo sem nenhuma mutação");
+
+    // 6.8 Confirmação de que IndexedDB não sofreu mutação
+    const idb = new IDBFactory();
+    const repo = new ContestRepository({ idbFactory: idb });
+    const countBefore = (await repo.getAllContestRecords()).length;
+    let importMaliciousFailed = false;
+    try {
+      await importHistory('{"__proto__": {"polluted": true}}', repo);
+    } catch {
+      importMaliciousFailed = true;
+    }
+    const countAfter = (await repo.getAllContestRecords()).length;
+    assert(
+      importMaliciousFailed && countBefore === 0 && countAfter === 0,
+      "6.8. IndexedDB permanece sem mutação após tentativa de injeção maliciosa"
+    );
+
+    // 6.9 Limite de tamanho
     let sizeError = false;
     try {
       const hugeJson = " ".repeat(MAX_JSON_SIZE_BYTES + 10);
@@ -500,25 +559,399 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
     } catch (e: any) {
       sizeError = e.message.includes("excede o limite máximo permitido");
     }
-    assert(sizeError, "6.3. Arquivo que excede 10 MB é bloqueado imediatamente");
+    assert(sizeError, "6.9. Arquivo que excede 10 MB é bloqueado imediatamente");
 
-    // C. Arquivo vazio
+    // 6.10 Arquivo vazio
     let emptyError = false;
     try {
       parseHistoryBackup("   ");
     } catch (e: any) {
       emptyError = e.message.includes("vazio");
     }
-    assert(emptyError, "6.4. Arquivo vazio é explicitamente rejeitado");
+    assert(emptyError, "6.10. Arquivo vazio é explicitamente rejeitado");
 
-    // D. Array no nível raiz
+    // 6.11 Array no nível raiz
     let rootArrayError = false;
     try {
       parseHistoryBackup("[1, 2, 3]");
     } catch (e: any) {
       rootArrayError = e.message.includes("array no nível raiz");
     }
-    assert(rootArrayError, "6.5. Array no nível raiz é explicitamente rejeitado");
+    assert(rootArrayError, "6.11. Array no nível raiz é explicitamente rejeitado");
+  }
+
+  // =========================================================================
+  // 7. TESTES DE VALIDAÇÃO DE UUID v4 RFC 4122 ESTRITO
+  // =========================================================================
+  {
+    assert(isValidGenerationId("f47ac10b-58cc-4372-a567-0e02b2c3d479"), "7.1. UUID v4 RFC 4122 válido é aceito (PASS)");
+    assert(isValidGenerationId("c45b8823-3913-4a11-8e89-61ab93d18301"), "7.2. Outro UUID v4 RFC 4122 válido é aceito (PASS)");
+    assert(!isValidGenerationId("6ba7b810-9dad-11d1-80b4-00c04fd430c8"), "7.3. UUID v1 é estritamente rejeitado (FAIL)");
+    assert(!isValidGenerationId("f47ac10b-58cc-1372-a567-0e02b2c3d479"), "7.4. UUID sem versão correta (v1) é rejeitado (FAIL)");
+    assert(!isValidGenerationId("f47ac10b-58cc-5372-a567-0e02b2c3d479"), "7.5. UUID v5 é rejeitado (FAIL)");
+    assert(!isValidGenerationId("f47ac10b-58cc-4372-3567-0e02b2c3d479"), "7.6. UUID v4 com variante RFC inválida (não 8,9,a,b) é rejeitado (FAIL)");
+    assert(!isValidGenerationId("gen-test-uuid-1"), "7.7. ID artificial 'gen-test-uuid-1' é estritamente rejeitado (FAIL)");
+    assert(!isValidGenerationId("auth-uuid-777"), "7.8. ID artificial 'auth-uuid-777' é estritamente rejeitado (FAIL)");
+    assert(!isValidGenerationId("uuid-3300"), "7.9. ID artificial 'uuid-3300' é estritamente rejeitado (FAIL)");
+    assert(!isValidGenerationId(""), "7.10. String vazia é rejeitada (FAIL)");
+    assert(!isValidGenerationId("not-a-uuid"), "7.11. String malformada não-UUID é rejeitada (FAIL)");
+    assert(!isValidGenerationId("f47ac10b58cc4372a5670e02b2c3d479"), "7.12. UUID sem hífens é rejeitado (FAIL)");
+  }
+
+  // =========================================================================
+  // 8. TESTES DE IDENTIDADE SEMÂNTICA EXAUSTIVA (A/B)
+  // =========================================================================
+  {
+    const idb = new IDBFactory();
+    const repo = new ContestRepository({ idbFactory: idb });
+
+    const draftA = createContestDraft(8001, { rng: createMulberry32(1234), clock: clock1 });
+    await repo.saveDraft(draftA);
+    await repo.freezeStoredContest(8001, { clock: clock2 });
+    const offRes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    const scoredA = await repo.scoreStoredContest(8001, offRes, { clock: clock3 });
+
+    // Clonar para B
+    const cloneB = (): ContestRecord => JSON.parse(JSON.stringify(scoredA));
+
+    // Inicialmente idênticos
+    assert(areContestRecordsIdentical(scoredA, cloneB()), "8.0. Registros A e B idênticos produzem areContestRecordsIdentical = true");
+
+    // Adulterações pontuais independentes (uma por teste)
+    const testCases: { name: string; mutate: (b: ContestRecord) => void }[] = [
+      {
+        name: "score.result",
+        mutate: (b) => { b.score!.result[0] = b.score!.result[0] === 1 ? 2 : 1; },
+      },
+      {
+        name: "score.bestGameIndexes",
+        mutate: (b) => { b.score!.bestGameIndexes = [4]; },
+      },
+      {
+        name: "score.games[0].gameIndex",
+        mutate: (b) => { (b.score!.games[0] as any).gameIndex = 99; },
+      },
+      {
+        name: "score.games[0].hits",
+        mutate: (b) => { (b.score!.games[0] as any).hits = (b.score!.games[0].hits + 1) as any; },
+      },
+      {
+        name: "score.games[0].matchedNumbers",
+        mutate: (b) => { b.score!.games[0].matchedNumbers.pop(); },
+      },
+      {
+        name: "score.games[0].missedNumbers",
+        mutate: (b) => { b.score!.games[0].missedNumbers.pop(); },
+      },
+      {
+        name: "score.prizeCounts.hits11",
+        mutate: (b) => { b.score!.prizeCounts.hits11 = b.score!.prizeCounts.hits11 + 10; },
+      },
+      {
+        name: "score.maxHits",
+        mutate: (b) => { (b.score as any).maxHits = (b.score!.maxHits === 15 ? 14 : 15); },
+      },
+      {
+        name: "score.has11Plus",
+        mutate: (b) => { b.score!.has11Plus = !b.score!.has11Plus; },
+      },
+      {
+        name: "officialResult",
+        mutate: (b) => { b.officialResult![0] = b.officialResult![0] === 1 ? 2 : 1; },
+      },
+      {
+        name: "generation.permutation",
+        mutate: (b) => {
+          const tmp = b.generation.permutation[0];
+          b.generation.permutation[0] = b.generation.permutation[1];
+          b.generation.permutation[1] = tmp;
+        },
+      },
+      {
+        name: "generation.slotAssignments",
+        mutate: (b) => {
+          const orig = b.generation.slotAssignments["12a"];
+          b.generation.slotAssignments["12a"] = b.generation.slotAssignments["12b"];
+          b.generation.slotAssignments["12b"] = orig;
+        },
+      },
+      {
+        name: "generation.games",
+        mutate: (b) => {
+          const tmp = b.generation.games[0][0];
+          b.generation.games[0][0] = b.generation.games[0][1];
+          b.generation.games[0][1] = tmp;
+        },
+      },
+      {
+        name: "integrityHash",
+        mutate: (b) => { b.integrityHash = "f".repeat(64); },
+      },
+      {
+        name: "generationId",
+        mutate: (b) => { b.generationId = "e0000000-0000-4000-8000-000000000001"; },
+      },
+      {
+        name: "timestamps (generatedAt)",
+        mutate: (b) => { b.generatedAt = "2026-09-01T00:00:00.000Z"; },
+      },
+      {
+        name: "timestamps (frozenAt)",
+        mutate: (b) => { b.frozenAt = "2026-09-01T00:00:00.000Z"; },
+      },
+      {
+        name: "timestamps (scoredAt)",
+        mutate: (b) => { b.scoredAt = "2026-09-01T00:00:00.000Z"; },
+      },
+    ];
+
+    let testIdx = 1;
+    for (const tc of testCases) {
+      const adulteratedB = cloneB();
+      tc.mutate(adulteratedB);
+
+      const identical = areContestRecordsIdentical(scoredA, adulteratedB);
+      assert(!identical, `8.${testIdx}. Adulteração em '${tc.name}' produz areContestRecordsIdentical = false`);
+
+      // Verifica que no prepareHistoryImport nunca resulta em SKIP_IDENTICAL
+      const backupTest: HistoryExportData = {
+        schemaVersion: 1,
+        exportedAt: fixedDate3.toISOString(),
+        recordCount: 1,
+        algorithmVersions: ["C5-1.0.0"],
+        records: [adulteratedB],
+      };
+      const plan = await prepareHistoryImport(backupTest, repo);
+      assert(
+        plan.identicalRecords === 0,
+        `8.${testIdx}.b. Adulteração em '${tc.name}' NUNCA é classificada como SKIP_IDENTICAL`
+      );
+
+      testIdx++;
+    }
+  }
+
+  // =========================================================================
+  // 9. TESTE DE BACKUP MISTO (1 SKIP_IDENTICAL, 1 CONFLICT, 2 IMPORT)
+  // =========================================================================
+  {
+    const idb = new IDBFactory();
+    const repo = new ContestRepository({ idbFactory: idb });
+
+    // Banco local:
+    // Concurso 9001: FROZEN (será SKIP_IDENTICAL no backup)
+    const draft9001 = createContestDraft(9001, { rng: createMulberry32(10), clock: clock1 });
+    await repo.saveDraft(draft9001);
+    const frozen9001 = await repo.freezeStoredContest(9001, { clock: clock2 });
+
+    // Concurso 9002: DRAFT original no local (será CONFLICT no backup)
+    const draft9002Local = createContestDraft(9002, { rng: createMulberry32(20), clock: clock1 });
+    await repo.saveDraft(draft9002Local);
+
+    // Snapshot antes da importação
+    const localBefore9001 = await repo.getContestRecord(9001);
+    const localBefore9002 = await repo.getContestRecord(9002);
+
+    // Backup contém:
+    // 1. Concurso 9001 (exatamente idêntico a frozen9001) -> SKIP_IDENTICAL
+    // 2. Concurso 9002 (com geração diferente do local) -> CONFLICT
+    // 3. Concurso 9003 (novo) -> IMPORT
+    // 4. Concurso 9004 (novo) -> IMPORT
+    const draft9002Backup = createContestDraft(9002, { rng: createMulberry32(999), clock: clock1 });
+    const draft9003 = createContestDraft(9003, { rng: createMulberry32(30), clock: clock1 });
+    const draft9004 = createContestDraft(9004, { rng: createMulberry32(40), clock: clock1 });
+
+    const mixedBackup: HistoryExportData = {
+      schemaVersion: 1,
+      exportedAt: fixedDate3.toISOString(),
+      recordCount: 4,
+      algorithmVersions: ["C5-1.0.0"],
+      records: [frozen9001, draft9002Backup, draft9003, draft9004],
+    };
+
+    // 1. Prévia do plano
+    const plan = await prepareHistoryImport(mixedBackup, repo);
+    assert(
+      plan.valid &&
+        plan.totalBackupRecords === 4 &&
+        plan.newRecords === 2 &&
+        plan.identicalRecords === 1 &&
+        plan.conflicts === 1,
+      "9.1. Plano de backup misto: valid=true, newRecords=2, identicalRecords=1, conflicts=1"
+    );
+
+    // 2. Execução da importação
+    const importRes = await importHistory(mixedBackup, repo);
+    assert(
+      importRes.success === true &&
+        importRes.importedCount === 2 &&
+        importRes.skippedIdenticalCount === 1 &&
+        importRes.conflictCount === 1,
+      "9.2. Execução: success=true, importedCount=2, skippedIdenticalCount=1, conflictCount=1"
+    );
+
+    // 3. Verificação do banco local
+    const localAfter9001 = await repo.getContestRecord(9001);
+    const localAfter9002 = await repo.getContestRecord(9002);
+    const localAfter9003 = await repo.getContestRecord(9003);
+    const localAfter9004 = await repo.getContestRecord(9004);
+
+    assert(
+      localAfter9001 !== null && areContestRecordsIdentical(localBefore9001!, localAfter9001),
+      "9.3. Registro idêntico local (9001) permaneceu 100% inalterado"
+    );
+    assert(
+      localAfter9002 !== null && areContestRecordsIdentical(localBefore9002!, localAfter9002),
+      "9.4. Registro conflitante local (9002) permaneceu 100% inalterado (não foi sobrescrito)"
+    );
+    assert(
+      localAfter9003 !== null && localAfter9003.contestNumber === 9003,
+      "9.5. Novo concurso 9003 foi importado com sucesso"
+    );
+    assert(
+      localAfter9004 !== null && localAfter9004.contestNumber === 9004,
+      "9.6. Novo concurso 9004 foi importado com sucesso"
+    );
+  }
+
+  // =========================================================================
+  // 10. TESTES DE RECÁLCULO E ADULTERAÇÃO DE SCORE EM BACKUP SCORED
+  // =========================================================================
+  {
+    const idb = new IDBFactory();
+    const repo = new ContestRepository({ idbFactory: idb });
+
+    const draft = createContestDraft(9500, { rng: createMulberry32(555), clock: clock1 });
+    await repo.saveDraft(draft);
+    await repo.freezeStoredContest(9500, { clock: clock2 });
+    const offResult = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    const authenticScored = await repo.scoreStoredContest(9500, offResult, { clock: clock3 });
+
+    const buildBackup = (rec: ContestRecord): HistoryExportData => ({
+      schemaVersion: 1,
+      exportedAt: fixedDate3.toISOString(),
+      recordCount: 1,
+      algorithmVersions: ["C5-1.0.0"],
+      records: [rec],
+    });
+
+    // 10.0 Baseline autêntico é válido
+    const baseVal = await validateHistoryBackup(buildBackup(authenticScored));
+    assert(baseVal.valid, "10.0. Backup SCORED autêntico é 100% válido");
+
+    // 10.1 score.result adulterado
+    {
+      const tampered: ContestRecord = JSON.parse(JSON.stringify(authenticScored));
+      tampered.score!.result[0] = tampered.score!.result[0] === 1 ? 2 : 1;
+      const v = await validateHistoryBackup(buildBackup(tampered));
+      assert(!v.valid, "10.1. Adulteração em 'score.result' resulta em BACKUP INVALID");
+    }
+
+    // 10.2 gameIndex adulterado
+    {
+      const tampered: ContestRecord = JSON.parse(JSON.stringify(authenticScored));
+      (tampered.score!.games[0] as any).gameIndex = 99;
+      const v = await validateHistoryBackup(buildBackup(tampered));
+      assert(!v.valid, "10.2. Adulteração em 'score.games[0].gameIndex' resulta em BACKUP INVALID");
+    }
+
+    // 10.3 hits adulterado
+    {
+      const tampered: ContestRecord = JSON.parse(JSON.stringify(authenticScored));
+      (tampered.score!.games[0] as any).hits = ((tampered.score!.games[0].hits + 1) % 15) as any;
+      const v = await validateHistoryBackup(buildBackup(tampered));
+      assert(!v.valid, "10.3. Adulteração em 'score.games[0].hits' resulta em BACKUP INVALID");
+    }
+
+    // 10.4 matchedNumbers adulterado
+    {
+      const tampered: ContestRecord = JSON.parse(JSON.stringify(authenticScored));
+      tampered.score!.games[0].matchedNumbers.pop();
+      const v = await validateHistoryBackup(buildBackup(tampered));
+      assert(!v.valid, "10.4. Adulteração em 'score.games[0].matchedNumbers' resulta em BACKUP INVALID");
+    }
+
+    // 10.5 missedNumbers adulterado
+    {
+      const tampered: ContestRecord = JSON.parse(JSON.stringify(authenticScored));
+      tampered.score!.games[0].missedNumbers.pop();
+      const v = await validateHistoryBackup(buildBackup(tampered));
+      assert(!v.valid, "10.5. Adulteração em 'score.games[0].missedNumbers' resulta em BACKUP INVALID");
+    }
+
+    // 10.6 bestGameIndexes adulterado
+    {
+      const tampered: ContestRecord = JSON.parse(JSON.stringify(authenticScored));
+      tampered.score!.bestGameIndexes = [4];
+      const v = await validateHistoryBackup(buildBackup(tampered));
+      assert(!v.valid, "10.6. Adulteração em 'score.bestGameIndexes' resulta em BACKUP INVALID");
+    }
+
+    // 10.7 prizeCounts adulterado
+    {
+      const tampered: ContestRecord = JSON.parse(JSON.stringify(authenticScored));
+      tampered.score!.prizeCounts.hits11 = tampered.score!.prizeCounts.hits11 + 5;
+      const v = await validateHistoryBackup(buildBackup(tampered));
+      assert(!v.valid, "10.7. Adulteração em 'score.prizeCounts' resulta em BACKUP INVALID");
+    }
+
+    // 10.8 flags adulteradas (has11Plus, has12Plus, has13Plus, has14Plus, has15)
+    {
+      const tampered: ContestRecord = JSON.parse(JSON.stringify(authenticScored));
+      tampered.score!.has11Plus = !tampered.score!.has11Plus;
+      const v = await validateHistoryBackup(buildBackup(tampered));
+      assert(!v.valid, "10.8. Adulteração em flags de pontuação resulta em BACKUP INVALID");
+    }
+
+    // 10.9 maxHits adulterado
+    {
+      const tampered: ContestRecord = JSON.parse(JSON.stringify(authenticScored));
+      (tampered.score as any).maxHits = (tampered.score!.maxHits === 15 ? 14 : 15);
+      const v = await validateHistoryBackup(buildBackup(tampered));
+      assert(!v.valid, "10.9. Adulteração em 'score.maxHits' resulta em BACKUP INVALID");
+    }
+  }
+
+  // =========================================================================
+  // 11. TESTES DE ENFORCEMENT DE recordCount
+  // =========================================================================
+  {
+    const draft = createContestDraft(9600, { rng: createMulberry32(666), clock: clock1 });
+
+    // 11.1 Backup novo com recordCount presente e idêntico a records.length -> PASS
+    const newBackup = {
+      schemaVersion: 1,
+      exportedAt: fixedDate3.toISOString(),
+      recordCount: 1,
+      algorithmVersions: ["C5-1.0.0"],
+      records: [draft],
+    };
+    const vNew = await validateHistoryBackup(newBackup);
+    assert(vNew.valid && vNew.data?.recordCount === 1, "11.1. Backup novo com recordCount === records.length é aceito (PASS)");
+
+    // 11.2 Backup legado schemaVersion 1 sem recordCount -> PASS com normalização interna
+    const legacyBackup = {
+      schemaVersion: 1,
+      exportedAt: fixedDate3.toISOString(),
+      algorithmVersions: ["C5-1.0.0"],
+      records: [draft],
+    };
+    const vLegacy = await validateHistoryBackup(legacyBackup);
+    assert(
+      vLegacy.valid && vLegacy.data?.recordCount === 1,
+      "11.2. Backup legado sem recordCount é aceito (PASS) e normalizado para records.length"
+    );
+
+    // 11.3 Backup adulterado com recordCount !== records.length -> REJECT
+    const adulteratedBackup = {
+      schemaVersion: 1,
+      exportedAt: fixedDate3.toISOString(),
+      recordCount: 999, // adulterado
+      algorithmVersions: ["C5-1.0.0"],
+      records: [draft],
+    };
+    const vAdulterated = await validateHistoryBackup(adulteratedBackup);
+    assert(!vAdulterated.valid, "11.3. Backup adulterado com recordCount !== records.length é rejeitado (REJECT)");
   }
 
   console.log(

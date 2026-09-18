@@ -51,7 +51,7 @@ export async function runIntegrityTests(): Promise<{ passed: number; failed: num
   const baseDraft = createContestDraft(3210, {
     rng: createMulberry32(777),
     clock: clock1,
-    generationId: "auth-uuid-777",
+    generationId: "b7777777-7777-4777-8777-777777777777",
   });
   const baseline = await freezeContestRecord(baseDraft, { clock: clock2 });
 
