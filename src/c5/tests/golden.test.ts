@@ -6,9 +6,12 @@
  * exata dos 5 jogos J1..J5, as 10 interseções nomeadas (8 e 7) e a aprovação integral
  * no validador formal de invariantes validateC5().
  */
-import { C5_SLOTS, getPresentGameIndices } from "../constants.ts";
+import { C5_SLOTS } from "../constants.ts";
+import { buildC5FromPermutation } from "../canonicalBuilder.ts";
 import { validateC5 } from "../validator.ts";
 import type { C5Generation } from "../types.ts";
+
+export { buildC5FromPermutation };
 
 export interface GoldenTestResults {
   slotMapping: boolean;
@@ -25,40 +28,6 @@ export interface GoldenTestResults {
   intersections7: boolean;
   validateC5: boolean;
   allPassed: boolean;
-}
-
-export function buildC5FromPermutation(permutation: number[]): C5Generation {
-  if (permutation.length !== 25) {
-    throw new Error(`Permutação deve conter exatamente 25 dezenas, recebido ${permutation.length}`);
-  }
-
-  const slotAssignments: Record<string, number> = {};
-  for (let i = 0; i < C5_SLOTS.length; i++) {
-    const slot = C5_SLOTS[i];
-    slotAssignments[slot] = permutation[i];
-  }
-
-  const rawGames: [number[], number[], number[], number[], number[]] = [
-    [], [], [], [], []
-  ];
-
-  for (const slot of C5_SLOTS) {
-    const num = slotAssignments[slot];
-    const [gA, gB, gC] = getPresentGameIndices(slot);
-    rawGames[gA].push(num);
-    rawGames[gB].push(num);
-    rawGames[gC].push(num);
-  }
-
-  const games: [number[], number[], number[], number[], number[]] = [
-    [...rawGames[0]].sort((a, b) => a - b),
-    [...rawGames[1]].sort((a, b) => a - b),
-    [...rawGames[2]].sort((a, b) => a - b),
-    [...rawGames[3]].sort((a, b) => a - b),
-    [...rawGames[4]].sort((a, b) => a - b),
-  ];
-
-  return { permutation, slotAssignments, games };
 }
 
 /**

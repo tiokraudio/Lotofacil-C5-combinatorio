@@ -8,10 +8,21 @@ import {
   FileJson,
   Layers,
   Info,
+  Activity,
+  Cpu,
+  Database,
+  Wifi,
+  WifiOff,
+  RefreshCw,
 } from "lucide-react";
 import type { HistoryAuditResult } from "../storage/types.ts";
 import { repository, downloadJsonFile } from "../storage/service.ts";
 import { ImportBackupSection } from "./ImportBackupSection.tsx";
+import {
+  runSelfDiagnostic,
+  type SelfDiagnosticResult,
+} from "../system/selfDiagnostic.ts";
+import { APPLICATION_MANIFEST } from "../system/manifest.ts";
 
 interface AuditViewProps {
   onImportSuccess?: () => void;
@@ -22,6 +33,25 @@ export const AuditView: React.FC<AuditViewProps> = ({ onImportSuccess }) => {
   const [isAuditing, setIsAuditing] = useState<boolean>(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportSuccessMsg, setExportSuccessMsg] = useState<string | null>(null);
+
+  // Estados do Autodiagnóstico C₅
+  const [diagResult, setDiagResult] = useState<SelfDiagnosticResult | null>(null);
+  const [isDiagnosing, setIsDiagnosing] = useState<boolean>(false);
+  const [includeExternal, setIncludeExternal] = useState<boolean>(true);
+
+  const handleRunDiagnostic = async () => {
+    setIsDiagnosing(true);
+    try {
+      const res = await runSelfDiagnostic({
+        checkExternal: includeExternal,
+      });
+      setDiagResult(res);
+    } catch (err: unknown) {
+      console.error("Erro ao executar autodiagnóstico:", err);
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
 
   const handleRunAudit = async () => {
     setIsAuditing(true);
@@ -77,6 +107,191 @@ export const AuditView: React.FC<AuditViewProps> = ({ onImportSuccess }) => {
         <p className="text-xs sm:text-sm text-zinc-400 mt-1">
           Verificação matemática de invariantes C₅, assinaturas SHA-256 e pontuações do histórico.
         </p>
+      </div>
+
+      {/* Painel de Autodiagnóstico da Aplicação e Motor C₅ */}
+      <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xl space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
+          <div>
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-cyan-400" />
+              <h3 className="text-lg font-bold text-zinc-100">
+                Autodiagnóstico do Sistema & Motor C₅
+              </h3>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-300 border border-zinc-700">
+                v{APPLICATION_MANIFEST.appVersion}
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-950/60 text-cyan-300 border border-cyan-800/60">
+                {APPLICATION_MANIFEST.algorithmVersion}
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 mt-1">
+              Testa primitivas Web Crypto, amostragem RNG, conformidade com o Golden Standard C₅, integridade do IndexedDB e conectividade oficial.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-zinc-300 select-none cursor-pointer bg-zinc-950/60 px-3 py-2 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-colors">
+              <input
+                type="checkbox"
+                checked={includeExternal}
+                onChange={(e) => setIncludeExternal(e.target.checked)}
+                className="rounded bg-zinc-800 border-zinc-700 text-cyan-500 focus:ring-cyan-400"
+              />
+              <span>Consultar API CAIXA</span>
+            </label>
+
+            <button
+              type="button"
+              id="btn-run-self-diagnostic"
+              onClick={handleRunDiagnostic}
+              disabled={isDiagnosing}
+              className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs sm:text-sm tracking-wide transition-all shadow-md inline-flex items-center gap-2 disabled:opacity-50 cursor-pointer focus:ring-2 focus:ring-cyan-400"
+            >
+              {isDiagnosing ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              <span>EXECUTAR DIAGNÓSTICO</span>
+            </button>
+          </div>
+        </div>
+
+        {diagResult ? (
+          <div className="space-y-6">
+            {/* Status Geral */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800">
+                <span className="text-xs text-zinc-400 block font-medium">Status do Motor Local</span>
+                <span
+                  className={`text-xl font-bold font-mono mt-1 block ${
+                    diagResult.localStatus === "PASS"
+                      ? "text-emerald-400"
+                      : diagResult.localStatus === "WARN"
+                      ? "text-amber-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {diagResult.localStatus}
+                </span>
+                <span className="text-[10px] text-zinc-500 block mt-0.5">
+                  Criptografia, RNG, Golden, DB
+                </span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800">
+                <span className="text-xs text-zinc-400 block font-medium">Status Global</span>
+                <span
+                  className={`text-xl font-bold font-mono mt-1 block ${
+                    diagResult.globalStatus === "PASS"
+                      ? "text-emerald-400"
+                      : diagResult.globalStatus === "WARN"
+                      ? "text-amber-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {diagResult.globalStatus}
+                </span>
+                <span className="text-[10px] text-zinc-500 block mt-0.5">
+                  Inclui subsistema externo
+                </span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800">
+                <span className="text-xs text-zinc-400 block font-medium">Tempo de Execução</span>
+                <span className="text-xl font-bold font-mono text-zinc-200 mt-1 block">
+                  {diagResult.durationMs}ms
+                </span>
+                <span className="text-[10px] text-zinc-500 block mt-0.5">
+                  {new Date(diagResult.finishedAt).toLocaleTimeString()}
+                </span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800">
+                <span className="text-xs text-zinc-400 block font-medium">Histórico Auditado</span>
+                <span className="text-xl font-bold font-mono text-zinc-200 mt-1 block">
+                  {diagResult.historyAudit.validRecords}/{diagResult.historyAudit.totalRecords}
+                </span>
+                <span className="text-[10px] text-zinc-500 block mt-0.5">
+                  {diagResult.historyAudit.invalidRecords === 0
+                    ? "100% íntegro"
+                    : `${diagResult.historyAudit.invalidRecords} inválido(s)`}
+                </span>
+              </div>
+            </div>
+
+            {/* Lista dos Testes Individuais */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                Verificações de Diagnóstico ({diagResult.checks.length} testes)
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {diagResult.checks.map((chk) => {
+                  const isPass = chk.status === "PASS";
+                  const isWarn = chk.status === "WARN";
+                  const isFail = chk.status === "FAIL";
+
+                  const badgeClass = isPass
+                    ? "bg-emerald-950/60 text-emerald-300 border-emerald-800/60"
+                    : isWarn
+                    ? "bg-amber-950/60 text-amber-300 border-amber-800/60"
+                    : isFail
+                    ? "bg-red-950/60 text-red-300 border-red-800/60"
+                    : "bg-zinc-800 text-zinc-400 border-zinc-700";
+
+                  return (
+                    <div
+                      key={chk.id}
+                      className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800/90 flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-zinc-200">
+                              {chk.name}
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-500">
+                              {chk.durationMs}ms
+                            </span>
+                          </div>
+                          <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                            {chk.message}
+                          </p>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0 ${badgeClass}`}
+                        >
+                          {chk.status}
+                        </span>
+                      </div>
+
+                      {chk.details && Object.keys(chk.details).length > 0 && (
+                        <div className="mt-1 pt-2 border-t border-zinc-900 text-[11px] font-mono text-zinc-500 flex flex-wrap gap-x-3 gap-y-1">
+                          {Object.entries(chk.details).map(([k, v]) => (
+                            <span key={k}>
+                              <span className="text-zinc-400">{k}:</span>{" "}
+                              <span className="text-zinc-300">
+                                {typeof v === "boolean" ? (v ? "true" : "false") : String(v)}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-8 rounded-xl bg-zinc-950/50 border border-zinc-800/80 text-center">
+            <Activity className="w-8 h-8 text-cyan-500/60 mx-auto mb-2" />
+            <p className="text-xs text-zinc-400">
+              Clique em "EXECUTAR DIAGNÓSTICO" para inspecionar em tempo de execução o Web Crypto, RNG, Golden Standard, armazenamento local e conectividade da aplicação.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Painel Principal de Auditoria Global */}
