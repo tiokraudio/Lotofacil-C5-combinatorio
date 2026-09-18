@@ -212,7 +212,30 @@ export async function runSelfDiagnosticTests(): Promise<{ passed: number; failed
     assert(interCheck?.status === "FAIL", "4.4. Check Interseções = FAIL sob adulteração");
   }
 
-  // 5. Injeção de Falha no Web Crypto (recurso ausente)
+  // ---------------------------------------------------------------------------
+  // 5. TESTES OBRIGATÓRIOS DO AMBIENTE CRIPTOGRÁFICO & INDEXEDDB (A até F)
+  // ---------------------------------------------------------------------------
+
+  // Teste A: Web Crypto completo (web_crypto = PASS, rng_smoke = PASS)
+  {
+    const idb = new IDBFactory();
+    const repo = new ContestRepository({ idbFactory: idb });
+
+    const diag = await runSelfDiagnostic({
+      idbFactory: idb,
+      repository: repo,
+      checkExternal: false,
+    });
+
+    const cryptoCheck = diag.checks.find((c) => c.id === "web_crypto");
+    const rngCheck = diag.checks.find((c) => c.id === "rng_smoke");
+
+    assert(cryptoCheck?.status === "PASS", "A.1. Web Crypto completo: web_crypto = PASS");
+    assert(rngCheck?.status === "PASS", "A.2. Web Crypto completo: rng_smoke = PASS");
+    assert(diag.localStatus === "PASS", "A.3. Web Crypto completo: localStatus = PASS");
+  }
+
+  // Teste B: getRandomValues ausente (web_crypto = FAIL, rng_smoke != PASS, localStatus = FAIL)
   {
     const idb = new IDBFactory();
     const repo = new ContestRepository({ idbFactory: idb });
@@ -221,14 +244,127 @@ export async function runSelfDiagnosticTests(): Promise<{ passed: number; failed
       idbFactory: idb,
       repository: repo,
       cryptoOverride: {
-        getRandomValues: undefined, // Simula ambiente sem CSPRNG
+        getRandomValues: undefined, // Simula ausência de getRandomValues
+        subtle: globalThis.crypto.subtle,
+        randomUUID: globalThis.crypto.randomUUID.bind(globalThis.crypto),
       },
       checkExternal: false,
     });
 
-    assert(diag.localStatus === "FAIL", "5.1. localStatus com falha no Web Crypto = FAIL");
+    assert(diag.localStatus === "FAIL", "B.1. getRandomValues ausente: localStatus = FAIL");
     const cryptoCheck = diag.checks.find((c) => c.id === "web_crypto");
-    assert(cryptoCheck?.status === "FAIL", "5.2. Check Web Crypto = FAIL quando ausente");
+    assert(cryptoCheck?.status === "FAIL", "B.2. getRandomValues ausente: web_crypto = FAIL");
+    const rngCheck = diag.checks.find((c) => c.id === "rng_smoke");
+    assert(rngCheck?.status !== "PASS", "B.3. getRandomValues ausente: rng_smoke != PASS (coerência criptográfica garantida)");
+    assert(rngCheck?.status === "FAIL", "B.4. getRandomValues ausente: rng_smoke = FAIL");
+  }
+
+  // Teste C: subtle ausente (web_crypto = FAIL, rng_smoke = PASS se getRandomValues funcional, localStatus = FAIL)
+  {
+    const idb = new IDBFactory();
+    const repo = new ContestRepository({ idbFactory: idb });
+
+    const diag = await runSelfDiagnostic({
+      idbFactory: idb,
+      repository: repo,
+      cryptoOverride: {
+        getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+        subtle: undefined, // Simula ausência de subtle (SHA-256)
+        randomUUID: globalThis.crypto.randomUUID.bind(globalThis.crypto),
+      },
+      checkExternal: false,
+    });
+
+    assert(diag.localStatus === "FAIL", "C.1. subtle ausente: localStatus = FAIL");
+    const cryptoCheck = diag.checks.find((c) => c.id === "web_crypto");
+    assert(cryptoCheck?.status === "FAIL", "C.2. subtle ausente: web_crypto = FAIL");
+    const rngCheck = diag.checks.find((c) => c.id === "rng_smoke");
+    assert(rngCheck?.status === "PASS", "C.3. subtle ausente: rng_smoke = PASS (getRandomValues permanece funcional)");
+  }
+
+  // Teste D: randomUUID ausente (web_crypto = FAIL, diagnóstico conclui normalmente, IndexedDB testado, localStatus = FAIL)
+  {
+    const idb = new IDBFactory();
+    const repo = new ContestRepository({ idbFactory: idb });
+
+    const diag = await runSelfDiagnostic({
+      idbFactory: idb,
+      repository: repo,
+      cryptoOverride: {
+        getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+        subtle: globalThis.crypto.subtle,
+        randomUUID: undefined, // Simula ambiente sem randomUUID
+      },
+      checkExternal: false,
+    });
+
+    assert(diag.localStatus === "FAIL", "D.1. randomUUID ausente: localStatus = FAIL");
+    const cryptoCheck = diag.checks.find((c) => c.id === "web_crypto");
+    assert(cryptoCheck?.status === "FAIL", "D.2. randomUUID ausente: web_crypto = FAIL");
+    const idbCheck = diag.checks.find((c) => c.id === "indexeddb_storage");
+    assert(idbCheck?.status === "PASS", "D.3. randomUUID ausente: IndexedDB executado de forma controlada via fallback determinístico");
+    assert(typeof (idbCheck?.details as any)?.tempDbName === "string", "D.4. randomUUID ausente: nome do banco temporário gerado");
+    assert(
+      !((idbCheck?.details as any)?.tempDbName as string).includes("undefined"),
+      "D.5. randomUUID ausente: nome do banco temporário não contém undefined"
+    );
+  }
+
+  // Teste E: Cleanup do banco temporário confirmado (criado, escrito, fechado, deleteDatabase aguardado)
+  {
+    const idb = new IDBFactory();
+    const diag = await runSelfDiagnostic({
+      idbFactory: idb,
+      checkExternal: false,
+    });
+
+    const idbCheck = diag.checks.find((c) => c.id === "indexeddb_storage");
+    assert(idbCheck?.status === "PASS", "E.1. Cleanup: IndexedDB status = PASS");
+    assert((idbCheck?.details as any)?.officialRead === "SUCCESS", "E.2. Cleanup: Leitura oficial confirmada");
+    assert((idbCheck?.details as any)?.isolatedWrite === "SUCCESS", "E.3. Cleanup: Escrita isolada confirmada");
+    assert((idbCheck?.details as any)?.cleanup === "SUCCESS", "E.4. Cleanup: Descarte do banco temporário explicitamente confirmado");
+  }
+
+  // Teste F: Falha de deleteDatabase detectada, reportada e nenhuma Promise pendente
+  {
+    const realIdb = new IDBFactory();
+    let deleteAttempted = false;
+
+    // Proxy para interceptar e falhar propositalmente o deleteDatabase
+    const failingCleanupIdb = new Proxy(realIdb, {
+      get(target, prop) {
+        if (prop === "deleteDatabase") {
+          return (name: string) => {
+            deleteAttempted = true;
+            const req = {} as IDBOpenDBRequest;
+            setTimeout(() => {
+              (req as any).error = new DOMException("Simulação de contenção/bloqueio na exclusão", "AbortError");
+              if (req.onerror) {
+                req.onerror(new Event("error") as any);
+              }
+            }, 5);
+            return req;
+          };
+        }
+        const val = (target as any)[prop];
+        return typeof val === "function" ? val.bind(target) : val;
+      },
+    });
+
+    const diag = await runSelfDiagnostic({
+      idbFactory: failingCleanupIdb as IDBFactory,
+      checkExternal: false,
+    });
+
+    assert(deleteAttempted, "F.1. Falha deleteDatabase: tentativa de exclusão foi executada");
+    const idbCheck = diag.checks.find((c) => c.id === "indexeddb_storage");
+    assert(idbCheck?.status === "WARN", "F.2. Falha deleteDatabase: classificado como WARN com justificativa técnica");
+    assert((idbCheck?.details as any)?.cleanup === "FAILED", "F.3. Falha deleteDatabase: cleanup = FAILED reportado");
+    assert(
+      typeof (idbCheck?.details as any)?.cleanupError === "string",
+      "F.4. Falha deleteDatabase: mensagem de erro capturada e reportada"
+    );
+    assert(diag.localStatus === "WARN", "F.5. Falha deleteDatabase: localStatus = WARN (alerta não mascarado)");
   }
 
   // 6. Injeção de Falha no IndexedDB (open lança erro)

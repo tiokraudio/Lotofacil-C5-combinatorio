@@ -7,7 +7,8 @@
  * IMPORTANTE:
  * O manifesto é exclusivamente descritivo. O validador (validator.ts)
  * e o motor (generator.ts) não dependem desta camada ('system').
- * O fluxo de dependências é unidirecional: c5 -> system.
+ * A camada system pode depender de c5.
+ * O núcleo c5 nunca depende de system.
  */
 import { C5_SLOTS } from "../c5/constants.ts";
 import { C5_ALGORITHM_VERSION } from "../c5/version.ts";

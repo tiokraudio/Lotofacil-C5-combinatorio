@@ -26,6 +26,7 @@ import {
   C5_SLOTS,
   LOTOFACIL_NUMBERS,
 } from "../c5/index.ts";
+import { createMulberry32 } from "../c5/random.ts";
 import { FakeLotteryResultProvider, setLotteryProvider } from "../lottery/index.ts";
 import { COST_PER_CONTEST } from "../storage/types.ts";
 import { parseHistoryBackup, prepareHistoryImport, importHistory } from "../storage/import.ts";
@@ -437,9 +438,10 @@ export async function runFullE2ECertification() {
   // ---------------------------------------------------------------------------
   console.log("▶ TESTE 20: Instrumentação: exatamente 1 geração por chamada");
   let generatorCallCount = 0;
+  const deterministicRng = createMulberry32(12345);
   const countingRng = () => {
     generatorCallCount++;
-    return Math.random();
+    return deterministicRng();
   };
 
   // Executa uma geração isolada

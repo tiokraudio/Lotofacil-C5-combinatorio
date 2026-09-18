@@ -85,11 +85,90 @@ export interface SelfDiagnosticOptions {
   repository?: ContestRepository;
   idbFactory?: IDBFactory;
   cryptoOverride?: {
-    getRandomValues?: <T extends ArrayBufferView | null>(array: T) => T;
+    getRandomValues?: (array: any) => any;
     subtle?: SubtleCrypto;
     randomUUID?: () => string;
   };
+  randomIntOverride?: (maxExclusive: number) => number;
   builderOverride?: (permutation: number[]) => C5Generation;
+}
+
+// Contador monotônico interno para geração de nomes de banco temporário
+// garantindo isolamento estrito sem qualquer uso de Math.random.
+let diagMonotonicCounter = 0;
+
+function createTempDbName(cryptoObj?: { randomUUID?: () => string }): string {
+  if (cryptoObj && typeof cryptoObj.randomUUID === "function") {
+    try {
+      return `c5_diag_tmp_${cryptoObj.randomUUID()}`;
+    } catch {
+      // Em ambiente de teste que simula exceção, recorre ao contador sequencial
+    }
+  }
+  diagMonotonicCounter++;
+  return `c5_diag_tmp_${Date.now()}_seq${diagMonotonicCounter}`;
+}
+
+interface CleanupResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Executa o descarte do banco temporário aguardando explicitamente onsuccess, onerror e onblocked.
+ */
+function deleteDatabaseAsync(
+  factory: IDBFactory,
+  dbName: string
+): Promise<CleanupResult> {
+  return new Promise((resolve) => {
+    try {
+      const delReq = factory.deleteDatabase(dbName);
+      delReq.onsuccess = () => {
+        resolve({ success: true });
+      };
+      delReq.onerror = () => {
+        const msg = delReq.error
+          ? delReq.error.message
+          : "Erro desconhecido na exclusão do banco temporário";
+        resolve({ success: false, error: msg });
+      };
+      delReq.onblocked = () => {
+        const msg = "Operação de exclusão bloqueada por conexão não finalizada";
+        resolve({ success: false, error: msg });
+      };
+    } catch (err) {
+      resolve({
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+}
+
+/**
+ * Rejection sampling conforme a especificação do motor C5 para amostragem no diagnóstico.
+ */
+function sampleDiagnosticRandomInt(
+  getRandomValuesFn: (array: any) => any,
+  maxExclusive: number
+): number {
+  if (maxExclusive <= 0 || !Number.isInteger(maxExclusive)) {
+    throw new Error(
+      `maxExclusive deve ser um inteiro positivo (recebido: ${maxExclusive})`
+    );
+  }
+  if (maxExclusive === 1) return 0;
+  const range = 0x1_0000_0000;
+  const limit = range - (range % maxExclusive);
+  const buf = new Uint32Array(1);
+  while (true) {
+    getRandomValuesFn(buf);
+    const val = buf[0];
+    if (val < limit) {
+      return val % maxExclusive;
+    }
+  }
 }
 
 // Matriz canônica de referência para a permutação identidade [1..25]
@@ -161,25 +240,25 @@ export async function runSelfDiagnostic(
   // -------------------------------------------------------------------------
   // 2. WEB CRYPTO
   // -------------------------------------------------------------------------
+  const cryptoObj =
+    options?.cryptoOverride !== undefined
+      ? options.cryptoOverride
+      : typeof globalThis !== "undefined"
+      ? globalThis.crypto
+      : undefined;
+
+  const hasGlobal = typeof cryptoObj !== "undefined";
+  const hasGetRandomValues =
+    hasGlobal && typeof cryptoObj.getRandomValues === "function";
+  const hasSubtle = hasGlobal && typeof cryptoObj.subtle !== "undefined";
+  const hasRandomUUID =
+    hasGlobal && typeof cryptoObj.randomUUID === "function";
+
+  const cryptoPass =
+    hasGlobal && hasGetRandomValues && hasSubtle && hasRandomUUID;
+
   {
     const t0 = Date.now();
-    const cryptoObj =
-      options?.cryptoOverride !== undefined
-        ? options.cryptoOverride
-        : typeof globalThis !== "undefined"
-        ? globalThis.crypto
-        : undefined;
-
-    const hasGlobal = typeof cryptoObj !== "undefined";
-    const hasGetRandomValues =
-      hasGlobal && typeof cryptoObj.getRandomValues === "function";
-    const hasSubtle = hasGlobal && typeof cryptoObj.subtle !== "undefined";
-    const hasRandomUUID =
-      hasGlobal && typeof cryptoObj.randomUUID === "function";
-
-    const cryptoPass =
-      hasGlobal && hasGetRandomValues && hasSubtle && hasRandomUUID;
-
     checks.push({
       id: "web_crypto",
       name: "Web Crypto API",
@@ -207,32 +286,52 @@ export async function runSelfDiagnostic(
     let rngPass = true;
     const errors: string[] = [];
 
-    try {
-      // Teste de limites seguros sem sobrecarga
-      for (let i = 0; i < 10; i++) {
-        const v1 = cryptoRandomInt(1);
-        if (v1 !== 0) {
-          rngPass = false;
-          errors.push(`cryptoRandomInt(1) retornou ${v1} (esperava 0)`);
-        }
-        const v2 = cryptoRandomInt(2);
-        if (v2 !== 0 && v2 !== 1) {
-          rngPass = false;
-          errors.push(`cryptoRandomInt(2) retornou ${v2} (esperava 0 ou 1)`);
-        }
-        const v25 = cryptoRandomInt(25);
-        if (v25 < 0 || v25 >= 25 || !Number.isInteger(v25)) {
-          rngPass = false;
-          errors.push(`cryptoRandomInt(25) retornou ${v25} fora de [0, 24]`);
-        }
-      }
-    } catch (err: unknown) {
+    if (!hasGetRandomValues && !options?.randomIntOverride) {
       rngPass = false;
       errors.push(
-        `Erro ao executar amostragem RNG: ${
-          err instanceof Error ? err.message : String(err)
-        }`
+        "getRandomValues ausente ou não funcional no ambiente criptográfico diagnosticado"
       );
+    } else {
+      const sampleInt = (max: number): number => {
+        if (options?.randomIntOverride) {
+          return options.randomIntOverride(max);
+        }
+        if (options?.cryptoOverride && cryptoObj?.getRandomValues) {
+          return sampleDiagnosticRandomInt(
+            cryptoObj.getRandomValues.bind(cryptoObj),
+            max
+          );
+        }
+        return cryptoRandomInt(max);
+      };
+
+      try {
+        // Teste de limites seguros sem sobrecarga
+        for (let i = 0; i < 10; i++) {
+          const v1 = sampleInt(1);
+          if (v1 !== 0) {
+            rngPass = false;
+            errors.push(`amostragem(1) retornou ${v1} (esperava 0)`);
+          }
+          const v2 = sampleInt(2);
+          if (v2 !== 0 && v2 !== 1) {
+            rngPass = false;
+            errors.push(`amostragem(2) retornou ${v2} (esperava 0 ou 1)`);
+          }
+          const v25 = sampleInt(25);
+          if (v25 < 0 || v25 >= 25 || !Number.isInteger(v25)) {
+            rngPass = false;
+            errors.push(`amostragem(25) retornou ${v25} fora de [0, 24]`);
+          }
+        }
+      } catch (err: unknown) {
+        rngPass = false;
+        errors.push(
+          `Erro ao executar amostragem RNG: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      }
     }
 
     checks.push({
@@ -381,12 +480,13 @@ export async function runSelfDiagnostic(
   }
 
   // -------------------------------------------------------------------------
-  // 7. INDEXEDDB (Read-Only Real DB + Isolated Temp Write)
+  // 7. INDEXEDDB (Read-Only Real DB + Isolated Temp Write & Cleanup)
   // -------------------------------------------------------------------------
   {
     const t0 = Date.now();
-    let idbPass = true;
+    let idbStatus: DiagnosticStatus = "PASS";
     let idbMessage = "";
+    const idbDetails: Record<string, unknown> = {};
 
     try {
       const factory = getIDBFactory({ idbFactory: options?.idbFactory });
@@ -405,61 +505,92 @@ export async function runSelfDiagnostic(
       } finally {
         officialDb.close();
       }
+      idbDetails.officialRead = "SUCCESS";
 
-      // Teste de escrita isolado em banco temporário exclusivo
-      const tempDbName = `c5_diag_tmp_${Date.now()}_${Math.floor(
-        Math.random() * 100000
-      )}`;
-      await new Promise<void>((resolve, reject) => {
-        const tempReq = factory.open(tempDbName, 1);
-        tempReq.onupgradeneeded = () => {
-          const db = tempReq.result;
-          db.createObjectStore("diag_test", { keyPath: "id" });
-        };
-        tempReq.onsuccess = () => {
-          const db = tempReq.result;
-          try {
-            const tx = db.transaction(["diag_test"], "readwrite");
-            const store = tx.objectStore("diag_test");
-            store.put({ id: 1, ping: "pong", ts: Date.now() });
-            tx.oncomplete = () => {
-              db.close();
-              factory.deleteDatabase(tempDbName);
-              resolve();
-            };
-            tx.onerror = () => {
-              db.close();
-              factory.deleteDatabase(tempDbName);
-              reject(new Error("Falha em transação de escrita isolada"));
-            };
-          } catch (e) {
-            db.close();
-            factory.deleteDatabase(tempDbName);
-            reject(e);
-          }
-        };
-        tempReq.onerror = () =>
-          reject(new Error("Falha ao abrir banco temporário de diagnóstico"));
-      });
+      // Teste de escrita isolado em banco temporário exclusivo (sem Math.random)
+      const tempDbName = createTempDbName(cryptoObj);
+      idbDetails.tempDbName = tempDbName;
+      let tempDb: any = null;
+      let writeError: Error | null = null;
 
-      idbMessage =
-        "Banco de dados oficial operacional para leitura; escrita isolada validada com sucesso";
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const tempReq = factory.open(tempDbName, 1);
+          tempReq.onupgradeneeded = () => {
+            const db = tempReq.result;
+            db.createObjectStore("diag_test", { keyPath: "id" });
+          };
+          tempReq.onsuccess = () => {
+            tempDb = tempReq.result;
+            try {
+              const tx = tempDb.transaction(["diag_test"], "readwrite");
+              const store = tx.objectStore("diag_test");
+              store.put({ id: 1, ping: "pong", ts: Date.now() });
+              tx.oncomplete = () => resolve();
+              tx.onerror = () =>
+                reject(new Error("Falha em transação de escrita isolada"));
+            } catch (e) {
+              reject(e instanceof Error ? e : new Error(String(e)));
+            }
+          };
+          tempReq.onerror = () =>
+            reject(new Error("Falha ao abrir banco temporário de diagnóstico"));
+          tempReq.onblocked = () =>
+            reject(new Error("Abertura do banco temporário bloqueada"));
+        });
+        idbDetails.isolatedWrite = "SUCCESS";
+      } catch (err) {
+        writeError = err instanceof Error ? err : new Error(String(err));
+      } finally {
+        if (tempDb && typeof tempDb.close === "function") {
+          tempDb.close();
+          tempDb = null;
+        }
+      }
+
+      if (writeError) {
+        // Tenta limpar mesmo se a escrita falhou antes de propagar erro
+        await deleteDatabaseAsync(factory, tempDbName);
+        throw writeError;
+      }
+
+      // Cleanup explícito e aguardado do banco temporário
+      const cleanupResult = await deleteDatabaseAsync(factory, tempDbName);
+      if (!cleanupResult.success) {
+        // Classificação: WARN.
+        // Justificativa: As capacidades primárias de armazenamento (leitura do banco oficial
+        // e transações ACID de escrita isolada) foram concluídas com êxito, garantindo que os
+        // dados do usuário permanecem protegidos. Contudo, a falha no descarte do banco temporário
+        // requer alerta (WARN) para evidenciar contenção de recursos ou bloqueio no IndexedDB.
+        idbStatus = "WARN";
+        localWarn = true;
+        idbMessage = `Banco oficial e escrita operacionais, porém falha no descarte do banco temporário: ${cleanupResult.error}`;
+        idbDetails.cleanup = "FAILED";
+        idbDetails.cleanupError = cleanupResult.error;
+      } else {
+        idbStatus = "PASS";
+        idbMessage =
+          "Banco de dados oficial operacional para leitura; escrita isolada e descarte validados com sucesso";
+        idbDetails.cleanup = "SUCCESS";
+      }
     } catch (err: unknown) {
-      idbPass = false;
+      idbStatus = "FAIL";
+      localFailed = true;
       idbMessage = `Falha no armazenamento local: ${
         err instanceof Error ? err.message : String(err)
       }`;
+      idbDetails.error = idbMessage;
     }
 
     checks.push({
       id: "indexeddb_storage",
       name: "Armazenamento Local (IndexedDB)",
       category: "STORAGE",
-      status: idbPass ? "PASS" : "FAIL",
+      status: idbStatus,
       message: idbMessage,
+      details: idbDetails,
       durationMs: Date.now() - t0,
     });
-    if (!idbPass) localFailed = true;
   }
 
   // -------------------------------------------------------------------------
