@@ -11,6 +11,7 @@ import {
   defaultClock,
 } from "../c5/record.ts";
 import { verifyContestIntegrity } from "../c5/integrity.ts";
+import { areContestRecordsIdentical } from "./recordComparison.ts";
 import type { ContestRecord, ContestRecordStatus, Clock } from "../c5/types.ts";
 import {
   openDatabase,
@@ -232,8 +233,8 @@ export class ContestRepository {
     options?: { clock?: Clock }
   ): Promise<ContestRecord> {
     const clock = options?.clock ?? this.options?.clock ?? defaultClock;
-    const existing = await this.getContestRecord(contestNumber);
-    if (!existing) {
+    const snapshot = await this.getContestRecord(contestNumber);
+    if (!snapshot) {
       throw new Error(`Concurso ${contestNumber} não encontrado para congelamento.`);
     }
 
@@ -244,14 +245,14 @@ export class ContestRepository {
       );
     }
 
-    if (existing.status !== "DRAFT") {
+    if (snapshot.status !== "DRAFT") {
       throw new Error(
-        `Apenas registros em estado DRAFT podem ser congelados. Concurso ${contestNumber} possui status: '${existing.status}'.`
+        `Apenas registros em estado DRAFT podem ser congelados. Concurso ${contestNumber} possui status: '${snapshot.status}'.`
       );
     }
 
     // Transição pura via motor matemático C5 (cálculo de hash assíncrono Web Crypto)
-    const frozen = await freezeContestRecord(existing, { clock });
+    const frozen = await freezeContestRecord(snapshot, { clock });
 
     // Verificação de integridade pós-congelamento antes de persistir
     const audit = await verifyContestIntegrity(frozen);
@@ -267,9 +268,9 @@ export class ContestRepository {
       const store = tx.objectStore(CONTEST_STORE_NAME);
 
       const current = await promisifyRequest<ContestRecord | undefined>(store.get(contestNumber));
-      if (!current || current.status !== "DRAFT") {
+      if (!current || !areContestRecordsIdentical(current, snapshot)) {
         throw new Error(
-          `Apenas registros em estado DRAFT podem ser congelados. Concurso ${contestNumber} possui status: '${current?.status}'.`
+          `O registro do concurso ${contestNumber} mudou durante a operação. Congelamento cancelado para evitar sobrescrita concorrente.`
         );
       }
 
@@ -294,8 +295,8 @@ export class ContestRepository {
     options?: { clock?: Clock }
   ): Promise<ContestRecord> {
     const clock = options?.clock ?? this.options?.clock ?? defaultClock;
-    const existing = await this.getContestRecord(contestNumber);
-    if (!existing) {
+    const snapshot = await this.getContestRecord(contestNumber);
+    if (!snapshot) {
       throw new Error(`Concurso ${contestNumber} não encontrado para pontuação.`);
     }
 
@@ -306,14 +307,14 @@ export class ContestRepository {
       );
     }
 
-    if (existing.status !== "FROZEN") {
+    if (snapshot.status !== "FROZEN") {
       throw new Error(
-        `Apenas registros em estado FROZEN podem ser pontuados. Concurso ${contestNumber} possui status: '${existing.status}'.`
+        `Apenas registros em estado FROZEN podem ser pontuados. Concurso ${contestNumber} possui status: '${snapshot.status}'.`
       );
     }
 
     // 1. Auditoria prévia do registro FROZEN armazenado (garante que não foi corrompido no banco)
-    const preAudit = await verifyContestIntegrity(existing);
+    const preAudit = await verifyContestIntegrity(snapshot);
     if (!preAudit.valid) {
       throw new Error(
         `Recusando pontuação: a integridade do registro congelado no banco foi violada: ${preAudit.errors.join("; ")}`
@@ -321,7 +322,7 @@ export class ContestRepository {
     }
 
     // 2. Pontuação pura via motor matemático C5
-    const scored = await scoreFrozenContest(existing, officialResult, { clock });
+    const scored = await scoreFrozenContest(snapshot, officialResult, { clock });
 
     // 3. Auditoria pós-score da integridade da geração congelada
     const postGenAudit = await verifyContestIntegrity(scored);
@@ -345,9 +346,9 @@ export class ContestRepository {
       const store = tx.objectStore(CONTEST_STORE_NAME);
 
       const current = await promisifyRequest<ContestRecord | undefined>(store.get(contestNumber));
-      if (!current || current.status !== "FROZEN") {
+      if (!current || !areContestRecordsIdentical(current, snapshot)) {
         throw new Error(
-          `Apenas registros em estado FROZEN podem ser pontuados. Concurso ${contestNumber} possui status: '${current?.status}'.`
+          `O registro do concurso ${contestNumber} mudou durante a operação. Pontuação cancelada para evitar sobrescrita concorrente.`
         );
       }
 
@@ -366,20 +367,20 @@ export class ContestRepository {
    * Tentativas de excluir registros FROZEN ou SCORED são terminantemente rejeitadas.
    */
   async deleteDraft(contestNumber: number): Promise<void> {
-    const existing = await this.getContestRecord(contestNumber);
-    if (!existing) {
+    const snapshot = await this.getContestRecord(contestNumber);
+    if (!snapshot) {
       throw new Error(`Concurso ${contestNumber} não encontrado para exclusão.`);
     }
 
-    if (existing.status === "FROZEN" || existing.status === "SCORED") {
+    if (snapshot.status === "FROZEN" || snapshot.status === "SCORED") {
       throw new Error(
-        `Operação proibida: registros em estado '${existing.status}' não podem ser excluídos da aplicação para assegurar o histórico prospectivo auditável.`
+        `Operação proibida: registros em estado '${snapshot.status}' não podem ser excluídos da aplicação para assegurar o histórico prospectivo auditável.`
       );
     }
 
-    if (existing.status !== "DRAFT") {
+    if (snapshot.status !== "DRAFT") {
       throw new Error(
-        `Apenas registros em estado DRAFT podem ser excluídos. Status atual: '${existing.status}'.`
+        `Apenas registros em estado DRAFT podem ser excluídos. Status atual: '${snapshot.status}'.`
       );
     }
 
@@ -394,6 +395,13 @@ export class ContestRepository {
     try {
       const tx = db.transaction(CONTEST_STORE_NAME, "readwrite");
       const store = tx.objectStore(CONTEST_STORE_NAME);
+
+      const current = await promisifyRequest<ContestRecord | undefined>(store.get(contestNumber));
+      if (!current || !areContestRecordsIdentical(current, snapshot)) {
+        throw new Error(
+          `O registro do concurso ${contestNumber} mudou durante a operação. Exclusão cancelada para evitar exclusão concorrente.`
+        );
+      }
 
       await promisifyRequest(store.delete(contestNumber));
       await waitForTransaction(tx);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ShieldCheck,
   Download,
@@ -44,35 +44,60 @@ export const AuditView: React.FC<AuditViewProps> = ({ onImportSuccess }) => {
   const [isDiagnosing, setIsDiagnosing] = useState<boolean>(false);
   const [includeExternal, setIncludeExternal] = useState<boolean>(true);
 
+  // Controle de concorrência e descarte de resultados obsoletos (anti-race)
+  const auditRunIdRef = useRef<number>(0);
+  const diagRunIdRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
+
   const handleRunDiagnostic = async () => {
+    const runId = ++diagRunIdRef.current;
     setIsDiagnosing(true);
     try {
       const res = await runSelfDiagnostic({
         checkExternal: includeExternal,
       });
-      setDiagResult(res);
+      if (isMountedRef.current && runId === diagRunIdRef.current) {
+        setDiagResult(res);
+      }
     } catch (err: unknown) {
-      console.error("Erro ao executar autodiagnóstico:", err);
+      if (isMountedRef.current && runId === diagRunIdRef.current) {
+        console.error("Erro ao executar autodiagnóstico:", err);
+      }
     } finally {
-      setIsDiagnosing(false);
+      if (isMountedRef.current && runId === diagRunIdRef.current) {
+        setIsDiagnosing(false);
+      }
     }
   };
 
   const handleRunAudit = async () => {
+    const runId = ++auditRunIdRef.current;
     setIsAuditing(true);
     setExportErrorMsg(null);
     try {
       const result = await repository.auditEntireHistory();
-      setAuditResult(result);
+      if (isMountedRef.current && runId === auditRunIdRef.current) {
+        setAuditResult(result);
+      }
     } catch (err: any) {
-      console.error("Erro na auditoria global:", err);
+      if (isMountedRef.current && runId === auditRunIdRef.current) {
+        console.error("Erro na auditoria global:", err);
+      }
     } finally {
-      setIsAuditing(false);
+      if (isMountedRef.current && runId === auditRunIdRef.current) {
+        setIsAuditing(false);
+      }
     }
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
     handleRunAudit();
+    return () => {
+      isMountedRef.current = false;
+      auditRunIdRef.current++;
+      diagRunIdRef.current++;
+    };
   }, []);
 
   const handleAfterImport = async () => {
@@ -99,12 +124,18 @@ export const AuditView: React.FC<AuditViewProps> = ({ onImportSuccess }) => {
       const filename = `c5-backup-${timestamp}.json`;
 
       downloadJsonFile(backupData, filename);
-      setExportSuccessMsg(`Backup gerado com sucesso: ${filename} (${backupData.records.length} concursos)`);
+      if (isMountedRef.current) {
+        setExportSuccessMsg(`Backup gerado com sucesso: ${filename} (${backupData.records.length} concursos)`);
+      }
     } catch (err: any) {
       console.error("Erro ao exportar backup:", err);
-      setExportErrorMsg(err?.message || "Erro desconhecido ao exportar backup.");
+      if (isMountedRef.current) {
+        setExportErrorMsg(err?.message || "Erro desconhecido ao exportar backup.");
+      }
     } finally {
-      setIsExporting(false);
+      if (isMountedRef.current) {
+        setIsExporting(false);
+      }
     }
   };
 
@@ -116,12 +147,18 @@ export const AuditView: React.FC<AuditViewProps> = ({ onImportSuccess }) => {
       const diagData = await repository.exportDiagnostic();
       const filename = generateDiagnosticFilename();
       downloadJsonFile(diagData, filename);
-      setExportSuccessMsg(`Arquivo de diagnóstico exportado com sucesso: ${filename}`);
+      if (isMountedRef.current) {
+        setExportSuccessMsg(`Arquivo de diagnóstico exportado com sucesso: ${filename}`);
+      }
     } catch (err: any) {
       console.error("Erro ao exportar diagnóstico:", err);
-      setExportErrorMsg(err?.message || "Erro ao exportar arquivo de diagnóstico.");
+      if (isMountedRef.current) {
+        setExportErrorMsg(err?.message || "Erro ao exportar arquivo de diagnóstico.");
+      }
     } finally {
-      setIsExportingDiagnostic(false);
+      if (isMountedRef.current) {
+        setIsExportingDiagnostic(false);
+      }
     }
   };
 
