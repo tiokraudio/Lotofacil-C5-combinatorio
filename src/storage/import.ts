@@ -24,7 +24,15 @@ import type {
   C5Score,
   HitCount,
 } from "../c5/types.ts";
-import type { HistoryExportData, HistoryAuditResult } from "./types.ts";
+import {
+  type HistoryExportData,
+  type HistoryAuditResult,
+  UUID_V4_REGEX,
+  isValidIsoDate,
+  isValidGenerationId,
+} from "./types.ts";
+
+export { UUID_V4_REGEX, isValidIsoDate, isValidGenerationId };
 
 // ============================================================================
 // CONSTANTES DEFENSIVAS CENTRAIS
@@ -98,35 +106,6 @@ export interface ImportExecutionResult {
 // ============================================================================
 // AUXILIARES DE VALIDAÇÃO PURA
 // ============================================================================
-
-/**
- * Valida se uma string representa um timestamp ISO 8601 estrito e parseável.
- */
-export function isValidIsoDate(str: unknown): str is string {
-  if (typeof str !== "string" || str.trim().length === 0) {
-    return false;
-  }
-  const timestamp = Date.parse(str);
-  if (Number.isNaN(timestamp)) {
-    return false;
-  }
-  // Formato ISO 8601 com 'Z' ou offset
-  const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
-  return isoRegex.test(str);
-}
-
-const UUID_V4_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-/**
- * Valida se o generationId possui formato UUID v4 RFC 4122 estrito.
- */
-export function isValidGenerationId(id: unknown): id is string {
-  if (typeof id !== "string" || id.trim().length === 0) {
-    return false;
-  }
-  return UUID_V4_REGEX.test(id);
-}
 
 /**
  * Higieniza e reconstrói defensivamente um objeto C5Generation,
@@ -456,6 +435,10 @@ export function parseHistoryBackup(jsonText: string): unknown {
     throw new Error(`Estrutura de backup inválida: esperava-se um objeto JSON, mas recebeu '${typeof parsed}'.`);
   }
 
+  if (parsed && typeof parsed === "object" && "diagnosticSchemaVersion" in (parsed as any)) {
+    throw new Error("Arquivo de diagnóstico não é um backup restaurável.");
+  }
+
   if (Array.isArray(parsed)) {
     throw new Error("Estrutura de backup inválida: array no nível raiz não é aceito. Espera-se objeto com { schemaVersion, records, ... }.");
   }
@@ -499,6 +482,13 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
     return {
       valid: false,
       errors: ["Estrutura de backup inválida: esperava-se um objeto no nível raiz."],
+    };
+  }
+
+  if ("diagnosticSchemaVersion" in (data as any)) {
+    return {
+      valid: false,
+      errors: ["Arquivo de diagnóstico não é um backup restaurável."],
     };
   }
 
@@ -998,7 +988,24 @@ export async function prepareHistoryImport(
 
     if (local) {
       const localHash = local.integrityHash ?? "NÃO CONGELADO";
-      // O concurso já existe localmente: verificar igualdade semântica
+      const localAudit = await repo.verifyStoredContest(local.contestNumber);
+      if (!localAudit.valid) {
+        conflictCount++;
+        planRecords.push({
+          contestNumber: backupRec.contestNumber,
+          action: "CONFLICT",
+          localStatus: local.status,
+          backupStatus: backupRec.status,
+          localGenerationId: local.generationId,
+          backupGenerationId: backupRec.generationId,
+          localIntegrityHash: localHash,
+          backupIntegrityHash: backupHash,
+          reason: "Concurso local encontra-se em quarentena (auditoria pendente/registro inválido). Preservando evidência local contra sobrescrita.",
+        });
+        continue;
+      }
+
+      // O concurso já existe localmente e é íntegro: verificar igualdade semântica
       const isIdentical = areContestRecordsIdentical(local, backupRec);
 
       if (isIdentical) {

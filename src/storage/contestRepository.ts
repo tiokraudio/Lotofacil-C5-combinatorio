@@ -11,7 +11,7 @@ import {
   defaultClock,
 } from "../c5/record.ts";
 import { verifyContestIntegrity } from "../c5/integrity.ts";
-import type { ContestRecord, Clock } from "../c5/types.ts";
+import type { ContestRecord, ContestRecordStatus, Clock } from "../c5/types.ts";
 import {
   openDatabase,
   closeDatabase,
@@ -19,21 +19,47 @@ import {
   waitForTransaction,
   CONTEST_STORE_NAME,
 } from "./db.ts";
+import { C5_ALGORITHM_VERSION } from "../c5/version.ts";
+import { APP_VERSION } from "../system/manifest.ts";
 import {
   BET_PRICE,
   BETS_PER_CONTEST,
   COST_PER_CONTEST,
   COST_PER_CONTEST_CENTS,
   calculateTotalCostCents,
+  isValidIsoDate,
+  isValidGenerationId,
   type HistorySummary,
   type StoredContestVerification,
   type HistoryAuditResult,
   type HistoryAuditRecordDetail,
   type HistoryExportData,
   type StorageOptions,
+  type QuarantinedRecord,
+  type DiagnosticExport,
 } from "./types.ts";
 
-export { BET_PRICE, BETS_PER_CONTEST, COST_PER_CONTEST, COST_PER_CONTEST_CENTS, calculateTotalCostCents };
+export {
+  BET_PRICE,
+  BETS_PER_CONTEST,
+  COST_PER_CONTEST,
+  COST_PER_CONTEST_CENTS,
+  calculateTotalCostCents,
+};
+
+/**
+ * Gera nome de arquivo padronizado para exportação de diagnóstico de integridade.
+ */
+export function generateDiagnosticFilename(date: Date = new Date()): string {
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const YYYY = date.getFullYear();
+  const MM = pad(date.getMonth() + 1);
+  const DD = pad(date.getDate());
+  const HH = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  const ss = pad(date.getSeconds());
+  return `lotofacil-c5-diagnostico-${YYYY}-${MM}-${DD}-${HH}${mm}${ss}.json`;
+}
 
 /**
  * Realiza clonagem defensiva profunda de um ContestRecord completo.
@@ -211,6 +237,13 @@ export class ContestRepository {
       throw new Error(`Concurso ${contestNumber} não encontrado para congelamento.`);
     }
 
+    const verification = await this.verifyStoredContest(contestNumber);
+    if (!verification.valid) {
+      throw new Error(
+        `Operação bloqueada: o registro do concurso ${contestNumber} falhou na auditoria de integridade.`
+      );
+    }
+
     if (existing.status !== "DRAFT") {
       throw new Error(
         `Apenas registros em estado DRAFT podem ser congelados. Concurso ${contestNumber} possui status: '${existing.status}'.`
@@ -264,6 +297,13 @@ export class ContestRepository {
     const existing = await this.getContestRecord(contestNumber);
     if (!existing) {
       throw new Error(`Concurso ${contestNumber} não encontrado para pontuação.`);
+    }
+
+    const verification = await this.verifyStoredContest(contestNumber);
+    if (!verification.valid) {
+      throw new Error(
+        `Operação bloqueada: o registro do concurso ${contestNumber} falhou na auditoria de integridade.`
+      );
     }
 
     if (existing.status !== "FROZEN") {
@@ -326,27 +366,34 @@ export class ContestRepository {
    * Tentativas de excluir registros FROZEN ou SCORED são terminantemente rejeitadas.
    */
   async deleteDraft(contestNumber: number): Promise<void> {
+    const existing = await this.getContestRecord(contestNumber);
+    if (!existing) {
+      throw new Error(`Concurso ${contestNumber} não encontrado para exclusão.`);
+    }
+
+    if (existing.status === "FROZEN" || existing.status === "SCORED") {
+      throw new Error(
+        `Operação proibida: registros em estado '${existing.status}' não podem ser excluídos da aplicação para assegurar o histórico prospectivo auditável.`
+      );
+    }
+
+    if (existing.status !== "DRAFT") {
+      throw new Error(
+        `Apenas registros em estado DRAFT podem ser excluídos. Status atual: '${existing.status}'.`
+      );
+    }
+
+    const verification = await this.verifyStoredContest(contestNumber);
+    if (!verification.valid) {
+      throw new Error(
+        `Operação bloqueada: o registro do concurso ${contestNumber} falhou na auditoria de integridade e está em quarentena.`
+      );
+    }
+
     const db = await this.getDB();
     try {
       const tx = db.transaction(CONTEST_STORE_NAME, "readwrite");
       const store = tx.objectStore(CONTEST_STORE_NAME);
-
-      const existing = await promisifyRequest<ContestRecord | undefined>(store.get(contestNumber));
-      if (!existing) {
-        throw new Error(`Concurso ${contestNumber} não encontrado para exclusão.`);
-      }
-
-      if (existing.status === "FROZEN" || existing.status === "SCORED") {
-        throw new Error(
-          `Operação proibida: registros em estado '${existing.status}' não podem ser excluídos da aplicação para assegurar o histórico prospectivo auditável.`
-        );
-      }
-
-      if (existing.status !== "DRAFT") {
-        throw new Error(
-          `Apenas registros em estado DRAFT podem ser excluídos. Status atual: '${existing.status}'.`
-        );
-      }
 
       await promisifyRequest(store.delete(contestNumber));
       await waitForTransaction(tx);
@@ -356,9 +403,10 @@ export class ContestRepository {
   }
 
   /**
-   * Audita um concurso persistido individualmente sem alterar seu estado no banco.
-   * Inspeciona integridade criptográfica da geração e da pontuação (quando SCORED).
-   */
+  * Audita um concurso persistido individualmente sem alterar seu estado no banco.
+  * Inspeciona integridade estrutural, versão de algoritmo, geração C5, integridade criptográfica e pontuação.
+  * Se inválido, classifica em quarentena lógica preservando a evidência.
+  */
   async verifyStoredContest(contestNumber: number): Promise<StoredContestVerification> {
     const record = await this.getContestRecord(contestNumber);
     if (!record) {
@@ -370,64 +418,195 @@ export class ContestRepository {
         scoreIntegrity: null,
         valid: false,
         errors: [`Concurso ${contestNumber} não encontrado no banco.`],
+        quarantinedRecord: null,
       };
     }
 
-    if (record.status === "DRAFT") {
-      const c5Validation = validateC5(record.generation);
-      const errors = [...c5Validation.errors];
-      if (!record.generationId) errors.push("DRAFT não possui generationId");
-      if (!record.generatedAt) errors.push("DRAFT não possui generatedAt");
+    const errors: string[] = [];
+
+    // 1. Validação de contestNumber
+    if (
+      typeof record.contestNumber !== "number" ||
+      !Number.isInteger(record.contestNumber) ||
+      record.contestNumber <= 0
+    ) {
+      errors.push(
+        `Número de concurso inválido: '${String(record.contestNumber)}'. Deve ser inteiro positivo.`
+      );
+    }
+
+    // 2. Validação da versão do algoritmo (Requisito 9: não tentar migrar ou interpretar outra versão)
+    if (record.algorithmVersion !== C5_ALGORITHM_VERSION) {
+      errors.push(
+        `Versão de algoritmo desconhecida ou não suportada: '${String(record.algorithmVersion)}'. Suportada apenas '${C5_ALGORITHM_VERSION}'.`
+      );
+    }
+
+    // 3. Validação do generationId (UUID v4 RFC 4122 estrito)
+    if (!isValidGenerationId(record.generationId)) {
+      errors.push("Campo 'generationId' inválido: deve ser um UUID v4 RFC 4122 estrito.");
+    }
+
+    // 4. Validação do generatedAt (ISO 8601 válido)
+    if (!isValidIsoDate(record.generatedAt)) {
+      errors.push("Campo 'generatedAt' inválido: deve ser um timestamp ISO 8601 válido.");
+    }
+
+    // 5. Validação estrutural da geração C5
+    if (!record.generation || typeof record.generation !== "object") {
+      errors.push("Campo 'generation' ausente ou inválido.");
+    } else {
+      const c5Val = validateC5(record.generation);
+      if (!c5Val.valid) {
+        errors.push(...c5Val.errors);
+      }
+    }
+
+    // 6. Validação específica de acordo com o status
+    let genAudit: any = null;
+    let scoreAudit: any = null;
+
+    const isKnownStatus =
+      record.status === "DRAFT" || record.status === "FROZEN" || record.status === "SCORED";
+
+    if (!isKnownStatus) {
+      errors.push(`Status de concurso inválido ou desconhecido: '${String(record.status)}'.`);
+    } else if (record.status === "DRAFT") {
       if (record.frozenAt !== undefined) errors.push("DRAFT não deve possuir frozenAt");
       if (record.integrityHash !== undefined) errors.push("DRAFT não deve possuir integrityHash");
-
-      return {
-        exists: true,
-        contestNumber,
-        status: "DRAFT",
-        generationIntegrity: null,
-        scoreIntegrity: null,
-        valid: c5Validation.valid && errors.length === 0,
-        errors,
-      };
-    }
-
-    if (record.status === "FROZEN") {
-      const genAudit = await verifyContestIntegrity(record);
-      const errors = [...genAudit.errors];
-      if (record.score !== undefined) errors.push("FROZEN não deve possuir score");
+      if (record.officialResult !== undefined) errors.push("DRAFT não deve possuir officialResult");
+      if (record.score !== undefined) errors.push("DRAFT não deve possuir score");
+      if (record.scoredAt !== undefined) errors.push("DRAFT não deve possuir scoredAt");
+    } else if (record.status === "FROZEN") {
+      if (!isValidIsoDate(record.frozenAt)) {
+        errors.push("FROZEN deve possuir frozenAt com timestamp ISO 8601 válido");
+      }
+      if (
+        typeof record.integrityHash !== "string" ||
+        !/^[0-9a-fA-F]{64}$/.test(record.integrityHash)
+      ) {
+        errors.push("FROZEN deve possuir integrityHash SHA-256 válido (64 caracteres hexadecimais)");
+      }
       if (record.officialResult !== undefined) errors.push("FROZEN não deve possuir officialResult");
+      if (record.score !== undefined) errors.push("FROZEN não deve possuir score");
       if (record.scoredAt !== undefined) errors.push("FROZEN não deve possuir scoredAt");
 
-      return {
-        exists: true,
-        contestNumber,
-        status: "FROZEN",
-        generationIntegrity: genAudit,
-        scoreIntegrity: null,
-        valid: genAudit.valid && errors.length === genAudit.errors.length,
-        errors,
-      };
+      if (
+        isValidIsoDate(record.generatedAt) &&
+        isValidIsoDate(record.frozenAt) &&
+        Date.parse(record.frozenAt) < Date.parse(record.generatedAt)
+      ) {
+        errors.push("Incoerência temporal: frozenAt anterior a generatedAt");
+      }
+
+      // Verificação criptográfica da geração congelada
+      if (record.generation && typeof record.generation === "object") {
+        genAudit = await verifyContestIntegrity(record);
+        if (!genAudit.valid) {
+          errors.push(...genAudit.errors);
+        }
+      }
+    } else if (record.status === "SCORED") {
+      if (!isValidIsoDate(record.frozenAt)) {
+        errors.push("SCORED deve possuir frozenAt com timestamp ISO 8601 válido");
+      }
+      if (
+        typeof record.integrityHash !== "string" ||
+        !/^[0-9a-fA-F]{64}$/.test(record.integrityHash)
+      ) {
+        errors.push("SCORED deve possuir integrityHash SHA-256 válido (64 caracteres hexadecimais)");
+      }
+      if (!isValidIsoDate(record.scoredAt)) {
+        errors.push("SCORED deve possuir scoredAt com timestamp ISO 8601 válido");
+      }
+
+      if (
+        isValidIsoDate(record.generatedAt) &&
+        isValidIsoDate(record.frozenAt) &&
+        Date.parse(record.frozenAt) < Date.parse(record.generatedAt)
+      ) {
+        errors.push("Incoerência temporal: frozenAt anterior a generatedAt");
+      }
+      if (
+        isValidIsoDate(record.frozenAt) &&
+        isValidIsoDate(record.scoredAt) &&
+        Date.parse(record.scoredAt) < Date.parse(record.frozenAt)
+      ) {
+        errors.push("Incoerência temporal: scoredAt anterior a frozenAt");
+      }
+
+      // Integridade criptográfica da geração
+      if (record.generation && typeof record.generation === "object") {
+        genAudit = await verifyContestIntegrity(record);
+        if (!genAudit.valid) {
+          errors.push(...genAudit.errors);
+        }
+      }
+
+      // Validação das dezenas do resultado oficial
+      if (!Array.isArray(record.officialResult) || record.officialResult.length !== 15) {
+        errors.push("SCORED deve possuir officialResult contendo exatamente 15 dezenas.");
+      } else {
+        const set = new Set<number>();
+        let sorted = true;
+        let inRange = true;
+        for (let i = 0; i < record.officialResult.length; i++) {
+          const n = record.officialResult[i];
+          if (typeof n !== "number" || !Number.isInteger(n) || n < 1 || n > 25) inRange = false;
+          if (set.has(n)) {
+            // duplicata detectada
+          } else {
+            set.add(n);
+          }
+          if (i > 0 && n <= record.officialResult[i - 1]) sorted = false;
+        }
+        if (!inRange) errors.push("officialResult contém dezenas fora do intervalo 1..25.");
+        if (set.size !== 15) errors.push("officialResult contém dezenas duplicadas.");
+        if (!sorted) errors.push("officialResult deve estar estritamente ordenado de forma crescente.");
+      }
+
+      // Validação e auditoria do score
+      if (!record.score || typeof record.score !== "object") {
+        errors.push("SCORED deve possuir objeto score.");
+      } else {
+        scoreAudit = verifyScoreIntegrity(record);
+        if (!scoreAudit.valid) {
+          errors.push(...scoreAudit.errors);
+        }
+      }
     }
 
-    // status === "SCORED"
-    const genAudit = await verifyContestIntegrity(record);
-    const scoreAudit = verifyScoreIntegrity(record);
-    const errors = [...genAudit.errors, ...scoreAudit.errors];
+    const clock = this.options?.clock ?? defaultClock;
+    const valid = errors.length === 0;
+    let quarantinedRecord: QuarantinedRecord | null = null;
+
+    if (!valid) {
+      quarantinedRecord = {
+        contestNumber:
+          typeof record.contestNumber === "number" ? record.contestNumber : contestNumber,
+        persistedStatus: isKnownStatus
+          ? (record.status as ContestRecordStatus)
+          : "UNKNOWN",
+        reasons: [...errors],
+        detectedAt: clock().toISOString(),
+      };
+    }
 
     return {
       exists: true,
       contestNumber,
-      status: "SCORED",
+      status: isKnownStatus ? (record.status as ContestRecordStatus) : null,
       generationIntegrity: genAudit,
       scoreIntegrity: scoreAudit,
-      valid: genAudit.valid && scoreAudit.valid && errors.length === 0,
+      valid,
       errors,
+      quarantinedRecord,
     };
   }
 
   /**
-   * Calcula o resumo estatístico do histórico derivado unicamente a partir dos registros SCORED.
+   * Calcula o resumo estatístico do histórico derivado unicamente a partir dos registros válidos SCORED.
+   * Registros em quarentena são ignorados nos cálculos métricos e contados separadamente.
    * Não armazena estatísticas redundantes em disco.
    */
   async getHistorySummary(): Promise<HistorySummary> {
@@ -436,6 +615,8 @@ export class ContestRepository {
     let drafts = 0;
     let frozen = 0;
     let scored = 0;
+    let validRecords = 0;
+    let quarantinedRecords = 0;
 
     let hits11 = 0;
     let hits12 = 0;
@@ -452,6 +633,14 @@ export class ContestRepository {
     const maxHitsList: number[] = [];
 
     for (const record of all) {
+      const audit = await this.verifyStoredContest(record.contestNumber);
+      if (!audit.valid) {
+        quarantinedRecords++;
+        continue;
+      }
+
+      validRecords++;
+
       if (record.status === "DRAFT") {
         drafts++;
       } else if (record.status === "FROZEN") {
@@ -489,6 +678,8 @@ export class ContestRepository {
 
     return {
       totalRecords: all.length,
+      validRecords,
+      quarantinedRecords,
       drafts,
       frozen,
       scored,
@@ -511,13 +702,14 @@ export class ContestRepository {
 
   /**
    * Realiza uma auditoria completa em toda a base persistida.
-   * Não corrige nada automaticamente: reporta fidelidade absoluta de cada registro.
+   * Não corrige nada automaticamente: reporta fidelidade absoluta e classifica em quarentena lógica.
    */
   async auditEntireHistory(): Promise<HistoryAuditResult> {
     const all = await this.getAllContestRecords();
     const details: HistoryAuditRecordDetail[] = [];
+    const quarantinedList: QuarantinedRecord[] = [];
     let validCount = 0;
-    let invalidCount = 0;
+    let quarantinedCount = 0;
 
     for (const record of all) {
       const verification = await this.verifyStoredContest(record.contestNumber);
@@ -525,7 +717,10 @@ export class ContestRepository {
       if (isValid) {
         validCount++;
       } else {
-        invalidCount++;
+        quarantinedCount++;
+        if (verification.quarantinedRecord) {
+          quarantinedList.push(verification.quarantinedRecord);
+        }
       }
       details.push({
         contestNumber: record.contestNumber,
@@ -536,20 +731,30 @@ export class ContestRepository {
     }
 
     return {
-      valid: invalidCount === 0,
+      valid: quarantinedCount === 0,
       totalRecords: all.length,
       validRecords: validCount,
-      invalidRecords: invalidCount,
+      invalidRecords: quarantinedCount,
+      quarantinedRecords: quarantinedCount,
+      quarantinedList,
       records: details,
     };
   }
 
   /**
    * Exporta os dados do histórico para backup em estrutura JSON pura e serializável.
-   * Ordenação obrigatória: contestNumber ASC conforme especificação v1.2.
+   * Requisito v1.3: Se existirem registros em quarentena, BLOQUEIA a exportação operacional normal
+   * para evitar propagar dados corrompidos.
    * Não causa nenhuma mutação no banco de dados.
    */
   async exportHistory(): Promise<HistoryExportData> {
+    const audit = await this.auditEntireHistory();
+    if (!audit.valid || audit.quarantinedRecords > 0) {
+      throw new Error(
+        "O histórico contém registros que falharam na auditoria. O backup operacional foi bloqueado para evitar propagar dados corrompidos."
+      );
+    }
+
     const all = await this.getAllContestRecords();
     // Ordenação OBRIGATÓRIA da exportação: contestNumber ASC
     all.sort((a, b) => a.contestNumber - b.contestNumber);
@@ -562,6 +767,33 @@ export class ContestRepository {
       recordCount: all.length,
       algorithmVersions: versions,
       records: all.map(deepCloneRecord),
+    };
+  }
+
+  /**
+   * Exporta exclusivamente os metadados de diagnóstico e quarentena (sem jogos completos).
+   * Funciona mesmo com banco em quarentena para fins de depuração segura.
+   */
+  async exportDiagnostic(): Promise<DiagnosticExport> {
+    const audit = await this.auditEntireHistory();
+    const clock = this.options?.clock ?? defaultClock;
+    const quarantined = (audit.quarantinedList ?? []).map((q) => ({
+      contestNumber: q.contestNumber,
+      persistedStatus: String(q.persistedStatus),
+      reasons: [...q.reasons],
+    }));
+
+    return {
+      diagnosticSchemaVersion: 1,
+      exportedAt: clock().toISOString(),
+      appVersion: APP_VERSION,
+      algorithmVersion: C5_ALGORITHM_VERSION,
+      audit: {
+        totalRecords: audit.totalRecords,
+        validRecords: audit.validRecords,
+        quarantinedRecords: audit.quarantinedRecords,
+      },
+      quarantined,
     };
   }
 }
@@ -589,3 +821,4 @@ export const verifyStoredContest = (contestNumber: number) =>
 export const getHistorySummary = () => contestRepository.getHistorySummary();
 export const auditEntireHistory = () => contestRepository.auditEntireHistory();
 export const exportHistory = () => contestRepository.exportHistory();
+export const exportDiagnostic = () => contestRepository.exportDiagnostic();

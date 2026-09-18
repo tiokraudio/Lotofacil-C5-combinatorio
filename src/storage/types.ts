@@ -27,14 +27,46 @@ export function formatBRLFromCents(cents: number): string {
   }).format(cents / 100);
 }
 
+export const UUID_V4_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isValidIsoDate(str: unknown): str is string {
+  if (typeof str !== "string" || str.trim().length === 0) {
+    return false;
+  }
+  const timestamp = Date.parse(str);
+  if (Number.isNaN(timestamp)) {
+    return false;
+  }
+  const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
+  return isoRegex.test(str);
+}
+
+export function isValidGenerationId(id: unknown): id is string {
+  if (typeof id !== "string" || id.trim().length === 0) {
+    return false;
+  }
+  return UUID_V4_REGEX.test(id);
+}
+
 /**
  * Resumo estatístico do histórico prospectivo, derivado puramente dos registros SCORED.
  */
 export interface HistorySummary {
   /**
-   * Quantidade total de registros persistidos (DRAFT + FROZEN + SCORED).
+   * Quantidade total de registros armazenados (válidos + quarentena).
    */
   totalRecords: number;
+
+  /**
+   * Quantidade de registros válidos no banco de dados.
+   */
+  validRecords: number;
+
+  /**
+   * Quantidade de registros que falharam na auditoria (em quarentena lógica).
+   */
+  quarantinedRecords: number;
 
   /**
    * Quantidade de registros em estado DRAFT.
@@ -123,6 +155,17 @@ export interface HistorySummary {
 }
 
 /**
+ * Representação em runtime de um registro que falhou na auditoria (quarentena lógica).
+ * Não é persistida como campo status no IndexedDB.
+ */
+export interface QuarantinedRecord {
+  contestNumber: number;
+  persistedStatus: ContestRecordStatus | "UNKNOWN";
+  reasons: string[];
+  detectedAt: string;
+}
+
+/**
  * Resultado da verificação e auditoria de um registro persistido específico.
  */
 export interface StoredContestVerification {
@@ -133,6 +176,7 @@ export interface StoredContestVerification {
   scoreIntegrity: ScoreIntegrityVerification | null;
   valid: boolean;
   errors: string[];
+  quarantinedRecord?: QuarantinedRecord | null;
 }
 
 /**
@@ -153,7 +197,32 @@ export interface HistoryAuditResult {
   totalRecords: number;
   validRecords: number;
   invalidRecords: number;
+  quarantinedRecords: number;
+  quarantinedList: QuarantinedRecord[];
   records: HistoryAuditRecordDetail[];
+}
+
+/**
+ * Formato serializável para exportação de diagnóstico (formato isolado de auditoria).
+ * Não é um backup restaurável.
+ */
+export interface DiagnosticExport {
+  diagnosticSchemaVersion: 1;
+  exportedAt: string;
+  appVersion: string;
+  algorithmVersion: string;
+
+  audit: {
+    totalRecords: number;
+    validRecords: number;
+    quarantinedRecords: number;
+  };
+
+  quarantined: Array<{
+    contestNumber: number;
+    persistedStatus: string;
+    reasons: string[];
+  }>;
 }
 
 /**

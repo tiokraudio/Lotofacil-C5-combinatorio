@@ -459,7 +459,9 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
     try {
       await repo.scoreStoredContest(3600, standardResult);
     } catch (e: any) {
-      scoreCorruptBlocked = e.message.includes("integridade do registro congelado no banco foi violada");
+      scoreCorruptBlocked =
+        e.message.includes("falhou na auditoria de integridade") ||
+        e.message.includes("integridade do registro congelado no banco foi violada");
     }
     assert(
       scoreCorruptBlocked,
@@ -473,6 +475,7 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
   {
     const idb = new IDBFactory(); // mesma fábrica simulando disco compartilhado entre sessões
     let storedHashSessionA = "";
+    const sessionGenerationId = "a3700000-0000-4000-8000-000000003700";
 
     // SESSÃO A: Criar DRAFT, salvar, congelar, fechar
     {
@@ -480,7 +483,7 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
       const draft = createContestDraft(3700, {
         rng: createMulberry32(701),
         clock: clock1,
-        generationId: "uuid-session-test",
+        generationId: sessionGenerationId,
       });
       await repoA.saveDraft(draft);
       const frozen = await repoA.freezeStoredContest(3700, { clock: clock2 });
@@ -495,7 +498,7 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
         recordB !== null &&
           recordB.status === "FROZEN" &&
           recordB.integrityHash === storedHashSessionA &&
-          recordB.generationId === "uuid-session-test",
+          recordB.generationId === sessionGenerationId,
         "7.1. Sessão B: Registro recuperado intacto após encerramento da Sessão A"
       );
 
@@ -538,11 +541,11 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
 
     const draftA = createContestDraft(3801, {
       rng: createMulberry32(801),
-      generationId: "uuid-first",
+      generationId: "a3801000-0000-4000-8000-000000000001",
     });
     const draftB = createContestDraft(3801, {
       rng: createMulberry32(802),
-      generationId: "uuid-second",
+      generationId: "a3801000-0000-4000-8000-000000000002",
     });
 
     const results = await Promise.allSettled([repo1.saveDraft(draftA), repo1.saveDraft(draftB)]);
@@ -595,9 +598,9 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
     const idb = new IDBFactory();
     const repo = new ContestRepository({ idbFactory: idb, clock: clock3 });
 
-    await repo.saveDraft(createContestDraft(3901, { rng: createMulberry32(901) }));
-    await repo.saveDraft(createContestDraft(3902, { rng: createMulberry32(902) }));
-    await repo.freezeStoredContest(3902);
+    await repo.saveDraft(createContestDraft(3901, { rng: createMulberry32(901), clock: clock3 }));
+    await repo.saveDraft(createContestDraft(3902, { rng: createMulberry32(902), clock: clock3 }));
+    await repo.freezeStoredContest(3902, { clock: clock3 });
 
     const backup = await repo.exportHistory();
     const isSerializable = JSON.stringify(backup);

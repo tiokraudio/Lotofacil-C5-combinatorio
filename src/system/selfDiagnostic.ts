@@ -54,6 +54,7 @@ export interface HistoryAuditDiagnostic {
   totalRecords: number;
   validRecords: number;
   invalidRecords: number;
+  quarantinedRecords?: number;
   corruptedDetails?: string[];
 }
 
@@ -211,10 +212,10 @@ export async function runSelfDiagnostic(
   // -------------------------------------------------------------------------
   {
     const t0 = Date.now();
-    const isAppVerOk = APP_VERSION === "1.2.0";
+    const isAppVerOk = APP_VERSION === "1.3.0";
     const isAlgoVerOk = C5_ALGORITHM_VERSION === "C5-1.0.0";
     const isManifestOk =
-      APPLICATION_MANIFEST.appVersion === "1.2.0" &&
+      APPLICATION_MANIFEST.appVersion === "1.3.0" &&
       APPLICATION_MANIFEST.algorithmVersion === "C5-1.0.0" &&
       APPLICATION_MANIFEST.canonicalSlots.length === 25;
 
@@ -617,6 +618,7 @@ export async function runSelfDiagnostic(
         totalRecords: audit.totalRecords,
         validRecords: audit.validRecords,
         invalidRecords: audit.invalidRecords,
+        quarantinedRecords: audit.quarantinedRecords,
         corruptedDetails: corrupted.map(
           (c) => `Concurso ${c.contestNumber}: ${c.errors.join("; ")}`
         ),
