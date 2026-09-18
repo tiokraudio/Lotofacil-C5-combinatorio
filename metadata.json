@@ -1,0 +1,6 @@
+{
+  "name": "Lotofácil C5 Combinatório",
+  "description": "Gerador oficial combinatório C₅ para a Lotofácil com registro prospectivo, congelamento criptográfico SHA-256, conferência de resultados e histórico auditável.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

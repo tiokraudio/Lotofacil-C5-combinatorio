@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   ESTILOS DE IMPRESSÃO LIMPA (Prompt 09 - Seções 14, 15, 16)
+   Oculta toda a interface de tela e imprime apenas o bilhete oficial C5.
+   ========================================================================== */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Oculta toda a navegação e controles normais */
+  nav,
+  header,
+  footer,
+  button,
+  form,
+  #sync-status-panel,
+  #primary-action-section,
+  #active-contest-panel,
+  #scored-summary-card,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Exibe exclusivamente o documento oficial de impressão */
+  #print-sheet {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 24px;
+    background: #ffffff;
+    color: #000000;
+  }
+}
+
+@media screen {
+  #print-sheet {
+    display: none;
+  }
+}
