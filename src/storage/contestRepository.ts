@@ -546,15 +546,20 @@ export class ContestRepository {
 
   /**
    * Exporta os dados do histórico para backup em estrutura JSON pura e serializável.
+   * Ordenação obrigatória: contestNumber ASC conforme especificação v1.2.
+   * Não causa nenhuma mutação no banco de dados.
    */
   async exportHistory(): Promise<HistoryExportData> {
     const all = await this.getAllContestRecords();
+    // Ordenação OBRIGATÓRIA da exportação: contestNumber ASC
+    all.sort((a, b) => a.contestNumber - b.contestNumber);
     const versions = Array.from(new Set(all.map((r) => r.algorithmVersion)));
     const clock = this.options?.clock ?? defaultClock;
 
     return {
       schemaVersion: 1,
       exportedAt: clock().toISOString(),
+      recordCount: all.length,
       algorithmVersions: versions,
       records: all.map(deepCloneRecord),
     };

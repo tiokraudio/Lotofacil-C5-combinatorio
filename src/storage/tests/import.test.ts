@@ -288,6 +288,7 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
       const backupA: HistoryExportData = {
         schemaVersion: 1,
         exportedAt: fixedDate3.toISOString(),
+        recordCount: 1,
         algorithmVersions: ["C5-1.0.0"],
         records: [frozen4000],
       };
@@ -304,13 +305,14 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
       const backupB: HistoryExportData = {
         schemaVersion: 1,
         exportedAt: fixedDate3.toISOString(),
+        recordCount: 1,
         algorithmVersions: ["C5-1.0.0"],
         records: [draftDiff],
       };
       const planB = await prepareHistoryImport(backupB, repo);
       assert(
-        !planB.valid && planB.conflicts === 1 && planB.records[0].action === "CONFLICT",
-        "3.B. Mesmo concurso com dados divergentes é classificado como CONFLICT e bloqueia importação"
+        planB.valid && planB.conflicts === 1 && planB.records[0].action === "CONFLICT",
+        "3.B. Mesmo concurso com dados divergentes é classificado como CONFLICT e preservado"
       );
     }
 
@@ -329,13 +331,14 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
       const backupC: HistoryExportData = {
         schemaVersion: 1,
         exportedAt: fixedDate3.toISOString(),
+        recordCount: 1,
         algorithmVersions: ["C5-1.0.0"],
         records: [scored4000Candidate],
       };
 
       const planC = await prepareHistoryImport(backupC, repo);
       assert(
-        !planC.valid && planC.conflicts === 1 && planC.records[0].action === "CONFLICT",
+        planC.valid && planC.conflicts === 1 && planC.records[0].action === "CONFLICT",
         "3.C. Local FROZEN e Backup SCORED resulta em CONFLICT sem presunção automática"
       );
     }
@@ -345,6 +348,7 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
       const backupD: HistoryExportData = {
         schemaVersion: 1,
         exportedAt: fixedDate3.toISOString(),
+        recordCount: 1,
         algorithmVersions: ["C5-1.0.0"],
         records: [
           {
@@ -355,12 +359,12 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
       };
       const planD = await prepareHistoryImport(backupD, repo);
       assert(
-        !planD.valid && planD.conflicts === 1 && Boolean(planD.records[0].reason?.includes("já está associado localmente")),
+        planD.valid && planD.conflicts === 1 && Boolean(planD.records[0].reason?.includes("já está associado localmente")),
         "3.D. generationId colidindo com outro concurso local resulta em CONFLICT"
       );
     }
 
-    // CENÁRIO E: Backup contém novos + conflito -> bloqueio total sem gravação parcial
+    // CENÁRIO E: Backup contém novos + conflito -> v1.2 importa os novos e preserva conflitos
     {
       const newDraft = createContestDraft(4010, { rng: createMulberry32(700), clock: clock1 });
       const conflictDraft = createContestDraft(4000, { rng: createMulberry32(800), clock: clock1 });
@@ -368,26 +372,31 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
       const backupE: HistoryExportData = {
         schemaVersion: 1,
         exportedAt: fixedDate3.toISOString(),
+        recordCount: 2,
         algorithmVersions: ["C5-1.0.0"],
         records: [newDraft, conflictDraft],
       };
 
       const planE = await prepareHistoryImport(backupE, repo);
       assert(
-        !planE.valid && planE.newRecords === 1 && planE.conflicts === 1,
-        "3.E.1. Plano identifica 1 novo e 1 conflito e sinaliza valid = false"
+        planE.valid && planE.newRecords === 1 && planE.conflicts === 1,
+        "3.E.1. Plano identifica 1 novo e 1 conflito e sinaliza valid = true"
       );
 
-      let commitErr = false;
-      try {
-        await importHistory(backupE, repo);
-      } catch (err: any) {
-        commitErr = err.message.includes("Importação bloqueada");
-      }
-      assert(commitErr, "3.E.2. importHistory rejeita commit quando há conflitos no plano");
+      const importRes = await importHistory(backupE, repo);
+      assert(
+        importRes.success && importRes.importedCount === 1 && importRes.conflictsCount === 1,
+        "3.E.2. importHistory importa somente os novos (1) e preserva conflitos (1)"
+      );
 
       const rec4010 = await repo.getContestRecord(4010);
-      assert(rec4010 === null, "3.E.3. Nenhum registro novo parcial (4010) foi gravado no banco local");
+      assert(rec4010 !== null && rec4010.contestNumber === 4010, "3.E.3. Novo registro (4010) gravado com sucesso");
+
+      const rec4000After = await repo.getContestRecord(4000);
+      assert(
+        rec4000After?.generationId === frozen4000.generationId,
+        "3.E.4. Registro existente 4000 não foi sobrescrito nem adulterado"
+      );
     }
   }
 
@@ -430,6 +439,7 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
     const backup: HistoryExportData = {
       schemaVersion: 1,
       exportedAt: fixedDate3.toISOString(),
+      recordCount: 1,
       algorithmVersions: ["C5-1.0.0"],
       records: [draft6001],
     };
@@ -447,7 +457,7 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
     try {
       await importHistory(plan, repo);
     } catch (err: any) {
-      toctouCaught = err.message.includes("TOCTOU");
+      toctouCaught = err.message.includes("O histórico local mudou desde a pré-visualização");
     }
     assert(toctouCaught, "5.2. Revalidação TOCTOU interceptou a modificação concorrente e abortou a importação");
 

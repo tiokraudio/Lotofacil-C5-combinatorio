@@ -61,6 +61,10 @@ export interface ImportPlanRecordDetail {
   action: ImportRecordAction;
   localStatus?: ContestRecordStatus;
   backupStatus: ContestRecordStatus;
+  localGenerationId?: string;
+  backupGenerationId?: string;
+  localIntegrityHash?: string;
+  backupIntegrityHash?: string;
   reason?: string;
 }
 
@@ -70,9 +74,11 @@ export interface ImportPlan {
   newRecords: number;
   identicalRecords: number;
   conflicts: number;
+  invalidRecords: number;
   records: ImportPlanRecordDetail[];
   errors: string[];
   preparedRecordsToImport: ContestRecord[];
+  backupData?: HistoryExportData;
 }
 
 export interface BackupValidationResult {
@@ -85,6 +91,7 @@ export interface ImportExecutionResult {
   success: boolean;
   importedCount: number;
   skippedCount: number;
+  conflictsCount: number;
   historyAudit: HistoryAuditResult;
 }
 
@@ -293,8 +300,30 @@ export function areContestRecordsIdentical(r1: ContestRecord, r2: ContestRecord)
     if (r1.score.has13Plus !== r2.score.has13Plus) return false;
     if (r1.score.has14Plus !== r2.score.has14Plus) return false;
     if (r1.score.has15 !== r2.score.has15) return false;
+
+    if (Boolean(r1.score.prizeCounts) !== Boolean(r2.score.prizeCounts)) return false;
+    if (r1.score.prizeCounts && r2.score.prizeCounts) {
+      if (
+        r1.score.prizeCounts.hits11 !== r2.score.prizeCounts.hits11 ||
+        r1.score.prizeCounts.hits12 !== r2.score.prizeCounts.hits12 ||
+        r1.score.prizeCounts.hits13 !== r2.score.prizeCounts.hits13 ||
+        r1.score.prizeCounts.hits14 !== r2.score.prizeCounts.hits14 ||
+        r1.score.prizeCounts.hits15 !== r2.score.prizeCounts.hits15
+      ) {
+        return false;
+      }
+    }
+
     for (let i = 0; i < 5; i++) {
       if (r1.score.games[i].hits !== r2.score.games[i].hits) return false;
+      if (r1.score.games[i].matchedNumbers.length !== r2.score.games[i].matchedNumbers.length) return false;
+      for (let m = 0; m < r1.score.games[i].matchedNumbers.length; m++) {
+        if (r1.score.games[i].matchedNumbers[m] !== r2.score.games[i].matchedNumbers[m]) return false;
+      }
+      if (r1.score.games[i].missedNumbers.length !== r2.score.games[i].missedNumbers.length) return false;
+      for (let m = 0; m < r1.score.games[i].missedNumbers.length; m++) {
+        if (r1.score.games[i].missedNumbers[m] !== r2.score.games[i].missedNumbers[m]) return false;
+      }
     }
   }
 
@@ -411,10 +440,27 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
   // 1. schemaVersion (aceita somente 1)
   if (!("schemaVersion" in raw)) {
     errors.push("Campo obrigatório 'schemaVersion' ausente no cabeçalho do backup.");
-  } else if (typeof raw.schemaVersion !== "number" || raw.schemaVersion !== EXPECTED_SCHEMA_VERSION) {
+  } else if (typeof raw.schemaVersion !== "number" || !Number.isInteger(raw.schemaVersion)) {
+    errors.push(
+      `Campo 'schemaVersion' inválido: '${String(raw.schemaVersion)}'. Deve ser um número inteiro.`
+    );
+  } else if (raw.schemaVersion > EXPECTED_SCHEMA_VERSION) {
+    errors.push("Este backup foi criado por uma versão mais recente e não pode ser importado com segurança.");
+  } else if (raw.schemaVersion !== EXPECTED_SCHEMA_VERSION) {
     errors.push(
       `Versão de esquema incompatível: '${String(raw.schemaVersion)}'. Apenas schemaVersion = ${EXPECTED_SCHEMA_VERSION} é aceita.`
     );
+  }
+
+  // 1.1 recordCount (opcional para compatibilidade com backups legados, mas se presente deve ser verificado)
+  if ("recordCount" in raw) {
+    if (typeof raw.recordCount !== "number" || !Number.isInteger(raw.recordCount) || raw.recordCount < 0) {
+      errors.push(`Campo 'recordCount' inválido: '${String(raw.recordCount)}'. Deve ser um número inteiro positivo.`);
+    } else if (Array.isArray(raw.records) && raw.recordCount !== raw.records.length) {
+      errors.push(
+        `Campo 'recordCount' (${raw.recordCount}) diverge da contagem real de registros no backup (${raw.records.length}).`
+      );
+    }
   }
 
   // 2. exportedAt
@@ -466,7 +512,9 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
 
   // Rastreamento interno de unicidade e integridade
   const seenContestNumbers = new Set<number>();
+  const duplicateContestNumbers = new Set<number>();
   const seenGenerationIds = new Set<string>();
+  const duplicateGenerationIds = new Set<string>();
   const contestToGenId = new Map<number, string>();
   const genIdToContest = new Map<string, number>();
 
@@ -495,7 +543,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
     const contestNumber = r.contestNumber;
 
     if (seenContestNumbers.has(contestNumber)) {
-      errors.push(`Concurso ${contestNumber} aparece duplicado dentro do arquivo de backup.`);
+      duplicateContestNumbers.add(contestNumber);
     } else {
       seenContestNumbers.add(contestNumber);
     }
@@ -510,7 +558,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
     const generationId = r.generationId;
 
     if (seenGenerationIds.has(generationId)) {
-      errors.push(`generationId '${generationId}' aparece duplicado dentro do arquivo de backup (concurso ${contestNumber}).`);
+      duplicateGenerationIds.add(generationId);
     } else {
       seenGenerationIds.add(generationId);
     }
@@ -620,7 +668,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
       const audit = await verifyContestIntegrity(candidateFrozen);
       if (!audit.valid || !audit.hashMatches || !audit.generationValid) {
         errors.push(
-          `Concurso ${contestNumber}: auditoria de integridade do registro congelado falhou: ${audit.errors.join("; ")}`
+          `Concurso ${contestNumber}: auditoria de integridade do registro congelado falhou (adulteração detectada): ${audit.errors.join("; ")}`
         );
       }
 
@@ -679,7 +727,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         const genAudit = await verifyContestIntegrity(candidateScored);
         if (!genAudit.valid || !genAudit.hashMatches || !genAudit.generationValid) {
           errors.push(
-            `Concurso ${contestNumber}: auditoria de integridade da geração congelada falhou: ${genAudit.errors.join("; ")}`
+            `Concurso ${contestNumber}: auditoria de integridade da geração congelada falhou (adulteração detectada): ${genAudit.errors.join("; ")}`
           );
         }
 
@@ -696,6 +744,20 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
     }
   }
 
+  // Verificação de concursos e generationIds duplicados internamente (Seção 9)
+  if (duplicateContestNumbers.size > 0) {
+    const sortedDups = Array.from(duplicateContestNumbers).sort((a, b) => a - b);
+    errors.push(
+      `Backup inválido: concurso duplicado dentro do arquivo. Concurso(s) duplicado(s): ${sortedDups.join(", ")}.`
+    );
+  }
+
+  if (duplicateGenerationIds.size > 0) {
+    errors.push(
+      `Backup inválido: generationId duplicado dentro do arquivo: ${Array.from(duplicateGenerationIds).join(", ")}.`
+    );
+  }
+
   if (errors.length > 0) {
     return {
       valid: false,
@@ -710,6 +772,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
     data: {
       schemaVersion: EXPECTED_SCHEMA_VERSION,
       exportedAt: raw.exportedAt,
+      recordCount: sanitizedRecords.length,
       algorithmVersions: cleanVersions,
       records: sanitizedRecords,
     },
@@ -743,12 +806,18 @@ export async function prepareHistoryImport(
   // 1. Executa validação prévia integral
   const validation = await validateHistoryBackup(data);
   if (!validation.valid || !validation.data) {
+    const totalRaw =
+      data && typeof data === "object" && Array.isArray((data as any).records)
+        ? (data as any).records.length
+        : 0;
+
     return {
       valid: false,
-      totalBackupRecords: 0,
+      totalBackupRecords: totalRaw,
       newRecords: 0,
       identicalRecords: 0,
       conflicts: 0,
+      invalidRecords: validation.errors.length,
       records: [],
       errors: validation.errors,
       preparedRecordsToImport: [],
@@ -774,8 +843,10 @@ export async function prepareHistoryImport(
 
   for (const backupRec of backupData.records) {
     const local = localByContest.get(backupRec.contestNumber);
+    const backupHash = backupRec.integrityHash ?? "NÃO CONGELADO";
 
     if (local) {
+      const localHash = local.integrityHash ?? "NÃO CONGELADO";
       // O concurso já existe localmente: verificar igualdade semântica
       const isIdentical = areContestRecordsIdentical(local, backupRec);
 
@@ -786,6 +857,10 @@ export async function prepareHistoryImport(
           action: "SKIP_IDENTICAL",
           localStatus: local.status,
           backupStatus: backupRec.status,
+          localGenerationId: local.generationId,
+          backupGenerationId: backupRec.generationId,
+          localIntegrityHash: localHash,
+          backupIntegrityHash: backupHash,
           reason: "Registro idêntico ao já persistido localmente.",
         });
       } else {
@@ -795,6 +870,10 @@ export async function prepareHistoryImport(
           action: "CONFLICT",
           localStatus: local.status,
           backupStatus: backupRec.status,
+          localGenerationId: local.generationId,
+          backupGenerationId: backupRec.generationId,
+          localIntegrityHash: localHash,
+          backupIntegrityHash: backupHash,
           reason: `Concurso já existe localmente com dados divergentes (Local: ${local.status}, Backup: ${backupRec.status}).`,
         });
       }
@@ -803,11 +882,17 @@ export async function prepareHistoryImport(
       const existingContestForGenId = localContestByGenId.get(backupRec.generationId);
 
       if (existingContestForGenId !== undefined) {
+        const collidingLocal = localByContest.get(existingContestForGenId);
         conflictCount++;
         planRecords.push({
           contestNumber: backupRec.contestNumber,
           action: "CONFLICT",
+          localStatus: collidingLocal?.status,
           backupStatus: backupRec.status,
+          localGenerationId: collidingLocal?.generationId,
+          backupGenerationId: backupRec.generationId,
+          localIntegrityHash: collidingLocal?.integrityHash ?? "NÃO CONGELADO",
+          backupIntegrityHash: backupHash,
           reason: `generationId '${backupRec.generationId}' já está associado localmente ao concurso ${existingContestForGenId}.`,
         });
       } else {
@@ -817,6 +902,8 @@ export async function prepareHistoryImport(
           contestNumber: backupRec.contestNumber,
           action: "IMPORT",
           backupStatus: backupRec.status,
+          backupGenerationId: backupRec.generationId,
+          backupIntegrityHash: backupHash,
           reason: "Novo concurso validado pronto para importação.",
         });
       }
@@ -827,14 +914,16 @@ export async function prepareHistoryImport(
   planRecords.sort((a, b) => b.contestNumber - a.contestNumber);
 
   return {
-    valid: conflictCount === 0,
+    valid: true,
     totalBackupRecords: backupData.records.length,
     newRecords: newCount,
     identicalRecords: identicalCount,
     conflicts: conflictCount,
+    invalidRecords: 0,
     records: planRecords,
     errors: [],
     preparedRecordsToImport: toImport,
+    backupData,
   };
 }
 
@@ -845,17 +934,19 @@ export async function prepareHistoryImport(
 /**
  * Executa a importação atômica dos registros validados no IndexedDB.
  *
- * Exigências:
- * 1. O plano não pode conter nenhum CONFLICT;
- * 2. Revalidação TOCTOU imediata antes do commit para proteger contra concorrência;
- * 3. Commit de todos os registros 'IMPORT' em uma única transação IndexedDB readwrite;
- * 4. Se qualquer inserção falhar, aborta a transação inteira com rollback;
- * 5. Auditoria completa pós-importação garantindo fidelidade absoluta do banco.
+ * Exigências v1.2:
+ * 1. O plano deve ser válido (sem erros estruturais ou corrupção no arquivo);
+ * 2. Conflitos são informativos e preservados no banco local; apenas registros 'IMPORT' são persistidos;
+ * 3. Revalidação TOCTOU imediata antes do commit para proteger contra concorrência;
+ * 4. Commit de todos os novos registros em uma única transação IndexedDB readwrite atômica;
+ * 5. Se qualquer inserção falhar, aborta a transação inteira com rollback;
+ * 6. Verificação estrita de não-mutação de registros pré-existentes;
+ * 7. Auditoria completa pós-importação garantindo fidelidade absoluta do banco.
  *
  * @param planOrData Plano de importação (gerado na prévia) ou dados brutos do backup.
  * @param repository Repositório de persistência IndexedDB (opcional).
  * @returns Resultado da execução com contadores e auditoria pós-importação.
- * @throws Error se houver conflitos, colisão TOCTOU ou falha na transação.
+ * @throws Error se o backup for inválido, colisão TOCTOU ou falha na transação.
  */
 export async function importHistory(
   planOrData: ImportPlan | unknown,
@@ -869,26 +960,28 @@ export async function importHistory(
     planOrData &&
     typeof planOrData === "object" &&
     "preparedRecordsToImport" in (planOrData as any) &&
-    "conflicts" in (planOrData as any)
+    "conflicts" in (planOrData as any) &&
+    "valid" in (planOrData as any)
   ) {
     plan = planOrData as ImportPlan;
   } else {
     plan = await prepareHistoryImport(planOrData, repo);
   }
 
-  if (!plan.valid || plan.conflicts > 0) {
+  if (!plan.valid) {
     throw new Error(
-      `Importação bloqueada: existem ${plan.conflicts} conflito(s) entre o backup e o histórico local.`
+      `Importação bloqueada: o arquivo de backup contém registros estruturalmente inválidos (${plan.errors.join("; ")}).`
     );
   }
 
   if (plan.newRecords === 0) {
-    // Nada novo para gravar (apenas registros idênticos)
+    // Nada novo para gravar (apenas registros idênticos ou conflitos ignorados)
     const audit = await repo.auditEntireHistory();
     return {
       success: true,
       importedCount: 0,
       skippedCount: plan.identicalRecords,
+      conflictsCount: plan.conflicts,
       historyAudit: audit,
     };
   }
@@ -906,22 +999,50 @@ export async function importHistory(
   for (const toImport of plan.preparedRecordsToImport) {
     if (freshContestMap.has(toImport.contestNumber)) {
       throw new Error(
-        `Conflito de concorrência (TOCTOU): concurso ${toImport.contestNumber} foi inserido no banco local antes da confirmação da importação. Operação abortada sem modificações.`
+        "O histórico local mudou desde a pré-visualização. Revise o plano de importação novamente."
       );
     }
     if (freshGenIdMap.has(toImport.generationId)) {
       throw new Error(
-        `Conflito de concorrência (TOCTOU): generationId '${toImport.generationId}' colidiu com registro inserido concorrentemente no concurso ${freshGenIdMap.get(
-          toImport.generationId
-        )}. Operação abortada.`
+        "O histórico local mudou desde a pré-visualização. Revise o plano de importação novamente."
       );
     }
+  }
+
+  if (plan.backupData) {
+    const freshPlan = await prepareHistoryImport(plan.backupData, repo);
+    if (
+      freshPlan.newRecords !== plan.newRecords ||
+      freshPlan.identicalRecords !== plan.identicalRecords ||
+      freshPlan.conflicts !== plan.conflicts
+    ) {
+      throw new Error(
+        "O histórico local mudou desde a pré-visualização. Revise o plano de importação novamente."
+      );
+    }
+  }
+
+  // Snapshot antes do commit para assegurar não-mutação de registros pré-existentes (Seção 17)
+  const snapshotBefore = await repo.getAllContestRecords();
+  const mapBefore = new Map<number, ContestRecord>();
+  for (const r of snapshotBefore) {
+    mapBefore.set(r.contestNumber, r);
   }
 
   // 3. Commit atômico em lote via transação única readwrite
   await repo.batchInsertRecords(plan.preparedRecordsToImport);
 
-  // 4. Auditoria pós-importação obrigatória
+  // 4. Verificação pós-gravação de não-mutação de registros pré-existentes (Seção 17)
+  for (const [contestNum, recBefore] of mapBefore) {
+    const recAfter = await repo.getContestRecord(contestNum);
+    if (!recAfter || !areContestRecordsIdentical(recBefore, recAfter)) {
+      throw new Error(
+        `Falha crítica de integridade: registro pré-existente do concurso ${contestNum} foi mutado durante a importação.`
+      );
+    }
+  }
+
+  // 5. Auditoria pós-importação obrigatória
   const postAudit = await repo.auditEntireHistory();
   if (!postAudit.valid || postAudit.invalidRecords > 0) {
     throw new Error(
@@ -933,6 +1054,7 @@ export async function importHistory(
     success: true,
     importedCount: plan.newRecords,
     skippedCount: plan.identicalRecords,
+    conflictsCount: plan.conflicts,
     historyAudit: postAudit,
   };
 }

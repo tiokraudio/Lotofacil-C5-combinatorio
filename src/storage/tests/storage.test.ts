@@ -606,12 +606,13 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
     const backupOk =
       parsed.schemaVersion === 1 &&
       parsed.exportedAt === fixedDate3.toISOString() &&
+      parsed.recordCount === 2 &&
       Array.isArray(parsed.algorithmVersions) &&
       parsed.algorithmVersions.includes("C5-1.0.0") &&
       Array.isArray(parsed.records) &&
       parsed.records.length === 2 &&
-      parsed.records[0].contestNumber === 3902 &&
-      parsed.records[1].contestNumber === 3901;
+      parsed.records[0].contestNumber === 3901 &&
+      parsed.records[1].contestNumber === 3902;
 
     assert(
       backupOk,

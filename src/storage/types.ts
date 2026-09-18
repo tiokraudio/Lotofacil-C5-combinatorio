@@ -162,6 +162,7 @@ export interface HistoryAuditResult {
 export interface HistoryExportData {
   schemaVersion: number;
   exportedAt: string;
+  recordCount: number;
   algorithmVersions: string[];
   records: ContestRecord[];
 }

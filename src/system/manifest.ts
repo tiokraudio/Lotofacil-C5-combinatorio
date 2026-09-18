@@ -13,7 +13,7 @@
 import { C5_SLOTS } from "../c5/constants.ts";
 import { C5_ALGORITHM_VERSION } from "../c5/version.ts";
 
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.2.0";
 export const APP_NAME = "Lotofácil C5 Combinatório";
 
 export interface StructuralCertificates {
@@ -37,6 +37,7 @@ export interface ApplicationManifest {
   appName: string;
   appVersion: string;
   algorithmVersion: string;
+  backupSchemaVersion: 1;
   canonicalSlots: readonly string[];
   structuralCertificates: StructuralCertificates;
 }
@@ -45,6 +46,7 @@ export const APPLICATION_MANIFEST: ApplicationManifest = {
   appName: APP_NAME,
   appVersion: APP_VERSION,
   algorithmVersion: C5_ALGORITHM_VERSION,
+  backupSchemaVersion: 1,
   canonicalSlots: C5_SLOTS,
   structuralCertificates: {
     gameCount: 5,

@@ -119,7 +119,7 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
   };
 
   const handleConfirmImport = async () => {
-    if (!plan || !plan.valid || plan.conflicts > 0 || isCommitting) {
+    if (!plan || !plan.valid || isCommitting || plan.newRecords === 0) {
       return;
     }
 
@@ -293,8 +293,7 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
                 Backup importado com sucesso.
               </h4>
               <p className="text-xs text-emerald-400/90 mt-0.5">
-                Novos registros: {successResult.importedCount} • Registros idênticos ignorados:{" "}
-                {successResult.skippedCount} • Integridade do histórico: OK
+                {successResult.importedCount} registros importados • {successResult.skippedCount} registros idênticos ignorados • {successResult.conflictsCount} conflitos preservados • Integridade do histórico: OK
               </p>
             </div>
           </div>
@@ -379,21 +378,21 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
             <div
               className={`p-3 rounded-xl border ${
                 plan.conflicts > 0
-                  ? "bg-red-950/40 border-red-500/50"
+                  ? "bg-amber-950/30 border-amber-500/40"
                   : "bg-zinc-950 border-zinc-800"
               }`}
             >
               <span
                 className={`text-[11px] block font-medium ${
-                  plan.conflicts > 0 ? "text-red-300" : "text-zinc-400"
+                  plan.conflicts > 0 ? "text-amber-300" : "text-zinc-400"
                 }`}
               >
-                Conflitos Bloqueantes
+                Conflitos Preservados
               </span>
               <span
                 id="preview-conflicts-count"
                 className={`text-xl font-bold font-mono mt-0.5 block ${
-                  plan.conflicts > 0 ? "text-red-400 font-extrabold" : "text-zinc-400"
+                  plan.conflicts > 0 ? "text-amber-400 font-bold" : "text-zinc-400"
                 }`}
               >
                 {plan.conflicts}
@@ -401,21 +400,21 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
             </div>
           </div>
 
-          {/* Bloqueio Visual se Houver Conflito */}
+          {/* Banner Informativo se Houver Conflito */}
           {plan.conflicts > 0 && (
             <div
-              id="import-conflict-blocked-banner"
-              className="p-4 rounded-xl bg-red-950/50 border border-red-500/60 space-y-2 text-red-200"
+              id="import-conflict-info-banner"
+              className="p-4 rounded-xl bg-amber-950/40 border border-amber-500/50 space-y-2 text-amber-200"
             >
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" />
-                <h5 className="text-xs sm:text-sm font-bold font-mono text-red-300 uppercase">
-                  Importação bloqueada: existem conflitos entre o backup e o histórico local.
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                <h5 className="text-xs sm:text-sm font-bold font-mono text-amber-300">
+                  {plan.conflicts} conflito(s) detectado(s) — registros locais preservados
                 </h5>
               </div>
-              <p className="text-xs text-red-200/90 leading-relaxed">
-                A política estrita de persistência C₅ proíbe sobrescritas e presunções automáticas.
-                Nenhum concurso foi ou será alterado. Corrija a base de origem ou descarte o arquivo.
+              <p className="text-xs text-amber-200/90 leading-relaxed">
+                A política estrita de persistência C₅ garante que nenhum registro local será sobrescrito ou alterado.
+                Os concursos divergentes no backup serão ignorados e mantidos intactos no banco local.
               </p>
             </div>
           )}
@@ -434,8 +433,8 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
                   badgeColor = "bg-emerald-950 text-emerald-300 border-emerald-600/60";
                   actionLabel = "IMPORTAR (NOVO)";
                 } else if (item.action === "CONFLICT") {
-                  badgeColor = "bg-red-950 text-red-300 border-red-600/60";
-                  actionLabel = "CONFLITO (BLOQUEANTE)";
+                  badgeColor = "bg-amber-950 text-amber-300 border-amber-600/60";
+                  actionLabel = "CONFLITO (PRESERVADO)";
                 }
 
                 return (
@@ -469,7 +468,7 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
           </div>
 
           {/* Confirmação Explícita ou Bloqueio */}
-          {plan.conflicts === 0 && plan.valid ? (
+          {plan.valid ? (
             <div className="p-4 rounded-xl bg-zinc-950/80 border border-emerald-500/30 space-y-4">
               <div className="space-y-1">
                 <h5 className="text-xs sm:text-sm font-bold font-mono text-emerald-300 flex items-center gap-2">
@@ -483,6 +482,11 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
                   <li>
                     <strong>{plan.identicalRecords}</strong> registro(s) idêntico(s) serão ignorados.
                   </li>
+                  {plan.conflicts > 0 && (
+                    <li>
+                      <strong>{plan.conflicts}</strong> conflito(s) não serão alterados (preservados).
+                    </li>
+                  )}
                   <li>
                     <strong>Nenhum registro existente será sobrescrito.</strong>
                   </li>
@@ -512,6 +516,8 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
                       <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       <span>GRAVANDO REGISTROS...</span>
                     </>
+                  ) : plan.newRecords === 0 ? (
+                    <span>NENHUM NOVO REGISTRO A IMPORTAR</span>
                   ) : (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -538,7 +544,7 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
                 disabled={true}
                 className="px-5 py-2 rounded-xl bg-zinc-800 text-zinc-500 text-xs font-bold font-mono tracking-wide cursor-not-allowed border border-zinc-700/50 opacity-50"
               >
-                IMPORTAÇÃO BLOQUEADA
+                BACKUP INVÁLIDO OU CORROMPIDO
               </button>
             </div>
           )}

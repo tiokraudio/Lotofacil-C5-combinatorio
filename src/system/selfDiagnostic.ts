@@ -211,10 +211,10 @@ export async function runSelfDiagnostic(
   // -------------------------------------------------------------------------
   {
     const t0 = Date.now();
-    const isAppVerOk = APP_VERSION === "1.1.0";
+    const isAppVerOk = APP_VERSION === "1.2.0";
     const isAlgoVerOk = C5_ALGORITHM_VERSION === "C5-1.0.0";
     const isManifestOk =
-      APPLICATION_MANIFEST.appVersion === "1.1.0" &&
+      APPLICATION_MANIFEST.appVersion === "1.2.0" &&
       APPLICATION_MANIFEST.algorithmVersion === "C5-1.0.0" &&
       APPLICATION_MANIFEST.canonicalSlots.length === 25;
 
