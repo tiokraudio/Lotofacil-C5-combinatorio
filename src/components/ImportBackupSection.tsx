@@ -18,6 +18,9 @@ import {
   importHistory,
 } from "../storage/import.ts";
 import { repository } from "../storage/service.ts";
+import { actionLockController } from "../system/actionLock.ts";
+import { refreshCoordinator } from "../system/refreshCoordinator.ts";
+import { classifyOperationalError } from "../system/operationalErrors.ts";
 
 interface ImportBackupSectionProps {
   onImportSuccess?: () => void;
@@ -123,6 +126,10 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
       return;
     }
 
+    if (!actionLockController.acquire("IMPORT")) {
+      return; // Prevenção de duplo clique concorrente
+    }
+
     setIsCommitting(true);
     setCommitError(null);
 
@@ -131,14 +138,15 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
       const result = await importHistory(plan, repository);
       setSuccessResult(result);
       setPlan(null);
+      refreshCoordinator.notifyMutationCommitted("IMPORT");
       if (onImportSuccess) {
         onImportSuccess();
       }
     } catch (err: any) {
-      setCommitError(
-        err?.message ?? "Falha ao persistir a importação atômica no banco de dados."
-      );
+      const classified = classifyOperationalError(err, "STORAGE_WRITE_FAILED");
+      setCommitError(classified.userMessage);
     } finally {
+      actionLockController.release("IMPORT");
       setIsCommitting(false);
     }
   };

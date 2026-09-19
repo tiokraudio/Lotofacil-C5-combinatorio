@@ -7,7 +7,7 @@
  * - Geração de feedback canônico sem risco de apresentar 'null', 'undefined' ou 'NaN'
  */
 
-import type { ReconciledContestItem } from "../components/ReconciliationSection.tsx";
+import type { ReconciledContestItem } from "./types.ts";
 import type { ReconciliationStatus } from "./operationalState.ts";
 
 export type { ReconciledContestItem };

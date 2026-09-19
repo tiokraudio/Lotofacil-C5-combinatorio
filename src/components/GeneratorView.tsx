@@ -36,6 +36,9 @@ import { PrimaryActionBar } from "./PrimaryActionBar.tsx";
 import { computePrimaryAction, type PrimaryAction } from "../sync/primaryAction.ts";
 import { copyGamesToClipboard } from "../utils/clipboard.ts";
 import { PrintSheet } from "./PrintSheet.tsx";
+import { actionLockController, type ActionLockState } from "../system/actionLock.ts";
+import { refreshCoordinator } from "../system/refreshCoordinator.ts";
+import { classifyOperationalError } from "../system/operationalErrors.ts";
 
 interface GeneratorViewProps {
   onRecordUpdated?: () => void;
@@ -72,7 +75,18 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
   const [showHashModal, setShowHashModal] = useState<boolean>(false);
 
+  const [lockState, setLockState] = useState<ActionLockState>({
+    isLocked: actionLockController.isLocked(),
+    currentOperation: actionLockController.getCurrentOperation(),
+  });
+
   const clearFeedback = () => setFeedback(null);
+
+  // Inscrição no controlador de locks para feedback e bloqueio de cliques concorrentes
+  useEffect(() => {
+    const unsub = actionLockController.subscribe(setLockState);
+    return unsub;
+  }, []);
 
   // Carrega registros locais e sincronização com tratamento estrito de erro de persistência
   const refreshSync = useCallback(async () => {
@@ -87,9 +101,15 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
           setLocalRecords(records);
           setStorageBlocked(false);
         }
-      } catch {
+      } catch (storageErr: any) {
         if (sequenceId === syncSequenceRef.current) {
           setStorageBlocked(true);
+          const classified = classifyOperationalError(storageErr, "STORAGE_UNAVAILABLE");
+          setFeedback({
+            type: "error",
+            title: "Falha de Acesso ao Armazenamento",
+            message: classified.userMessage,
+          });
         }
       }
 
@@ -119,6 +139,14 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   // Executa sincronização de leitura no carregamento inicial
   useEffect(() => {
     refreshSync();
+  }, [refreshSync]);
+
+  // Inscrição no coordenador global de atualizações persistentes
+  useEffect(() => {
+    const unsub = refreshCoordinator.subscribe(() => {
+      refreshSync();
+    });
+    return unsub;
   }, [refreshSync]);
 
   // Derivação pura e determinística da Ação Principal (Prompt 09 - Seção 2 e 9)
@@ -194,6 +222,10 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
 
   // Consulta manual do último concurso no topo do formulário
   const handleFetchLatestContest = async () => {
+    if (!actionLockController.acquire("CAIXA_QUERY")) {
+      return;
+    }
+
     setIsFetchingLatest(true);
     clearFeedback();
 
@@ -216,12 +248,14 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
       });
       await refreshSync();
     } catch (err: any) {
+      const classified = classifyOperationalError(err, "CAIXA_TEMPORARY_ERROR");
       setFeedback({
         type: "warning",
         title: "Consulta Externa Indisponível",
-        message: "Não foi possível obter o último concurso na CAIXA. Você pode inserir o número manualmente no campo.",
+        message: classified.userMessage,
       });
     } finally {
+      actionLockController.release("CAIXA_QUERY");
       setIsFetchingLatest(false);
     }
   };
@@ -325,6 +359,10 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
       return;
     }
 
+    if (!actionLockController.acquire("GENERATE")) {
+      return; // Prevenção de concorrência e duplo clique
+    }
+
     setIsLoading(true);
     try {
       // 1.1 Verificar no IndexedDB se o concurso já existe
@@ -351,16 +389,36 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
           title: `Concurso ${contestNum} Gerado`,
           message: "5 jogos combinatórios C₅ gerados como RASCUNHO. Confira as apostas antes de congelar.",
         });
+        refreshCoordinator.notifyMutationCommitted("SAVE");
         if (onRecordUpdated) onRecordUpdated();
         await refreshSync();
       }
     } catch (err: any) {
+      // Re-leitura defensiva do banco antes de emitir erro
+      try {
+        const recheck = await repository.getContestRecord(contestNum);
+        if (recheck) {
+          setActiveRecord(recheck);
+          setFeedback({
+            type: "info",
+            title: `Concurso ${contestNum} Carregado`,
+            message: `O registro está salvo no armazenamento local como ${recheck.status}.`,
+          });
+          refreshCoordinator.notifyMutationCommitted("SAVE");
+          return;
+        }
+      } catch {
+        // Leitura também falhou
+      }
+
+      const classified = classifyOperationalError(err);
       setFeedback({
         type: "error",
         title: "Erro na Operação",
-        message: err?.message || "Não foi possível carregar ou gerar o concurso.",
+        message: classified.userMessage,
       });
     } finally {
+      actionLockController.release("GENERATE");
       setIsLoading(false);
     }
   };
@@ -368,6 +426,8 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   // 2. Descartar Rascunho
   const handleConfirmDiscard = async () => {
     if (!activeRecord || activeRecord.status !== "DRAFT") return;
+    if (!actionLockController.acquire("DELETE")) return;
+
     setIsLoading(true);
     clearFeedback();
 
@@ -381,10 +441,11 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         title: "Rascunho Descartado",
         message: `O rascunho do concurso ${num} foi excluído do histórico com sucesso.`,
       });
+      refreshCoordinator.notifyMutationCommitted("DELETE");
       if (onRecordUpdated) onRecordUpdated();
       await refreshSync();
     } catch (err: any) {
-      // Detecção de concorrência com outra aba
+      // Detecção de concorrência com outra aba ou conferência de remoção
       try {
         const updated = await repository.getContestRecord(activeRecord.contestNumber);
         if (!updated) {
@@ -393,8 +454,9 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
           setFeedback({
             type: "info",
             title: "Rascunho Já Removido",
-            message: "O rascunho foi excluído em outra sessão do navegador.",
+            message: "O rascunho foi excluído com sucesso do armazenamento local.",
           });
+          refreshCoordinator.notifyMutationCommitted("DELETE");
           await refreshSync();
           return;
         } else if (updated.status !== "DRAFT") {
@@ -412,12 +474,14 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         // ignore
       }
 
+      const classified = classifyOperationalError(err);
       setFeedback({
         type: "error",
         title: "Erro ao Descartar",
-        message: err?.message || "Não foi possível excluir o rascunho.",
+        message: classified.userMessage,
       });
     } finally {
+      actionLockController.release("DELETE");
       setIsLoading(false);
     }
   };
@@ -431,11 +495,13 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
       setFeedback({
         type: "error",
         title: "Recurso Criptográfico Indisponível",
-        message: "Este navegador não oferece os recursos criptográficos necessários para congelar os jogos.",
+        message: "Mecanismo criptográfico seguro (WebCrypto) indisponível neste navegador. Operação bloqueada para sua segurança.",
       });
       setShowFreezeConfirm(false);
       return;
     }
+
+    if (!actionLockController.acquire("FREEZE")) return;
 
     setIsLoading(true);
 
@@ -461,20 +527,22 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         title: "Jogos congelados com sucesso",
         message: `Concurso ${num}. Integridade verificada.`,
       });
+      refreshCoordinator.notifyMutationCommitted("FREEZE");
       if (onRecordUpdated) onRecordUpdated();
       await refreshSync();
     } catch (err: any) {
-      // Detecção de concorrência com outra aba (Aba A vs Aba B)
+      // Re-leitura defensiva do banco antes de emitir erro (Prompt 14 Seção 42 & 43)
       try {
         const updated = await repository.getContestRecord(activeRecord.contestNumber);
         if (updated && updated.status !== "DRAFT") {
           setActiveRecord(updated);
           setShowFreezeConfirm(false);
           setFeedback({
-            type: "warning",
-            title: "Sessão Concorrente Detectada",
-            message: `O concurso ${updated.contestNumber} foi atualizado em outra sessão (status: ${updated.status}). Registro recarregado.`,
+            type: updated.status === "FROZEN" ? "success" : "warning",
+            title: updated.status === "FROZEN" ? "Jogos congelados com sucesso" : "Sessão Concorrente Detectada",
+            message: `O concurso ${updated.contestNumber} está registrado como ${updated.status} no armazenamento local.`,
           });
+          refreshCoordinator.notifyMutationCommitted("FREEZE");
           await refreshSync();
           return;
         }
@@ -482,12 +550,14 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         // ignore
       }
 
+      const classified = classifyOperationalError(err);
       setFeedback({
         type: "error",
         title: "Falha no Congelamento",
-        message: err?.message || "Ocorreu um erro ao congelar o concurso.",
+        message: classified.userMessage,
       });
     } finally {
+      actionLockController.release("FREEZE");
       setIsLoading(false);
     }
   };
@@ -495,6 +565,8 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   // 4. Registrar e Pontuar Resultado Oficial com Auditoria Rigorosa
   const handleScoreResult = async (officialResult: number[]) => {
     if (!activeRecord || activeRecord.status !== "FROZEN") return;
+    if (!actionLockController.acquire("SCORE")) return;
+
     setIsLoading(true);
     clearFeedback();
 
@@ -518,19 +590,21 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         title: "Resultado Registrado e Pontuado",
         message: `O concurso ${num} foi conferido com sucesso. Melhor resultado: ${scoredRecord?.score?.maxHits} acertos. Auditoria criptográfica: VÁLIDA.`,
       });
+      refreshCoordinator.notifyMutationCommitted("SCORE");
       if (onRecordUpdated) onRecordUpdated();
       await refreshSync();
     } catch (err: any) {
-      // Detecção de concorrência com outra aba
+      // Re-leitura defensiva do banco antes de emitir erro (Prompt 14 Seção 42 & 43)
       try {
         const updated = await repository.getContestRecord(activeRecord.contestNumber);
         if (updated && updated.status === "SCORED") {
           setActiveRecord(updated);
           setFeedback({
-            type: "info",
-            title: "Resultado Já Registrado",
-            message: `O concurso ${updated.contestNumber} já foi pontuado em outra sessão. Registro recarregado.`,
+            type: "success",
+            title: "Resultado Registrado e Pontuado",
+            message: `O concurso ${updated.contestNumber} já foi pontuado e persistido no armazenamento local (melhor resultado: ${updated.score?.maxHits} acertos).`,
           });
+          refreshCoordinator.notifyMutationCommitted("SCORE");
           if (onRecordUpdated) onRecordUpdated();
           await refreshSync();
           return;
@@ -539,12 +613,14 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         // ignore
       }
 
+      const classified = classifyOperationalError(err);
       setFeedback({
         type: "error",
         title: "Falha na Pontuação",
-        message: err?.message || "Erro ao pontuar o concurso com o resultado informado.",
+        message: classified.userMessage,
       });
     } finally {
+      actionLockController.release("SCORE");
       setIsLoading(false);
     }
   };
@@ -627,16 +703,18 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                   type="button"
                   id="btn-fetch-latest-contest"
                   onClick={handleFetchLatestContest}
-                  disabled={isLoading || isFetchingLatest}
+                  disabled={isLoading || isFetchingLatest || lockState.isLocked}
                   className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
                   title="Consultar último concurso apurado na CAIXA"
                 >
-                  {isFetchingLatest ? (
+                  {isFetchingLatest || lockState.currentOperation === "CAIXA_QUERY" ? (
                     <div className="w-3 h-3 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
                   ) : (
                     <Globe className="w-3.5 h-3.5" />
                   )}
-                  <span>ATUALIZAR CONCURSO</span>
+                  <span>
+                    {lockState.currentOperation === "CAIXA_QUERY" ? "CONSULTANDO..." : "ATUALIZAR CONCURSO"}
+                  </span>
                 </button>
               </div>
               <input
@@ -647,7 +725,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                 placeholder="Ex: 3350"
                 value={contestInput}
                 onChange={(e) => setContestInput(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoading || lockState.isLocked}
                 className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-700 focus:border-emerald-500 rounded-xl text-zinc-100 placeholder-zinc-500 text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 transition-all disabled:opacity-50"
               />
             </div>
@@ -655,15 +733,17 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             <button
               type="submit"
               id="btn-generate-contest"
-              disabled={isLoading || !contestInput.trim()}
+              disabled={isLoading || lockState.isLocked || !contestInput.trim()}
               className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm tracking-wide transition-all shadow-md hover:shadow-emerald-950/40 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus:ring-2 focus:ring-emerald-400"
             >
-              {isLoading ? (
+              {isLoading && lockState.currentOperation === "GENERATE" ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              <span>GERAR 5 JOGOS</span>
+              <span>
+                {lockState.currentOperation === "GENERATE" ? "GERANDO..." : "GERAR 5 JOGOS"}
+              </span>
             </button>
           </div>
 
@@ -833,7 +913,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                       type="button"
                       id="btn-discard-draft"
                       onClick={() => setShowDiscardConfirm(true)}
-                      disabled={isLoading}
+                      disabled={isLoading || lockState.isLocked}
                       className="px-3.5 py-2 text-xs font-medium text-red-400 hover:text-red-300 bg-red-950/20 hover:bg-red-950/40 border border-red-500/30 rounded-xl transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -844,7 +924,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                       type="button"
                       id="btn-freeze-contest"
                       onClick={() => setShowFreezeConfirm(true)}
-                      disabled={isLoading}
+                      disabled={isLoading || lockState.isLocked}
                       className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer focus:ring-2 focus:ring-emerald-400"
                     >
                       <Lock className="w-3.5 h-3.5" />
@@ -1052,10 +1132,10 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         isOpen={showFreezeConfirm}
         title="Confirmar Congelamento Oficial"
         description={`Confirmar estes 5 jogos para o concurso ${activeRecord?.contestNumber}?\n\nDepois do congelamento, os jogos não poderão ser alterados ou excluídos pelo sistema.`}
-        confirmLabel="CONGELAR JOGOS"
+        confirmLabel={lockState.currentOperation === "FREEZE" ? "CONGELANDO..." : "CONGELAR JOGOS"}
         cancelLabel="VOLTAR"
         variant="primary"
-        isLoading={isLoading}
+        isLoading={isLoading && lockState.currentOperation === "FREEZE"}
         onConfirm={handleConfirmFreeze}
         onCancel={() => setShowFreezeConfirm(false)}
       />
@@ -1065,10 +1145,10 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         isOpen={showDiscardConfirm}
         title="Descartar Rascunho"
         description={`Tem certeza que deseja excluir o rascunho do concurso ${activeRecord?.contestNumber}?\n\nEsta operação removerá o rascunho temporário do histórico.`}
-        confirmLabel="DESCARTAR RASCUNHO"
+        confirmLabel={lockState.currentOperation === "DELETE" ? "DESCARTANDO..." : "DESCARTAR RASCUNHO"}
         cancelLabel="VOLTAR"
         variant="danger"
-        isLoading={isLoading}
+        isLoading={isLoading && lockState.currentOperation === "DELETE"}
         onConfirm={handleConfirmDiscard}
         onCancel={() => setShowDiscardConfirm(false)}
       />

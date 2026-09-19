@@ -101,3 +101,17 @@ export interface ContestSyncState {
   /** Ações operacionais recomendadas */
   recommendedActions: SyncRecommendedAction[];
 }
+
+/**
+ * Item reconciliado entre o resultado oficial da CAIXA e o estado local (v1.4 / v1.5).
+ */
+export interface ReconciledContestItem {
+  contestNumber: number;
+  localStatus: string;
+  localResult: number[] | null;
+  externalResult: number[] | null;
+  reconciliationStatus: import("./operationalState.ts").ReconciliationStatus;
+  queriedAt: string;
+  externalSource: string;
+  errorMessage?: string;
+}

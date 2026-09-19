@@ -28,14 +28,14 @@ export function runManifestTests(): { passed: number; failed: number } {
   console.log("=== INICIANDO TESTES DO MANIFESTO E ARQUITETURA (MANIFEST.TEST) ===");
 
   // 1. Verificações de versão
-  assert(APP_VERSION === "1.4.0", "1.1. APP_VERSION congelada exatamente em '1.4.0'");
+  assert(APP_VERSION === "1.5.0", "1.1. APP_VERSION congelada exatamente em '1.5.0'");
   assert(
     C5_ALGORITHM_VERSION === "C5-1.0.0",
     "1.2. C5_ALGORITHM_VERSION congelada exatamente em 'C5-1.0.0'"
   );
   assert(
-    APPLICATION_MANIFEST.appVersion === "1.4.0",
-    "1.3. Manifesto reflete appVersion 1.4.0"
+    APPLICATION_MANIFEST.appVersion === "1.5.0",
+    "1.3. Manifesto reflete appVersion 1.5.0"
   );
   assert(
     APPLICATION_MANIFEST.algorithmVersion === "C5-1.0.0",
@@ -145,6 +145,31 @@ export function runManifestTests(): { passed: number; failed: number } {
       builderImplementations[0] === "src/c5/canonicalBuilder.ts",
     "5.1. Builder canônico único: exatamente 1 implementação no projeto inteiro",
     `Encontrado em: ${builderImplementations.join(", ")}`
+  );
+
+  // 6. Teste de Dependência Arquitetural (Prompt 14 v1.5 #4 e #5)
+  // Arquivos em src/sync/, src/storage/, src/c5/, src/system/, src/lottery/ NUNCA importam de src/components/
+  const protectedLayers = ["src/sync", "src/storage", "src/c5", "src/system", "src/lottery"];
+  const layerViolations: string[] = [];
+
+  for (const layer of protectedLayers) {
+    const layerDir = path.resolve(process.cwd(), layer);
+    if (!fs.existsSync(layerDir)) continue;
+    const layerFiles = findFiles(layerDir);
+    for (const f of layerFiles) {
+      const rel = path.relative(process.cwd(), f);
+      const content = fs.readFileSync(f, "utf-8");
+      // Verifica se importa algo de components
+      if (/from\s+["'].*components.*["']/.test(content)) {
+        layerViolations.push(rel);
+      }
+    }
+  }
+
+  assert(
+    layerViolations.length === 0,
+    "6.1. Arquitetura estrita v1.5: sync, storage, c5, system, lottery NUNCA importam de components",
+    layerViolations.length > 0 ? `Violações: ${layerViolations.join(", ")}` : undefined
   );
 
   console.log(

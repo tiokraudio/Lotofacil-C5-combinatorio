@@ -25,17 +25,11 @@ import {
   deduplicateReconciledItems,
   generateReconciliationFeedback,
 } from "../sync/reconciliationHelper.ts";
+import type { ReconciledContestItem } from "../sync/types.ts";
+import { actionLockController } from "../system/actionLock.ts";
+import { classifyOperationalError } from "../system/operationalErrors.ts";
 
-export interface ReconciledContestItem {
-  contestNumber: number;
-  localStatus: string;
-  localResult: number[] | null;
-  externalResult: number[] | null;
-  reconciliationStatus: ReconciliationStatus;
-  queriedAt: string;
-  externalSource: string;
-  errorMessage?: string;
-}
+export type { ReconciledContestItem };
 
 export const ReconciliationSection: React.FC = () => {
   const [targetContestInput, setTargetContestInput] = useState<string>("");
@@ -60,6 +54,10 @@ export const ReconciliationSection: React.FC = () => {
    * Executa a reconciliação oficial garantindo no máximo 1 chamada ao provider por clique (Seção 3).
    */
   const handleReconcile = async () => {
+    if (!actionLockController.acquire("RECONCILIATION")) {
+      return; // Prevenção de duplo clique concorrente
+    }
+
     const currentRunId = ++runIdRef.current;
     setIsLoading(true);
     setFeedback(null);
@@ -122,13 +120,13 @@ export const ReconciliationSection: React.FC = () => {
       if (!isMountedRef.current || currentRunId !== runIdRef.current) {
         return;
       }
+      const classified = classifyOperationalError(err, "CAIXA_TEMPORARY_ERROR");
       setFeedback({
         type: "error",
-        message:
-          err?.message ||
-          "Não foi possível consultar a fonte oficial para reconciliação agora.",
+        message: classified.userMessage,
       });
     } finally {
+      actionLockController.release("RECONCILIATION");
       if (isMountedRef.current && currentRunId === runIdRef.current) {
         setIsLoading(false);
       }

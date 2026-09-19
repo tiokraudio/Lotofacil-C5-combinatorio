@@ -16,6 +16,9 @@ import type { ContestRecord } from "../c5/types.ts";
 import type { HistorySummary, StoredContestVerification } from "../storage/types.ts";
 import { repository, formatLocalDate } from "../storage/service.ts";
 import { ContestDetailModal } from "./ContestDetailModal.tsx";
+import { refreshCoordinator } from "../system/refreshCoordinator.ts";
+import { classifyOperationalError } from "../system/operationalErrors.ts";
+import { AlertCircle } from "lucide-react";
 
 interface HistoryViewProps {
   onSelectContest?: (contestNumber: number) => void;
@@ -26,6 +29,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
   const [records, setRecords] = useState<ContestRecord[]>([]);
   const [summary, setSummary] = useState<HistorySummary | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [storageError, setStorageError] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<ContestRecord | null>(null);
 
   const loadHistoryData = async () => {
@@ -37,7 +41,12 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
       ]);
       setRecords(allRecords);
       setSummary(sum);
-    } catch (err) {
+      setStorageError(null);
+    } catch (err: any) {
+      const classified = classifyOperationalError(err, "STORAGE_UNAVAILABLE");
+      setStorageError(classified.userMessage);
+      setRecords([]);
+      setSummary(null);
       console.error("Erro ao carregar histórico:", err);
     } finally {
       setIsLoading(false);
@@ -47,6 +56,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
   useEffect(() => {
     loadHistoryData();
   }, [updateTrigger]);
+
+  useEffect(() => {
+    const unsubscribe = refreshCoordinator.subscribe(() => {
+      loadHistoryData();
+    });
+    return unsubscribe;
+  }, []);
 
   const handleVerifyIndividual = async (contestNumber: number): Promise<StoredContestVerification> => {
     return await repository.verifyStoredContest(contestNumber);
@@ -85,8 +101,23 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
         </button>
       </div>
 
+      {/* Erro de Armazenamento Local (Prompt 14 #31) */}
+      {storageError && (
+        <div
+          role="alert"
+          id="history-storage-error-alert"
+          className="p-6 rounded-2xl bg-rose-950/30 border border-rose-500/50 text-rose-200 text-sm flex items-center gap-3 shadow-lg"
+        >
+          <AlertCircle className="w-6 h-6 text-rose-400 shrink-0" />
+          <div>
+            <h3 className="font-bold font-mono text-zinc-100">Falha de Acesso ao Armazenamento</h3>
+            <p className="text-xs text-rose-300 mt-1">{storageError}</p>
+          </div>
+        </div>
+      )}
+
       {/* Cards de Métricas Superiores */}
-      {summary && (
+      {!storageError && summary && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Concursos Conferidos */}
@@ -242,7 +273,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
       )}
 
       {/* Lista / Tabela de Concursos */}
-      <div className="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden shadow-xl">
+      {!storageError && (
+        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden shadow-xl">
         <div className="p-4 sm:p-5 border-b border-zinc-800 flex items-center justify-between">
           <h3 className="text-base font-bold font-mono text-zinc-100">
             Concursos Registrados ({records.length})
@@ -345,6 +377,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
           </div>
         )}
       </div>
+      )}
 
       {/* Modal de Detalhes do Concurso */}
       <ContestDetailModal
