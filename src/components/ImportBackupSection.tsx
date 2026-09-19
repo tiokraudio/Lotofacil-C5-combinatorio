@@ -138,7 +138,6 @@ export const ImportBackupSection: React.FC<ImportBackupSectionProps> = ({
       const result = await importHistory(plan, repository);
       setSuccessResult(result);
       setPlan(null);
-      refreshCoordinator.notifyMutationCommitted("IMPORT");
       if (onImportSuccess) {
         onImportSuccess();
       }

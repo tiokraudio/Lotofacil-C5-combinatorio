@@ -50,6 +50,8 @@ import {
   importHistory,
 } from "../storage/import.ts";
 import { buildContestSyncState } from "../sync/contestSyncService.ts";
+import { C5_ALGORITHM_VERSION } from "../c5/version.ts";
+import type { HistoryExportData } from "../storage/types.ts";
 import type { LotteryResultProvider } from "../lottery/types.ts";
 import type { ContestRecord } from "../c5/types.ts";
 
@@ -494,96 +496,189 @@ export async function runOperationalRobustnessTests() {
   await repo10.saveDraft(createContestDraft(4001));
   await repo10.freezeStoredContest(4001);
 
-  // Simula commit bem sucedido no banco
+  // Registra ouvinte com falha explosiva e ouvinte saudável para testar commit real com falha de refresh
+  let listenerCrashCaught = false;
+  let healthyObserverNotified = false;
+  const unsubCrash = refreshCoordinator.subscribe(() => {
+    listenerCrashCaught = true;
+    throw new Error("Render/UI Refresh Crash after commit");
+  });
+  const unsubHealthyObserver = refreshCoordinator.subscribe(() => {
+    healthyObserverNotified = true;
+  });
+
+  // Executa commit real no banco
   const officialRes4001 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
   await repo10.scoreStoredContest(4001, officialRes4001);
-  const revPublished = refreshCoordinator.notifyMutationCommitted("SCORE");
+  const revPublished = refreshCoordinator.getRevision();
 
-  // Simula falha subsequente de UI/refresh
-  let refreshFailed = false;
-  try {
-    throw new Error("Render/UI Refresh Crash after commit");
-  } catch {
-    refreshFailed = true;
-  }
-  assert(refreshFailed, "Falha de refresh capturada.");
+  unsubCrash();
+  unsubHealthyObserver();
+
+  assert(listenerCrashCaught, "Falha de listener capturada durante a notificação.");
+  assert(healthyObserverNotified, "Ouvinte saudável deve ter recebido a notificação mesmo com crash do outro ouvinte.");
 
   // Re-leitura defensiva do banco como fonte da verdade
   const storedTruth = await repo10.getContestRecord(4001);
   assert(storedTruth?.status === "SCORED", "IndexedDB deve ser a fonte da verdade definitiva (SCORED).");
   assert(typeof storedTruth?.score?.maxHits === "number", "Pontuação deve estar salva no banco.");
-  assert(refreshCoordinator.getRevision() === revPublished, "Revisão de commit deve ter sido publicada uma única vez.");
+  assert(refreshCoordinator.getRevision() === revPublished, "Revisão de commit deve estar sincronizada.");
   console.log("  ✓ [PASS] Commit no banco + falha de refresh: IndexedDB preserva SCORED sem repetição de mutação.");
 
   // ---------------------------------------------------------------------------
-  // 11. CONCORRÊNCIA E PREVENÇÃO DE DUPLO CLIQUE (Requisitos #17, #18, #19, #20)
+  // 11. CONCORRÊNCIA E PREVENÇÃO DE DUPLO CLIQUE REAL (Requisitos #17, #18, #19, #20)
   // ---------------------------------------------------------------------------
-  console.log("\n▶ 11. Prevenção Concorrente de Duplo Clique (Double Action Lock)");
+  console.log("\n▶ 11. Prevenção Concorrente de Duplo Clique Real (Double Action Lock com Mutação Real)");
+  const idbConc = new IDBFactory();
+  const repoConc = new ContestRepository({ idbFactory: idbConc });
 
-  // 11.1 Double Generate (Requisito #17)
-  let generateCalls = 0;
-  const runGenerate = async () => {
-    if (!actionLockController.acquire("GENERATE")) return false;
+  // 11.1 Real Double Generate (Requisito #17)
+  let generateExecutedCount = 0;
+  const runRealGenerate = async () => {
+    if (!actionLockController.acquire("GENERATE")) {
+      return { acquired: false, executed: false };
+    }
     try {
-      generateCalls++;
-      await new Promise((r) => setTimeout(r, 10));
-      return true;
+      generateExecutedCount++;
+      const existing = await repoConc.getContestRecord(7001);
+      if (!existing) {
+        const draft = createContestDraft(7001);
+        await repoConc.saveDraft(draft);
+      }
+      return { acquired: true, executed: true };
     } finally {
       actionLockController.release("GENERATE");
     }
   };
-  const [genRes1, genRes2] = await Promise.all([runGenerate(), runGenerate()]);
-  assert((genRes1 && !genRes2) || (!genRes1 && genRes2), "Duplo clique em GENERATE: exatamente 1 deve obter sucesso.");
-  assert(generateCalls === 1, `createContestDraft/saveDraft deve ser chamado exatamente 1 vez. Chamadas: ${generateCalls}`);
+  const [genRes1, genRes2] = await Promise.all([runRealGenerate(), runRealGenerate()]);
+  assert(
+    (genRes1.acquired && !genRes2.acquired) || (!genRes1.acquired && genRes2.acquired),
+    "Duplo clique em GENERATE real: exatamente 1 deve adquirir o lock."
+  );
+  assert(generateExecutedCount === 1, `createContestDraft/saveDraft real deve ser executado exatamente 1 vez. Execuções: ${generateExecutedCount}`);
+  const record7001 = await repoConc.getContestRecord(7001);
+  assert(record7001 !== null && record7001.status === "DRAFT", "Concurso 7001 deve ter sido gravado como DRAFT no IndexedDB.");
+  assert(record7001!.generation.games.length === 5, "Concurso 7001 deve conter exatamente 5 jogos C5.");
+  assert(!actionLockController.isLocked(), "Lock de GENERATE deve ser liberado no finally.");
 
-  // 11.2 Double Freeze (Requisito #18)
-  let freezeCalls = 0;
-  const runFreeze = async () => {
-    if (!actionLockController.acquire("FREEZE")) return false;
+  // 11.2 Real Double Freeze (Requisito #18)
+  let freezeExecutedCount = 0;
+  const runRealFreeze = async () => {
+    if (!actionLockController.acquire("FREEZE")) {
+      return { acquired: false, executed: false };
+    }
     try {
-      freezeCalls++;
-      await new Promise((r) => setTimeout(r, 10));
-      return true;
+      freezeExecutedCount++;
+      await repoConc.freezeStoredContest(7001);
+      return { acquired: true, executed: true };
     } finally {
       actionLockController.release("FREEZE");
     }
   };
-  const [freezeRes1, freezeRes2] = await Promise.all([runFreeze(), runFreeze()]);
-  assert((freezeRes1 && !freezeRes2) || (!freezeRes1 && freezeRes2), "Duplo clique em FREEZE: exatamente 1 deve obter sucesso.");
-  assert(freezeCalls === 1, `freezeStoredContest deve ser executado exatamente 1 vez. Chamadas: ${freezeCalls}`);
+  const [freezeRes1, freezeRes2] = await Promise.all([runRealFreeze(), runRealFreeze()]);
+  assert(
+    (freezeRes1.acquired && !freezeRes2.acquired) || (!freezeRes1.acquired && freezeRes2.acquired),
+    "Duplo clique em FREEZE real: exatamente 1 deve adquirir o lock."
+  );
+  assert(freezeExecutedCount === 1, `freezeStoredContest real deve ser executado exatamente 1 vez. Execuções: ${freezeExecutedCount}`);
+  const frozen7001 = await repoConc.getContestRecord(7001);
+  assert(frozen7001 !== null && frozen7001.status === "FROZEN", "Concurso 7001 deve estar FROZEN no IndexedDB.");
+  const verify7001 = await repoConc.verifyStoredContest(7001);
+  assert(verify7001.valid === true, "Integridade criptográfica do congelamento deve ser válida.");
+  assert(!actionLockController.isLocked(), "Lock de FREEZE deve ser liberado no finally.");
 
-  // 11.3 Double Score (Requisito #19)
-  let scoreCalls = 0;
-  const runScore = async () => {
-    if (!actionLockController.acquire("SCORE")) return false;
+  // 11.3 Real Double Score (Requisito #19)
+  let scoreExecutedCount = 0;
+  const officialRes7001 = [...record7001!.generation.games[0]];
+  const runRealScore = async () => {
+    if (!actionLockController.acquire("SCORE")) {
+      return { acquired: false, executed: false };
+    }
     try {
-      scoreCalls++;
-      await new Promise((r) => setTimeout(r, 10));
-      return true;
+      scoreExecutedCount++;
+      await repoConc.scoreStoredContest(7001, officialRes7001);
+      return { acquired: true, executed: true };
     } finally {
       actionLockController.release("SCORE");
     }
   };
-  const [scoreRes1, scoreRes2] = await Promise.all([runScore(), runScore()]);
-  assert((scoreRes1 && !scoreRes2) || (!scoreRes1 && scoreRes2), "Duplo clique em SCORE: exatamente 1 deve obter sucesso.");
-  assert(scoreCalls === 1, `scoreStoredContest deve ser executado exatamente 1 vez. Chamadas: ${scoreCalls}`);
+  const [scoreRes1, scoreRes2] = await Promise.all([runRealScore(), runRealScore()]);
+  assert(
+    (scoreRes1.acquired && !scoreRes2.acquired) || (!scoreRes1.acquired && scoreRes2.acquired),
+    "Duplo clique em SCORE real: exatamente 1 deve adquirir o lock."
+  );
+  assert(scoreExecutedCount === 1, `scoreStoredContest real deve ser executado exatamente 1 vez. Execuções: ${scoreExecutedCount}`);
+  const scored7001 = await repoConc.getContestRecord(7001);
+  assert(scored7001 !== null && scored7001.status === "SCORED", "Concurso 7001 deve estar SCORED no IndexedDB.");
+  assert(scored7001!.score !== undefined && scored7001!.score.maxHits === 15, "Concurso 7001 deve conter pontuação calculada.");
+  assert(!actionLockController.isLocked(), "Lock de SCORE deve ser liberado no finally.");
 
-  // 11.4 Double Import (Requisito #20)
-  let importCalls = 0;
-  const runImport = async () => {
-    if (!actionLockController.acquire("IMPORT")) return false;
+  // 11.4 Real Double Import (Requisito #20)
+  let importExecutedCount = 0;
+  const backupDataToImport: HistoryExportData = {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    recordCount: 1,
+    algorithmVersions: [C5_ALGORITHM_VERSION],
+    records: [createContestDraft(7002)],
+  };
+  const importPlan = await prepareHistoryImport(backupDataToImport, repoConc);
+  const runRealImport = async () => {
+    if (!actionLockController.acquire("IMPORT")) {
+      return { acquired: false, executed: false };
+    }
     try {
-      importCalls++;
-      await new Promise((r) => setTimeout(r, 10));
-      return true;
+      importExecutedCount++;
+      const result = await importHistory(importPlan, repoConc);
+      return { acquired: true, executed: true, result };
     } finally {
       actionLockController.release("IMPORT");
     }
   };
-  const [impRes1, impRes2] = await Promise.all([runImport(), runImport()]);
-  assert((impRes1 && !impRes2) || (!impRes1 && impRes2), "Duplo clique em IMPORT: exatamente 1 deve obter sucesso.");
-  assert(importCalls === 1, `importHistory deve ser executado exatamente 1 vez. Chamadas: ${importCalls}`);
-  console.log("  ✓ [PASS] Duplo clique prevenido com sucesso em GENERATE, FREEZE, SCORE e IMPORT.");
+  const [impRes1, impRes2] = await Promise.all([runRealImport(), runRealImport()]);
+  assert(
+    (impRes1.acquired && !impRes2.acquired) || (!impRes1.acquired && impRes2.acquired),
+    "Duplo clique em IMPORT real: exatamente 1 deve adquirir o lock."
+  );
+  assert(importExecutedCount === 1, `importHistory real deve ser executado exatamente 1 vez. Execuções: ${importExecutedCount}`);
+  const imported7002 = await repoConc.getContestRecord(7002);
+  assert(imported7002 !== null && imported7002.status === "DRAFT", "Concurso 7002 importado deve existir no banco.");
+  assert(!actionLockController.isLocked(), "Lock de IMPORT deve ser liberado no finally.");
+
+  // 11.5 Falha Real + Lock Release + Retry com Sucesso (Requisito #17-20 Integrado)
+  let realFailureOccurred = false;
+  try {
+    if (actionLockController.acquire("FREEZE")) {
+      try {
+        // Tenta congelar concurso inexistente (gera erro real de banco)
+        await repoConc.freezeStoredContest(9999);
+      } finally {
+        actionLockController.release("FREEZE");
+      }
+    }
+  } catch {
+    realFailureOccurred = true;
+  }
+  assert(realFailureOccurred, "Operação inválida no repositório deve lançar erro real.");
+  assert(!actionLockController.isLocked(), "Lock DEVE estar completamente liberado após falha real garantida pelo bloco finally.");
+
+  // Retry imediato com concurso válido deve obter sucesso
+  let retrySuccess = false;
+  const draft7003 = createContestDraft(7003);
+  await repoConc.saveDraft(draft7003);
+  if (actionLockController.acquire("FREEZE")) {
+    try {
+      await repoConc.freezeStoredContest(7003);
+      retrySuccess = true;
+    } finally {
+      actionLockController.release("FREEZE");
+    }
+  }
+  assert(retrySuccess, "Retry após falha real deve adquirir lock com sucesso e concluir a operação.");
+  const frozen7003 = await repoConc.getContestRecord(7003);
+  assert(frozen7003?.status === "FROZEN", "Registro salvo no retry deve estar FROZEN no IndexedDB.");
+  assert(!actionLockController.isLocked(), "Lock deve permanecer liberado após o retry.");
+  console.log("  ✓ [PASS] Duplo clique prevenido com mutações REAIS no IndexedDB (GENERATE, FREEZE, SCORE, IMPORT e Retry após Falha).");
 
   // ---------------------------------------------------------------------------
   // 12. BOOT RACE CONDITION REAL (Requisito #21)
@@ -654,12 +749,12 @@ export async function runOperationalRobustnessTests() {
   // ---------------------------------------------------------------------------
   console.log("\n▶ 15. CAIXA Offline e Recuperação Manual Sob Demanda");
   let caixaOnline = false;
-  let caixaAttempts = 0;
+  const caixaTracker = { attempts: 0 };
 
   const intermittentProvider: LotteryResultProvider = {
     providerName: "IntermittentProvider",
     getLatestContest: async () => {
-      caixaAttempts++;
+      caixaTracker.attempts++;
       if (!caixaOnline) {
         throw new Error("Failed to fetch: network offline");
       }
@@ -672,7 +767,7 @@ export async function runOperationalRobustnessTests() {
       };
     },
     getContest: async (num: number) => {
-      caixaAttempts++;
+      caixaTracker.attempts++;
       if (!caixaOnline) {
         throw new Error("Failed to fetch: network offline");
       }
@@ -690,7 +785,7 @@ export async function runOperationalRobustnessTests() {
   const repoCaixaTest = new ContestRepository({ idbFactory: idbCaixaTest });
 
   // 1. App abre: zero chamadas
-  assert(caixaAttempts === 0, "Boot do app não pode chamar a CAIXA.");
+  assert(caixaTracker.attempts === 0, "Boot do app não pode chamar a CAIXA.");
 
   // 2. Usuário clica para consultar com rede offline
   assert(actionLockController.acquire("CAIXA_QUERY"), "Adquire lock para consulta.");
@@ -703,7 +798,7 @@ export async function runOperationalRobustnessTests() {
   assert(syncStateOffline.status === "ERROR", "Primeira consulta sem rede deve retornar status ERROR amigavelmente.");
   assert(syncStateOffline.errorMessage?.includes("network offline"), "Mensagem de erro de rede preservada.");
   assert(!actionLockController.isLocked(), "Lock deve ser liberado mesmo com falha na consulta.");
-  assert(caixaAttempts === 1, "Exatamente 1 tentativa realizada.");
+  assert(caixaTracker.attempts === 1, "Exatamente 1 tentativa realizada.");
 
   // 3. Rede restaurada: usuário clica novamente
   caixaOnline = true;
@@ -716,7 +811,7 @@ export async function runOperationalRobustnessTests() {
   }
   assert(nextSync !== null, "Consulta com rede restaurada deve ter sucesso.");
   assert(nextSync.latestOfficialContest === 3550, "Concurso oficial obtido da CAIXA.");
-  assert(caixaAttempts === 2, "Segunda tentativa bem sucedida.");
+  assert(caixaTracker.attempts === 2, "Segunda tentativa bem sucedida.");
   console.log("  ✓ [PASS] Falha de rede na CAIXA tratada limpa; lock liberado; sucesso na tentativa posterior.");
 
   // ---------------------------------------------------------------------------
@@ -949,39 +1044,64 @@ export async function runOperationalRobustnessTests() {
   console.log("  ✓ [PASS] Zero uso funcional de Math.random no código de produção.");
 
   // ---------------------------------------------------------------------------
-  // 22. REVISÃO MONOTÔNICA E LISTENERS (Requisitos #36 & #37)
+  // 22. REVISÃO MONOTÔNICA E LISTENERS ATRAVÉS DE MUTAÇÕES REAIS (Requisitos #36 & #37)
   // ---------------------------------------------------------------------------
-  console.log("\n▶ 22. Revisão Monotônica e Resiliência de Listeners (refreshCoordinator)");
+  console.log("\n▶ 22. Revisão Monotônica e Resiliência de Listeners através de Mutações REAIS (refreshCoordinator)");
+  const idbRev = new IDBFactory();
+  const repoRev = new ContestRepository({ idbFactory: idbRev });
   const revStart = refreshCoordinator.getRevision();
 
-  // Falha pré-commit: não incrementa
+  // 1. Falha pré-commit REAL no repositório: não incrementa revisão
+  let realPreCommitError: any = null;
   try {
-    throw new Error("Simulated pre-commit error");
-  } catch {
-    //
+    // Tenta salvar draft com status inválido (rejeição síncrona/pré-transação real)
+    await repoRev.saveDraft({
+      ...createContestDraft(7701),
+      status: "FROZEN" as any,
+    });
+  } catch (err) {
+    realPreCommitError = err;
   }
-  assert(refreshCoordinator.getRevision() === revStart, "Revisão NÃO muda se não houve commit.");
+  assert(realPreCommitError !== null, "Tentativa de mutação inválida deve ser rejeitada pelo repositório.");
+  assert(refreshCoordinator.getRevision() === revStart, "Falha REAL pré-commit NÃO deve alterar dataRevision.");
 
-  // Sucesso de commit: incrementa exatamente +1
-  const revAfter = refreshCoordinator.notifyMutationCommitted("SAVE");
-  assert(revAfter === revStart + 1, `Revisão deve incrementar monotonicamente de ${revStart} para ${revStart + 1}`);
+  // 2. Sucesso de commit REAL no IndexedDB: incrementa exatamente +1
+  const draft7701 = createContestDraft(7701);
+  await repoRev.saveDraft(draft7701);
+  const revAfter = refreshCoordinator.getRevision();
+  assert(revAfter === revStart + 1, `Revisão deve incrementar monotonicamente de ${revStart} para ${revStart + 1} após commit real.`);
+  const persistedDraft7701 = await repoRev.getContestRecord(7701);
+  assert(persistedDraft7701 !== null && persistedDraft7701.status === "DRAFT", "Draft deve estar persistido no IndexedDB.");
 
-  // Listener falho não bloqueia outros listeners nem reverte o commit
+  // 3. Commit REAL no banco + listener com falha explosiva
   let healthyListenerCalled = false;
+  let healthyObservedRevision = 0;
   const unsubFailing = refreshCoordinator.subscribe(() => {
-    throw new Error("Explosive listener failure");
+    throw new Error("Explosive UI crash during component render");
   });
-  const unsubHealthy = refreshCoordinator.subscribe(() => {
+  const unsubHealthy = refreshCoordinator.subscribe((rev) => {
     healthyListenerCalled = true;
+    healthyObservedRevision = rev;
   });
 
-  const revAfterListeners = refreshCoordinator.notifyMutationCommitted("FREEZE");
-  assert(healthyListenerCalled, "Ouvinte saudável deve ser chamado mesmo se outro lançar exceção.");
-  assert(revAfterListeners === revAfter + 1, "Revisão incrementa normalmente (+1).");
+  // Executa mutação REAL de congelamento no IndexedDB
+  await repoRev.freezeStoredContest(7701);
+  const revAfterListeners = refreshCoordinator.getRevision();
 
   unsubFailing();
   unsubHealthy();
-  console.log("  ✓ [PASS] refreshCoordinator: garantia de incremento monotônico e resiliência a ouvintes defeituosos.");
+
+  // Verifica que o commit no IndexedDB foi gravado e preservado com integridade intacta
+  const persistedFrozen7701 = await repoRev.getContestRecord(7701);
+  assert(persistedFrozen7701 !== null && persistedFrozen7701.status === "FROZEN", "Registro no IndexedDB DEVE estar FROZEN (não revertido por erro no listener).");
+  const integrity7701 = await repoRev.verifyStoredContest(7701);
+  assert(integrity7701.valid === true, "Integridade criptográfica do commit real mantida 100%.");
+
+  // Verifica que o ouvinte saudável recebeu a notificação apesar do listener defeituoso
+  assert(healthyListenerCalled, "Ouvinte saudável deve ser chamado mesmo se outro lançar exceção.");
+  assert(healthyObservedRevision === revAfterListeners, "Ouvinte saudável observou a revisão correta.");
+  assert(revAfterListeners === revAfter + 1, "Revisão incrementa normalmente (+1) após mutação real com commit.");
+  console.log("  ✓ [PASS] refreshCoordinator: garantia de incremento monotônico por mutação REAL e resiliência a ouvintes defeituosos.");
 
   console.log("\n===============================================================================");
   console.log("  SUCESSO TOTAL: TODOS OS 22 MÓDULOS DE ROBUSTEZ OPERACIONAL V1.5 APROVADOS!   ");

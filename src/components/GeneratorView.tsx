@@ -377,7 +377,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
           title: `Concurso ${contestNum} Gerado`,
           message: "5 jogos combinatórios C₅ gerados como RASCUNHO. Confira as apostas antes de congelar.",
         });
-        refreshCoordinator.notifyMutationCommitted("SAVE");
         if (onRecordUpdated) onRecordUpdated();
         await refreshLocalState();
       }
@@ -392,7 +391,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             title: `Concurso ${contestNum} Carregado`,
             message: `O registro está salvo no armazenamento local como ${recheck.status}.`,
           });
-          refreshCoordinator.notifyMutationCommitted("SAVE");
           return;
         }
       } catch {
@@ -437,7 +435,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         title: "Rascunho Descartado",
         message: `O rascunho do concurso ${num} foi excluído do histórico com sucesso.`,
       });
-      refreshCoordinator.notifyMutationCommitted("DELETE");
       if (onRecordUpdated) onRecordUpdated();
       await refreshLocalState();
     } catch (err: any) {
@@ -452,7 +449,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             title: "Rascunho Já Removido",
             message: "O rascunho foi excluído com sucesso do armazenamento local.",
           });
-          refreshCoordinator.notifyMutationCommitted("DELETE");
           await refreshLocalState();
           return;
         } else if (updated.status !== "DRAFT") {
@@ -533,7 +529,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         title: "Jogos congelados com sucesso",
         message: `Concurso ${num}. Integridade verificada.`,
       });
-      refreshCoordinator.notifyMutationCommitted("FREEZE");
       if (onRecordUpdated) onRecordUpdated();
       await refreshLocalState();
     } catch (err: any) {
@@ -548,7 +543,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             title: updated.status === "FROZEN" ? "Jogos congelados com sucesso" : "Sessão Concorrente Detectada",
             message: `O concurso ${updated.contestNumber} está registrado como ${updated.status} no armazenamento local.`,
           });
-          refreshCoordinator.notifyMutationCommitted("FREEZE");
           await refreshLocalState();
           return;
         }
@@ -606,7 +600,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         title: "Resultado Registrado e Pontuado",
         message: `O concurso ${num} foi conferido com sucesso. Melhor resultado: ${scoredRecord?.score?.maxHits} acertos. Auditoria criptográfica: VÁLIDA.`,
       });
-      refreshCoordinator.notifyMutationCommitted("SCORE");
       if (onRecordUpdated) onRecordUpdated();
       await refreshLocalState();
     } catch (err: any) {
@@ -620,7 +613,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             title: "Resultado Registrado e Pontuado",
             message: `O concurso ${updated.contestNumber} já foi pontuado e persistido no armazenamento local (melhor resultado: ${updated.score?.maxHits} acertos).`,
           });
-          refreshCoordinator.notifyMutationCommitted("SCORE");
           if (onRecordUpdated) onRecordUpdated();
           await refreshLocalState();
           return;

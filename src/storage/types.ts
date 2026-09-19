@@ -243,4 +243,5 @@ export interface StorageOptions {
   idbFactory?: IDBFactory;
   dbName?: string;
   clock?: Clock;
+  notifyCoordinator?: boolean;
 }

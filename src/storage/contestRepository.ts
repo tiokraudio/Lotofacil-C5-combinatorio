@@ -22,6 +22,7 @@ import {
 } from "./db.ts";
 import { C5_ALGORITHM_VERSION } from "../c5/version.ts";
 import { APP_VERSION } from "../system/manifest.ts";
+import { refreshCoordinator } from "../system/refreshCoordinator.ts";
 import {
   BET_PRICE,
   BETS_PER_CONTEST,
@@ -117,6 +118,10 @@ export class ContestRepository {
     this.options = options;
   }
 
+  private shouldNotifyCoordinator(): boolean {
+    return this.options?.notifyCoordinator !== false;
+  }
+
   private async getDB(): Promise<IDBDatabase> {
     return openDatabase(this.options);
   }
@@ -165,6 +170,9 @@ export class ContestRepository {
       const clone = deepCloneRecord(record);
       await promisifyRequest(store.add(clone));
       await waitForTransaction(tx);
+      if (this.shouldNotifyCoordinator()) {
+        refreshCoordinator.notifyMutationCommitted("SAVE");
+      }
     } catch (err: any) {
       if (
         err?.name === "ConstraintError" ||
@@ -199,6 +207,9 @@ export class ContestRepository {
       }
 
       await waitForTransaction(tx);
+      if (this.shouldNotifyCoordinator()) {
+        refreshCoordinator.notifyMutationCommitted("IMPORT");
+      }
     } catch (err: any) {
       if (
         err?.name === "ConstraintError" ||
@@ -303,6 +314,9 @@ export class ContestRepository {
       const clone = deepCloneRecord(frozen);
       await promisifyRequest(store.put(clone));
       await waitForTransaction(tx);
+      if (this.shouldNotifyCoordinator()) {
+        refreshCoordinator.notifyMutationCommitted("FREEZE");
+      }
 
       return deepCloneRecord(frozen);
     } finally {
@@ -381,6 +395,9 @@ export class ContestRepository {
       const clone = deepCloneRecord(scored);
       await promisifyRequest(store.put(clone));
       await waitForTransaction(tx);
+      if (this.shouldNotifyCoordinator()) {
+        refreshCoordinator.notifyMutationCommitted("SCORE");
+      }
 
       return deepCloneRecord(scored);
     } finally {
@@ -431,6 +448,9 @@ export class ContestRepository {
 
       await promisifyRequest(store.delete(contestNumber));
       await waitForTransaction(tx);
+      if (this.shouldNotifyCoordinator()) {
+        refreshCoordinator.notifyMutationCommitted("DELETE");
+      }
     } finally {
       closeDatabase(db);
     }
