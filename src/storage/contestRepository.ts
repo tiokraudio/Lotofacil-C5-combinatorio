@@ -64,8 +64,34 @@ export function generateDiagnosticFilename(date: Date = new Date()): string {
 
 /**
  * Realiza clonagem defensiva profunda de um ContestRecord completo.
+ * Resistente a corrupções de schema para garantir que registros malformados
+ * possam ser inspecionados pela quarentena sem falha catastrófica.
  */
 export function deepCloneRecord(record: ContestRecord): ContestRecord {
+  let clonedGen: any;
+  try {
+    clonedGen = deepCloneGeneration(record.generation);
+  } catch {
+    try {
+      clonedGen = JSON.parse(JSON.stringify(record.generation));
+    } catch {
+      clonedGen = record.generation;
+    }
+  }
+
+  let clonedScore: any;
+  if (record.score) {
+    try {
+      clonedScore = deepCloneScore(record.score);
+    } catch {
+      try {
+        clonedScore = JSON.parse(JSON.stringify(record.score));
+      } catch {
+        clonedScore = record.score;
+      }
+    }
+  }
+
   return {
     status: record.status,
     contestNumber: record.contestNumber,
@@ -76,8 +102,8 @@ export function deepCloneRecord(record: ContestRecord): ContestRecord {
     integrityHash: record.integrityHash,
     officialResult: record.officialResult ? [...record.officialResult] : undefined,
     scoredAt: record.scoredAt,
-    score: record.score ? deepCloneScore(record.score) : undefined,
-    generation: deepCloneGeneration(record.generation),
+    score: clonedScore,
+    generation: clonedGen,
   };
 }
 
@@ -509,9 +535,13 @@ export class ContestRepository {
 
       // Verificação criptográfica da geração congelada
       if (record.generation && typeof record.generation === "object") {
-        genAudit = await verifyContestIntegrity(record);
-        if (!genAudit.valid) {
-          errors.push(...genAudit.errors);
+        try {
+          genAudit = await verifyContestIntegrity(record);
+          if (!genAudit.valid) {
+            errors.push(...genAudit.errors);
+          }
+        } catch (e: any) {
+          errors.push(`Falha na verificação de integridade: ${e?.message || "estrutura de geração corrompida"}`);
         }
       }
     } else if (record.status === "SCORED") {
@@ -545,9 +575,13 @@ export class ContestRepository {
 
       // Integridade criptográfica da geração
       if (record.generation && typeof record.generation === "object") {
-        genAudit = await verifyContestIntegrity(record);
-        if (!genAudit.valid) {
-          errors.push(...genAudit.errors);
+        try {
+          genAudit = await verifyContestIntegrity(record);
+          if (!genAudit.valid) {
+            errors.push(...genAudit.errors);
+          }
+        } catch (e: any) {
+          errors.push(`Falha na verificação de integridade: ${e?.message || "estrutura de geração corrompida"}`);
         }
       }
 
@@ -577,9 +611,13 @@ export class ContestRepository {
       if (!record.score || typeof record.score !== "object") {
         errors.push("SCORED deve possuir objeto score.");
       } else {
-        scoreAudit = verifyScoreIntegrity(record);
-        if (!scoreAudit.valid) {
-          errors.push(...scoreAudit.errors);
+        try {
+          scoreAudit = verifyScoreIntegrity(record);
+          if (!scoreAudit.valid) {
+            errors.push(...scoreAudit.errors);
+          }
+        } catch (e: any) {
+          errors.push(`Falha na auditoria do score: ${e?.message || "estrutura de pontuação corrompida"}`);
         }
       }
     }

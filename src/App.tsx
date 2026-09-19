@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Header, NavTab } from "./components/Header.tsx";
 import { GeneratorView } from "./components/GeneratorView.tsx";
@@ -19,18 +19,29 @@ export default function App() {
   const [bootState, setBootState] = useState<AppBootState>("BOOTING");
   const [bootResult, setBootResult] = useState<AppBootResult | null>(null);
 
+  const isMountedRef = useRef<boolean>(true);
+  const activeRunIdRef = useRef<number>(0);
+
   const refreshHistoryBadge = useCallback(async () => {
     try {
       const all = await repository.getAllContestRecords();
-      setHistoryCount(all.length);
+      if (isMountedRef.current) {
+        setHistoryCount(all.length);
+      }
     } catch {
       // Falha de leitura de storage é tratada pelas views correspondentes
     }
   }, []);
 
   const runBootstrap = useCallback(async () => {
+    const runId = ++activeRunIdRef.current;
     setBootState("BOOTING");
     const result = await performAppBootstrap();
+
+    if (!isMountedRef.current || runId !== activeRunIdRef.current || result.stale) {
+      return; // Ignora resultado obsoleto ou se o componente foi desmontado
+    }
+
     setBootResult(result);
     setBootState(result.state);
     if (result.state === "READY" || result.state === "DEGRADED") {
@@ -39,7 +50,11 @@ export default function App() {
   }, [refreshHistoryBadge]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     runBootstrap();
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [runBootstrap]);
 
   // Inscrição no coordenador global de atualizações persistentes (Prompt 14 #17-#24)

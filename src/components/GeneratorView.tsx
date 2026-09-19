@@ -88,32 +88,39 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     return unsub;
   }, []);
 
-  // Carrega registros locais e sincronização com tratamento estrito de erro de persistência
-  const refreshSync = useCallback(async () => {
+  // 1. Carrega registros locais com tratamento estrito de erro de persistência (ZERO CHAMADAS DE REDE)
+  const refreshLocalState = useCallback(async () => {
+    const sequenceId = ++syncSequenceRef.current;
+    try {
+      const records = await repository.getAllContestRecords();
+      if (sequenceId === syncSequenceRef.current) {
+        setLocalRecords(records);
+        setStorageBlocked(false);
+      }
+    } catch (storageErr: any) {
+      if (sequenceId === syncSequenceRef.current) {
+        setStorageBlocked(true);
+        const classified = classifyOperationalError(storageErr, "STORAGE_UNAVAILABLE");
+        setFeedback({
+          type: "error",
+          title: "Falha de Acesso ao Armazenamento",
+          message: classified.userMessage,
+        });
+      }
+    }
+  }, []);
+
+  // 2. Consulta externa explícita da CAIXA (acessada APENAS por ação do usuário, política one-call)
+  const refreshExternalSync = useCallback(async (): Promise<ContestSyncState | null> => {
+    if (!actionLockController.acquire("CAIXA_QUERY")) {
+      return null;
+    }
     const sequenceId = ++syncSequenceRef.current;
     setIsSyncing(true);
+    setIsFetchingLatest(true);
+    clearFeedback();
 
     try {
-      // 1. Atualiza lista local
-      try {
-        const records = await repository.getAllContestRecords();
-        if (sequenceId === syncSequenceRef.current) {
-          setLocalRecords(records);
-          setStorageBlocked(false);
-        }
-      } catch (storageErr: any) {
-        if (sequenceId === syncSequenceRef.current) {
-          setStorageBlocked(true);
-          const classified = classifyOperationalError(storageErr, "STORAGE_UNAVAILABLE");
-          setFeedback({
-            type: "error",
-            title: "Falha de Acesso ao Armazenamento",
-            message: classified.userMessage,
-          });
-        }
-      }
-
-      // 2. Sincroniza com provider
       const provider = getLotteryProvider();
       const nextSync = await buildContestSyncState(provider, repository);
 
@@ -127,27 +134,36 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
           });
         }
       }
-    } catch {
-      // Falhas tratadas com segurança mantendo dados locais
+      return nextSync;
+    } catch (err: any) {
+      const classified = classifyOperationalError(err, "CAIXA_TEMPORARY_ERROR");
+      setFeedback({
+        type: "warning",
+        title: "Consulta Externa Indisponível",
+        message: classified.userMessage,
+      });
+      return null;
     } finally {
+      actionLockController.release("CAIXA_QUERY");
       if (sequenceId === syncSequenceRef.current) {
         setIsSyncing(false);
+        setIsFetchingLatest(false);
       }
     }
   }, []);
 
-  // Executa sincronização de leitura no carregamento inicial
+  // Executa carregamento puramente local no carregamento inicial (ZERO PROVIDER CALLS NO BOOT)
   useEffect(() => {
-    refreshSync();
-  }, [refreshSync]);
+    refreshLocalState();
+  }, [refreshLocalState]);
 
-  // Inscrição no coordenador global de atualizações persistentes
+  // Inscrição no coordenador global de atualizações persistentes (apenas dados locais)
   useEffect(() => {
     const unsub = refreshCoordinator.subscribe(() => {
-      refreshSync();
+      refreshLocalState();
     });
     return unsub;
-  }, [refreshSync]);
+  }, [refreshLocalState]);
 
   // Derivação pura e determinística da Ação Principal (Prompt 09 - Seção 2 e 9)
   const primaryAction = computePrimaryAction(syncState, localRecords);
@@ -220,43 +236,15 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
-  // Consulta manual do último concurso no topo do formulário
+  // Consulta manual do último concurso no topo do formulário (ação explícita do usuário)
   const handleFetchLatestContest = async () => {
-    if (!actionLockController.acquire("CAIXA_QUERY")) {
-      return;
-    }
-
-    setIsFetchingLatest(true);
-    clearFeedback();
-
-    try {
-      const provider = getLotteryProvider();
-      const latest = await provider.getLatestContest();
-      const suggested =
-        typeof latest.nextContestNumber === "number" && latest.nextContestNumber > 0
-          ? latest.nextContestNumber
-          : latest.contestNumber + 1;
-      setLatestContestInfo({
-        lastContest: latest.contestNumber,
-        drawDate: latest.drawDate,
-        suggestedNext: suggested,
-      });
+    const nextSync = await refreshExternalSync();
+    if (nextSync && nextSync.latestOfficialContest) {
       setFeedback({
         type: "info",
         title: "Consulta CAIXA Realizada",
-        message: `Último concurso oficial: ${latest.contestNumber} (${latest.drawDate}). Próximo sugerido: ${suggested}.`,
+        message: `Último concurso oficial: ${nextSync.latestOfficialContest} (${nextSync.latestDrawDate || ""}). Próximo sugerido: ${nextSync.nextSuggestedContest || nextSync.latestOfficialContest + 1}.`,
       });
-      await refreshSync();
-    } catch (err: any) {
-      const classified = classifyOperationalError(err, "CAIXA_TEMPORARY_ERROR");
-      setFeedback({
-        type: "warning",
-        title: "Consulta Externa Indisponível",
-        message: classified.userMessage,
-      });
-    } finally {
-      actionLockController.release("CAIXA_QUERY");
-      setIsFetchingLatest(false);
     }
   };
 
@@ -377,7 +365,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
           message: `Este concurso já possui registro oficial no histórico com status ${existing.status}. Carregado para conferência.`,
         });
         if (onRecordUpdated) onRecordUpdated();
-        await refreshSync();
+        await refreshLocalState();
       } else {
         // 1.2 Criar DRAFT e salvar
         const draft = createContestDraft(contestNum);
@@ -391,7 +379,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         });
         refreshCoordinator.notifyMutationCommitted("SAVE");
         if (onRecordUpdated) onRecordUpdated();
-        await refreshSync();
+        await refreshLocalState();
       }
     } catch (err: any) {
       // Re-leitura defensiva do banco antes de emitir erro
@@ -426,6 +414,14 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   // 2. Descartar Rascunho
   const handleConfirmDiscard = async () => {
     if (!activeRecord || activeRecord.status !== "DRAFT") return;
+    if (storageBlocked) {
+      setFeedback({
+        type: "error",
+        title: "Armazenamento Indisponível",
+        message: "O armazenamento local está indisponível. Operação bloqueada para segurança dos dados.",
+      });
+      return;
+    }
     if (!actionLockController.acquire("DELETE")) return;
 
     setIsLoading(true);
@@ -443,7 +439,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
       });
       refreshCoordinator.notifyMutationCommitted("DELETE");
       if (onRecordUpdated) onRecordUpdated();
-      await refreshSync();
+      await refreshLocalState();
     } catch (err: any) {
       // Detecção de concorrência com outra aba ou conferência de remoção
       try {
@@ -457,7 +453,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             message: "O rascunho foi excluído com sucesso do armazenamento local.",
           });
           refreshCoordinator.notifyMutationCommitted("DELETE");
-          await refreshSync();
+          await refreshLocalState();
           return;
         } else if (updated.status !== "DRAFT") {
           setActiveRecord(updated);
@@ -467,7 +463,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             title: "Sessão Concorrente Detectada",
             message: `O concurso ${updated.contestNumber} foi congelado em outra sessão. Registro recarregado.`,
           });
-          await refreshSync();
+          await refreshLocalState();
           return;
         }
       } catch {
@@ -490,6 +486,16 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   const handleConfirmFreeze = async () => {
     if (!activeRecord || activeRecord.status !== "DRAFT") return;
     clearFeedback();
+
+    if (storageBlocked) {
+      setFeedback({
+        type: "error",
+        title: "Armazenamento Indisponível",
+        message: "O armazenamento local está indisponível. Operação bloqueada para segurança dos dados.",
+      });
+      setShowFreezeConfirm(false);
+      return;
+    }
 
     if (!isCryptoAvailable) {
       setFeedback({
@@ -529,7 +535,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
       });
       refreshCoordinator.notifyMutationCommitted("FREEZE");
       if (onRecordUpdated) onRecordUpdated();
-      await refreshSync();
+      await refreshLocalState();
     } catch (err: any) {
       // Re-leitura defensiva do banco antes de emitir erro (Prompt 14 Seção 42 & 43)
       try {
@@ -543,7 +549,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             message: `O concurso ${updated.contestNumber} está registrado como ${updated.status} no armazenamento local.`,
           });
           refreshCoordinator.notifyMutationCommitted("FREEZE");
-          await refreshSync();
+          await refreshLocalState();
           return;
         }
       } catch {
@@ -565,10 +571,20 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   // 4. Registrar e Pontuar Resultado Oficial com Auditoria Rigorosa
   const handleScoreResult = async (officialResult: number[]) => {
     if (!activeRecord || activeRecord.status !== "FROZEN") return;
+    clearFeedback();
+
+    if (storageBlocked) {
+      setFeedback({
+        type: "error",
+        title: "Armazenamento Indisponível",
+        message: "O armazenamento local está indisponível. Pontuação bloqueada para segurança dos dados.",
+      });
+      return;
+    }
+
     if (!actionLockController.acquire("SCORE")) return;
 
     setIsLoading(true);
-    clearFeedback();
 
     try {
       const num = activeRecord.contestNumber;
@@ -592,7 +608,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
       });
       refreshCoordinator.notifyMutationCommitted("SCORE");
       if (onRecordUpdated) onRecordUpdated();
-      await refreshSync();
+      await refreshLocalState();
     } catch (err: any) {
       // Re-leitura defensiva do banco antes de emitir erro (Prompt 14 Seção 42 & 43)
       try {
@@ -606,7 +622,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
           });
           refreshCoordinator.notifyMutationCommitted("SCORE");
           if (onRecordUpdated) onRecordUpdated();
-          await refreshSync();
+          await refreshLocalState();
           return;
         }
       } catch {
@@ -655,7 +671,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
       <SyncStatusPanel
         syncState={syncState}
         isLoading={isSyncing}
-        onRefresh={refreshSync}
+        onRefresh={refreshExternalSync}
         onPrepareContest={handlePrepareContestFromPanel}
         onOpenDraft={handleOpenDraftFromPanel}
         onDiscardDraft={handleDiscardDraftFromPanel}

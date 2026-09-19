@@ -25,6 +25,7 @@ export type AppBootState = "BOOTING" | "READY" | "DEGRADED" | "FATAL";
 export interface AppBootResult {
   state: AppBootState;
   bootId: number;
+  stale?: boolean;
   totalRecords: number;
   validRecords: number;
   quarantineCount: number;
@@ -171,6 +172,7 @@ export async function performAppBootstrap(options?: BootstrapOptions): Promise<A
       return {
         state: "BOOTING",
         bootId,
+        stale: true,
         totalRecords: auditResult.totalRecords,
         validRecords: auditResult.validRecords,
         quarantineCount: auditResult.quarantinedRecords ?? 0,

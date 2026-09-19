@@ -30,7 +30,8 @@
     "test:ui": "tsx src/tests/ui.test.ts",
     "test:e2e": "tsx src/tests/e2eCertification.test.ts",
     "test:operational": "tsx src/tests/operationalRobustness.test.ts",
-    "test": "npm run test:manifest && npm run test:c5:unit && npm run test:c5:golden && npm run test:c5:scorer && npm run test:c5:record && npm run test:c5:integrity && npm run test:c5:storage && npm run test:c5:import && npm run test:c5:quarantine && npm run test:c5:concurrency && npm run test:lottery && npm run test:sync && npm run test:contest-lifecycle && npm run test:ui && npm run test:operational && npm run test:e2e"
+    "test:operational-robustness": "tsx src/tests/operationalRobustness.test.ts",
+    "test": "npm run test:manifest && npm run test:c5:unit && npm run test:c5:golden && npm run test:c5:scorer && npm run test:c5:record && npm run test:c5:integrity && npm run test:c5:storage && npm run test:c5:import && npm run test:c5:quarantine && npm run test:c5:concurrency && npm run test:lottery && npm run test:sync && npm run test:contest-lifecycle && npm run test:ui && npm run test:operational-robustness && npm run test:e2e"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
