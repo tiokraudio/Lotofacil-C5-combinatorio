@@ -21,6 +21,7 @@ import {
 } from "../sync/operationalState.ts";
 import {
   resolveTargetContest,
+  validateResolvedExternalContest,
   deduplicateReconciledItems,
   generateReconciliationFeedback,
 } from "../sync/reconciliationHelper.ts";
@@ -74,19 +75,22 @@ export const ReconciliationSection: React.FC = () => {
       let querySource = "CAIXA";
       let queryTimestamp = new Date().toISOString();
 
-      let targetContest: number;
       // Exatamente 1 chamada externa por ação
       if (contestToQuery !== null) {
         externalData = await provider.getContest(contestToQuery);
-        targetContest = contestToQuery;
       } else {
         externalData = await provider.getLatestContest();
-        targetContest = externalData.contestNumber;
       }
 
       if (!isMountedRef.current || currentRunId !== runIdRef.current) {
         return;
       }
+
+      // Validação obrigatória: certifica que externalData.contestNumber é válido e corresponde ao alvo
+      const targetContest = validateResolvedExternalContest(
+        contestToQuery,
+        externalData?.contestNumber
+      );
 
       querySource = externalData.source || "CAIXA";
       queryTimestamp = externalData.fetchedAt || queryTimestamp;
@@ -119,7 +123,7 @@ export const ReconciliationSection: React.FC = () => {
         return;
       }
       setFeedback({
-        type: "warning",
+        type: "error",
         message:
           err?.message ||
           "Não foi possível consultar a fonte oficial para reconciliação agora.",

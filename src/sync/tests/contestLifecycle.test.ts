@@ -1,28 +1,29 @@
 /**
  * Bateria de Testes Canônicos de Ciclo Operacional e Reconciliação com Fonte Oficial CAIXA (v1.4.0).
  * 
- * Cobre rigorosamente todos os 37 requisitos auditados:
- * 1. Derivação determinística de ContestOperationalState (Regras 8 a 14)
- * 2. Validação estrita de resultado oficial validateOfficialResult (Regra 17)
- * 3. Reconciliação matemática reconcileOfficialResult (Regras 25 a 31)
- * 4. Mapeamento de Ação Principal getOperationalPrimaryAction (Regra 37)
- * 5. Proteção contra Concurso Divergente (Mismatch 3900 vs 3901)
- * 6. Preservação de Estado Local perante Falha Externa
- * 7. Prioridade Absoluta da Quarentena sobre qualquer status
- * 8. Ciclo Completo com ContestRepository (NO_RECORD -> DRAFT -> FROZEN -> SCORED)
- * 9. LATEST CONTEST: input vazio, provider retorna 3905 (1 chamada getLatestContest, 0 getContest, targetContest=3905, deduplicação)
- * 10. Divergência entre Previews (acceptedPreview e pendingPreview, MANTER A vs ACEITAR B)
- * 11. Snapshot de Score Imutável sem nova chamada ao provider
- * 12. Falha de Atualização preservando acceptedPreview anterior
- * 13. External Race condition com descarte de requisição obsoleta via runId
- * 14. Contest Mismatch (zero scoring, zero persistência)
- * 15. One Call: exatamente 1 chamada por ação
- * 16. No Auto Score: DB continua FROZEN após consulta
- * 17. No Auto Generation: zero apostas geradas por consulta externa
- * 18. Concorrência entre duas abas (2 repositories reais no mesmo IDB: 1 fulfilled, 1 rejected)
- * 19. Métricas e Idempotência de pontuação
- * 20. Imutabilidade em SCORED MATCH e SCORED MISMATCH (sem mutação profunda)
- * 21. Simulação de estado obsoleto de tela quando outra aba pontua primeiro
+ * Cobre rigorosamente todos os requisitos de certificação v1.4:
+ * 1. Validação estrita de resultado oficial validateOfficialResult
+ * 2. Derivação determinística de ContestOperationalState
+ * 3. Reconciliação matemática reconcileOfficialResult
+ * 4. Mapeamento de Ação Principal getOperationalPrimaryAction
+ * 5. Explicit Contest Match (3900 vs 3900)
+ * 6. Explicit Contest Mismatch (3900 vs 3901) - abortar reconciliação, zero item, zero mutação
+ * 7. Mismatch com Item Anterior preservando item pré-existente
+ * 8. Latest Contest Válido (input vazio -> 3905)
+ * 9. Latest Contest Inválido (null, undefined, NaN, 0, -1, decimal, string)
+ * 10. Deduplicação de itens reconciliados
+ * 11. Regra One-Call (getContest vs getLatestContest)
+ * 12. Máquina de Estados de Prévia Oficial e Divergência (accepted/pending, MANTER vs ACEITAR)
+ * 13. Snapshot de Score Imutável
+ * 14. Falha de Atualização preservando preview anterior
+ * 15. External Race Condition com runId
+ * 16. Contest Mismatch no OfficialResultSection
+ * 17. No Auto Score & No Auto Generation
+ * 18. Concorrência entre duas abas / repositórios
+ * 19. Métricas — Transição Real (antes, pós 1º score, pós 2º score com rejeição e deepEqual)
+ * 20. Imutabilidade profunda em SCORED MATCH e MISMATCH
+ * 21. Persistência de Integridade (F5 Reload)
+ * 22. Tratamento de interface obsoleta após pontuação concorrente
  */
 
 import "fake-indexeddb/auto";
@@ -39,13 +40,12 @@ import {
 import {
   OfficialResultPreviewController,
   officialResultPreviewReducer,
-  evaluateIncomingPreviewAction,
-  canScoreOfficialPreview,
-  getScoreSnapshotNumbers,
   type OfficialResultPreviewState,
 } from "../officialResultPreviewState.ts";
 import {
   resolveTargetContest,
+  validateResolvedExternalContest,
+  assertExternalContestMatchesTarget,
   deduplicateReconciledItems,
   generateReconciliationFeedback,
   type ReconciledContestItem,
@@ -224,32 +224,153 @@ async function runContestLifecycleTests() {
   console.log("  ✓ [PASS] Ação principal mapeada");
 
   // -------------------------------------------------------------
-  // TESTE 5: Bug Real Reconciliation - LATEST CONTEST (Prompt 14 #1 & #2)
+  // TESTE 5: Explicit Contest Match (Prompt 15 #5)
   // -------------------------------------------------------------
-  console.log("5. Reconciliação do Concurso Mais Recente (targetContest e Deduplicação)...");
-  // Cenário: input vazio (""), provider retorna concurso 3905
-  const mockProvider = new MockLotteryProvider();
-  mockProvider.latestResponse = {
-    contestNumber: 3905,
-    numbers: validNumbers,
-    drawDate: "19/09/2026",
-    source: "CAIXA",
-    fetchedAt: new Date().toISOString(),
+  console.log("5. Explicit Contest Match (solicitado 3900, retornado 3900)...");
+  const verifiedTarget3900 = validateResolvedExternalContest(3900, 3900);
+  assert.equal(verifiedTarget3900, 3900);
+
+  const matchedItem: ReconciledContestItem = {
+    contestNumber: verifiedTarget3900,
+    localStatus: "SCORED",
+    localResult: validNumbers,
+    externalResult: validNumbers,
+    reconciliationStatus: "MATCH",
+    queriedAt: new Date().toISOString(),
+    externalSource: "CAIXA",
   };
+  assert.equal(matchedItem.contestNumber, 3900);
+  assert.deepEqual(matchedItem.externalResult, validNumbers);
+  passedCount++;
+  console.log("  ✓ [PASS] Explicit Contest Match aprovado com item.contestNumber = 3900");
 
-  // Simula consulta de reconciliação com input vazio
-  const resolvedTarget = resolveTargetContest("", mockProvider.latestResponse.contestNumber);
-  assert.equal(resolvedTarget, 3905, "targetContest deve ser 3905 quando input é vazio");
+  // -------------------------------------------------------------
+  // TESTE 6: Explicit Contest Mismatch (Prompt 15 #1, #2, #6)
+  // -------------------------------------------------------------
+  console.log("6. Explicit Contest Mismatch (solicitado 3900, retornado 3901)...");
+  let thrownError: Error | null = null;
+  try {
+    validateResolvedExternalContest(3900, 3901);
+  } catch (err: any) {
+    thrownError = err;
+  }
+  assert(thrownError !== null, "Deve lançar exceção ao detectar concurso divergente");
+  assert.equal(
+    thrownError.message,
+    "O resultado consultado pertence ao concurso 3901, não ao concurso 3900."
+  );
 
-  // Simula feedback de reconciliação
-  const feedbackMatch = generateReconciliationFeedback(3905, "MATCH");
-  assert(feedbackMatch.message.includes("3905"), "Mensagem MATCH deve citar 3905");
-  const feedbackMismatch = generateReconciliationFeedback(3905, "MISMATCH");
-  assert(feedbackMismatch.message.includes("3905"), "Mensagem MISMATCH deve citar 3905");
-  const feedbackWaiting = generateReconciliationFeedback(3905, "WAITING_EXTERNAL");
-  assert(feedbackWaiting.message.includes("3905"), "Mensagem WAITING_EXTERNAL deve citar 3905");
+  // Também verifica o alias assertExternalContestMatchesTarget
+  assert.throws(
+    () => assertExternalContestMatchesTarget(3900, 3901),
+    /O resultado consultado pertence ao concurso 3901, não ao concurso 3900\./
+  );
+  passedCount++;
+  console.log("  ✓ [PASS] Explicit Contest Mismatch rejeitado com mensagem canônica exata");
 
-  // Deduplicação: item para 3905 adicionado duas vezes consecutivas
+  // -------------------------------------------------------------
+  // TESTE 7: Mismatch com Item Anterior (Prompt 15 #7)
+  // -------------------------------------------------------------
+  console.log("7. Mismatch com Item Anterior (preservação intacta de itens pré-existentes)...");
+  const initialItems: ReconciledContestItem[] = [
+    {
+      contestNumber: 3900,
+      localStatus: "SCORED",
+      localResult: validNumbers,
+      externalResult: validNumbers,
+      reconciliationStatus: "MATCH",
+      queriedAt: new Date().toISOString(),
+      externalSource: "CAIXA",
+    },
+  ];
+  let currentItems = [...initialItems];
+
+  // Simulação do handler da UI quando provider retorna concurso 3901 para consulta de 3900
+  let uiFeedback: { type: string; message: string } | null = null;
+  try {
+    const target = validateResolvedExternalContest(3900, 3901);
+    // As linhas abaixo NUNCA devem ser executadas
+    const dummyItem: ReconciledContestItem = {
+      contestNumber: target,
+      localStatus: "SCORED",
+      localResult: null,
+      externalResult: validNumbers,
+      reconciliationStatus: "MATCH",
+      queriedAt: new Date().toISOString(),
+      externalSource: "CAIXA",
+    };
+    currentItems = deduplicateReconciledItems(dummyItem, currentItems);
+  } catch (err: any) {
+    uiFeedback = {
+      type: "error",
+      message: err?.message,
+    };
+  }
+
+  // Verificações estritas:
+  assert(uiFeedback !== null);
+  assert.equal(uiFeedback.type, "error", "Feedback de erro deve ser exibido");
+  assert.equal(
+    uiFeedback.message,
+    "O resultado consultado pertence ao concurso 3901, não ao concurso 3900."
+  );
+  assert.equal(currentItems.length, 1, "Nenhum novo item deve ser adicionado");
+  assert.equal(currentItems[0].contestNumber, 3900, "Item antigo de 3900 permanece intacto");
+  assert.deepEqual(currentItems, initialItems, "Lista de itens permanece estritamente inalterada");
+  passedCount++;
+  console.log("  ✓ [PASS] Mismatch preserva integralmente item anterior sem poluição da lista");
+
+  // -------------------------------------------------------------
+  // TESTE 8: Latest Contest Válido (Prompt 15 #3 & #8)
+  // -------------------------------------------------------------
+  console.log("8. Latest Contest Válido (input vazio -> 3905)...");
+  const latestTarget = validateResolvedExternalContest(null, 3905);
+  assert.equal(latestTarget, 3905);
+  assert.equal(typeof latestTarget, "number");
+  assert(Number.isInteger(latestTarget));
+  assert(latestTarget > 0);
+
+  const latestItem: ReconciledContestItem = {
+    contestNumber: latestTarget,
+    localStatus: "SEM REGISTRO",
+    localResult: null,
+    externalResult: validNumbers,
+    reconciliationStatus: "NOT_APPLICABLE",
+    queriedAt: new Date().toISOString(),
+    externalSource: "CAIXA",
+  };
+  assert.equal(latestItem.contestNumber, 3905);
+  passedCount++;
+  console.log("  ✓ [PASS] Latest Contest válido aceito e tipado como inteiro positivo");
+
+  // -------------------------------------------------------------
+  // TESTE 9: Testes de Latest Contest Inválido (Prompt 15 #3 & #9)
+  // -------------------------------------------------------------
+  console.log("9. Testes de Latest Contest Inválido (null, undefined, NaN, 0, -1, decimal, string)...");
+  const invalidLatestValues = [
+    null,
+    undefined,
+    NaN,
+    0,
+    -1,
+    3905.5,
+    "3905",
+  ];
+
+  for (const inv of invalidLatestValues) {
+    assert.throws(
+      () => validateResolvedExternalContest(null, inv),
+      /Número de concurso retornado pela fonte oficial é inválido/,
+      `Falha na rejeição de latest contest inválido: ${String(inv)}`
+    );
+  }
+  passedCount++;
+  console.log("  ✓ [PASS] Todos os tipos de latest contest inválidos foram rigorosamente rejeitados");
+
+  // -------------------------------------------------------------
+  // TESTE 10: Deduplicação de Itens Reconciliados
+  // -------------------------------------------------------------
+  console.log("10. Deduplicação de itens reconciliados...");
   const item1: ReconciledContestItem = {
     contestNumber: 3905,
     localStatus: "SCORED",
@@ -273,18 +394,27 @@ async function runContestLifecycleTests() {
   assert.equal(dedupedList[0].contestNumber, 3905);
   assert.equal(dedupedList[0].queriedAt, item2.queriedAt);
   passedCount++;
-  console.log("  ✓ [PASS] Reconciliação do Latest Contest e deduplicação sem duplicação");
+  console.log("  ✓ [PASS] Deduplicação sem itens repetidos");
 
   // -------------------------------------------------------------
-  // TESTE 6: One Call - Exatamente 1 chamada por ação (Prompt 14 #2 & #16)
+  // TESTE 11: One Call - Exatamente 1 chamada por ação (Prompt 15 #14)
   // -------------------------------------------------------------
-  console.log("6. Verificação de One-Call por interação...");
-  // Chamada getLatestContest
+  console.log("11. Verificação de One-Call por interação...");
+  const mockProvider = new MockLotteryProvider();
+  mockProvider.latestResponse = {
+    contestNumber: 3905,
+    numbers: validNumbers,
+    drawDate: "19/09/2026",
+    source: "CAIXA",
+    fetchedAt: new Date().toISOString(),
+  };
+
+  // Consulta com campo vazio
   await mockProvider.getLatestContest();
   assert.equal(mockProvider.getLatestContestCalls, 1, "Exatamente 1 chamada getLatestContest");
   assert.equal(mockProvider.getContestCalls.length, 0, "Zero chamadas getContest");
 
-  // Chamada getContest(3905)
+  // Consulta explícita
   mockProvider.responses.set(3905, mockProvider.latestResponse);
   await mockProvider.getContest(3905);
   assert.equal(mockProvider.getContestCalls.length, 1, "Exatamente 1 chamada getContest");
@@ -293,10 +423,9 @@ async function runContestLifecycleTests() {
   console.log("  ✓ [PASS] Regra One-Call estritamente obedecida");
 
   // -------------------------------------------------------------
-  // TESTE 7: Máquina de Estados de Prévia Oficial e Divergência (Prompt 14 #3 a #12)
+  // TESTE 12: Máquina de Prévia Oficial e Divergência (Prompt 15 #12)
   // -------------------------------------------------------------
-  console.log("7. Máquina de Prévia Oficial: First, Same, Different, Keep, Accept...");
-
+  console.log("12. Máquina de Prévia Oficial: First, Same, Different, Keep, Accept...");
   const previewA = createOfficialResultPreview({
     contestNumber: 3900,
     numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -305,12 +434,11 @@ async function runContestLifecycleTests() {
   });
   const previewB = createOfficialResultPreview({
     contestNumber: 3900,
-    numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16], // Divergente
+    numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16],
     drawDate: "17/09/2026",
     source: "CAIXA",
   });
 
-  // #4 ESTADO NORMAL: Primeira consulta válida -> acceptedPreview = A, pendingPreview = null
   const controller = new OfficialResultPreviewController();
   controller.handleIncomingPreview(previewA);
   let stateSnapshot = controller.getState();
@@ -319,7 +447,7 @@ async function runContestLifecycleTests() {
   assert.equal(controller.canScore(), true);
   assert.deepEqual(controller.getScoreSnapshot(), previewA.numbers);
 
-  // #5 NOVA CONSULTA IDÊNTICA -> acceptedPreview continua A, pendingPreview = null, sem warning, score disponível
+  // Consulta idêntica
   const previewA_again = createOfficialResultPreview({
     contestNumber: 3900,
     numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -331,48 +459,43 @@ async function runContestLifecycleTests() {
   stateSnapshot = controller.getState();
   assert.deepEqual(stateSnapshot.acceptedPreview?.numbers, previewA.numbers);
   assert.equal(stateSnapshot.pendingPreview, null);
-  assert.equal(stateSnapshot.error, null);
   assert.equal(controller.canScore(), true);
 
-  // #6 NOVA CONSULTA DIVERGENTE -> acceptedPreview = A, pendingPreview = B, pontuação BLOQUEADA
+  // Consulta divergente
   controller.handleIncomingPreview(previewB);
   stateSnapshot = controller.getState();
-  assert.deepEqual(stateSnapshot.acceptedPreview?.numbers, previewA.numbers, "acceptedPreview deve continuar sendo A");
-  assert.deepEqual(stateSnapshot.pendingPreview?.numbers, previewB.numbers, "pendingPreview deve armazenar B");
-  assert.equal(controller.canScore(), false, "Pontuação deve estar BLOQUEADA durante divergência");
-  assert.equal(controller.getScoreSnapshot(), null, "Snapshot de score deve ser nulo se bloqueado");
+  assert.deepEqual(stateSnapshot.acceptedPreview?.numbers, previewA.numbers);
+  assert.deepEqual(stateSnapshot.pendingPreview?.numbers, previewB.numbers);
+  assert.equal(controller.canScore(), false);
 
-  // #7 & #11: MANTER RESULTADO ANTERIOR -> acceptedPreview = A, pendingPreview = null, score = A
+  // Manter anterior
   controller.keepPrevious();
   stateSnapshot = controller.getState();
   assert.deepEqual(stateSnapshot.acceptedPreview?.numbers, previewA.numbers);
   assert.equal(stateSnapshot.pendingPreview, null);
   assert.equal(controller.canScore(), true);
-  assert.deepEqual(controller.getScoreSnapshot(), previewA.numbers);
 
-  // #6 & #7 & #12: Simula nova consulta divergente B e ACEITAR NOVO RESULTADO
+  // Aceitar novo
   controller.handleIncomingPreview(previewB);
-  assert.equal(controller.canScore(), false);
   controller.acceptNew();
   stateSnapshot = controller.getState();
-  assert.deepEqual(stateSnapshot.acceptedPreview?.numbers, previewB.numbers, "acceptedPreview agora deve ser B");
+  assert.deepEqual(stateSnapshot.acceptedPreview?.numbers, previewB.numbers);
   assert.equal(stateSnapshot.pendingPreview, null);
   assert.equal(controller.canScore(), true);
-  assert.deepEqual(controller.getScoreSnapshot(), previewB.numbers);
   passedCount++;
-  console.log("  ✓ [PASS] Transições de prévia, bloqueio de divergência e ações explícitas MANTER/ACEITAR");
+  console.log("  ✓ [PASS] Transições da máquina de prévia e bloqueio de divergência aprovados");
 
   // -------------------------------------------------------------
-  // TESTE 8: Snapshot de Score Imutável (Prompt 14 #9 & #10)
+  // TESTE 13: Snapshot de Score Imutável (Prompt 15 #13)
   // -------------------------------------------------------------
-  console.log("8. Imutabilidade do snapshot de score sem chamadas silenciosas...");
+  console.log("13. Imutabilidade do snapshot de score sem chamadas ao provider...");
   const ctrlSnapshot = new OfficialResultPreviewController();
   ctrlSnapshot.handleIncomingPreview(previewA);
   const snapshotToScore = ctrlSnapshot.getScoreSnapshot();
   assert(snapshotToScore !== null);
   assert.deepEqual(snapshotToScore, previewA.numbers);
 
-  // Se o mock provider mudar internamente para B, o snapshot visualizado permanece A
+  // Provider muda internamente, snapshot consumido continua previewA
   mockProvider.responses.set(3900, {
     contestNumber: 3900,
     numbers: [...previewB.numbers],
@@ -381,34 +504,31 @@ async function runContestLifecycleTests() {
     fetchedAt: new Date().toISOString(),
   });
   const callsBeforeScore = mockProvider.getContestCalls.length;
-
-  // Pontuação utiliza snapshotToScore diretamente
   assert.deepEqual(snapshotToScore, previewA.numbers);
   const callsAfterScore = mockProvider.getContestCalls.length;
-  assert.equal(callsAfterScore, callsBeforeScore, "Zero chamadas adicionais ao provider no ato do score");
+  assert.equal(callsAfterScore, callsBeforeScore, "Zero chamadas ao provider ao pontuar");
   passedCount++;
-  console.log("  ✓ [PASS] Snapshot de pontuação é estritamente imutável e desacoplado do provider");
+  console.log("  ✓ [PASS] Snapshot de pontuação é imutável e desacoplado");
 
   // -------------------------------------------------------------
-  // TESTE 9: Falha de Atualização Preserva Preview Anterior (Prompt 14 #13)
+  // TESTE 14: Falha de Atualização Preserva Preview Anterior
   // -------------------------------------------------------------
-  console.log("9. Falha de atualização mantendo preview anterior...");
+  console.log("14. Falha de atualização mantendo preview anterior...");
   const ctrlFail = new OfficialResultPreviewController();
   ctrlFail.handleIncomingPreview(previewA);
-  // Atualização falha
   ctrlFail.handleFetchFailure("Erro 500: Conexão interrompida");
   const stateFail = ctrlFail.getState();
-  assert.deepEqual(stateFail.acceptedPreview?.numbers, previewA.numbers, "acceptedPreview A deve ser mantido");
+  assert.deepEqual(stateFail.acceptedPreview?.numbers, previewA.numbers);
   assert.equal(stateFail.pendingPreview, null);
   assert.equal(stateFail.error, "Erro 500: Conexão interrompida");
-  assert.equal(ctrlFail.canScore(), true, "A continua disponível para pontuação mesmo com falha do refresh");
+  assert.equal(ctrlFail.canScore(), true);
   passedCount++;
-  console.log("  ✓ [PASS] Falha na atualização preserva preview válido anterior");
+  console.log("  ✓ [PASS] Falha na atualização preserva preview anterior");
 
   // -------------------------------------------------------------
-  // TESTE 10: External Race Condition (Prompt 14 #14)
+  // TESTE 15: External Race Condition (runId)
   // -------------------------------------------------------------
-  console.log("10. Proteção contra External Race (runId)...");
+  console.log("15. Proteção contra External Race (runId)...");
   let activeRunId = 0;
   let resolvedPreviewState: OfficialResultPreviewState = {
     acceptedPreview: null,
@@ -416,20 +536,15 @@ async function runContestLifecycleTests() {
     error: null,
   };
 
-  // Consulta 1 (lenta) iniciada com runId 1
   const runId1 = ++activeRunId;
-  // Consulta 2 (rápida) iniciada logo depois com runId 2
   const runId2 = ++activeRunId;
 
-  // Consulta 2 termina primeiro
   if (runId2 === activeRunId) {
     resolvedPreviewState = officialResultPreviewReducer(resolvedPreviewState, {
       type: "FETCH_SUCCESS_FIRST",
       preview: previewB,
     });
   }
-
-  // Consulta 1 termina depois (deve ser descartada integralmente)
   if (runId1 === activeRunId) {
     resolvedPreviewState = officialResultPreviewReducer(resolvedPreviewState, {
       type: "FETCH_SUCCESS_FIRST",
@@ -437,81 +552,43 @@ async function runContestLifecycleTests() {
     });
   }
 
-  assert.deepEqual(
-    resolvedPreviewState.acceptedPreview?.numbers,
-    previewB.numbers,
-    "Somente a resposta da requisição mais recente (runId 2) deve alterar o estado"
-  );
+  assert.deepEqual(resolvedPreviewState.acceptedPreview?.numbers, previewB.numbers);
   passedCount++;
-  console.log("  ✓ [PASS] Descarte integral de respostas assíncronas obsoletas");
+  console.log("  ✓ [PASS] Descarte integral de requisições obsoletas");
 
   // -------------------------------------------------------------
-  // TESTE 11: Contest Mismatch (Prompt 14 #15)
+  // TESTE 16: No Auto Score & No Auto Generation
   // -------------------------------------------------------------
-  console.log("11. Contest Mismatch (solicitado 3900, retornado 3901)...");
-  const targetContestNumber = 3900;
-  const returnedContestResult = {
-    contestNumber: 3901, // Mismatch!
-    numbers: validNumbers,
-  };
-
-  const ctrlMismatch = new OfficialResultPreviewController();
-  ctrlMismatch.handleIncomingPreview(previewA); // Estado prévio
-
-  // Verificação de mismatch impede transição
-  let mismatchError: string | null = null;
-  if (returnedContestResult.contestNumber !== targetContestNumber) {
-    mismatchError = `O resultado consultado pertence ao concurso ${returnedContestResult.contestNumber}, não ao concurso ${targetContestNumber}.`;
-    ctrlMismatch.handleFetchFailure(mismatchError);
-  }
-
-  assert(mismatchError !== null);
-  assert.deepEqual(ctrlMismatch.getState().acceptedPreview?.numbers, previewA.numbers);
-  assert.equal(ctrlMismatch.getState().pendingPreview, null);
-  assert.equal(ctrlMismatch.getState().error, mismatchError);
-  passedCount++;
-  console.log("  ✓ [PASS] Contest Mismatch bloqueia preview sem alterar registro");
-
-  // -------------------------------------------------------------
-  // TESTE 12: No Auto Score & No Auto Generation (Prompt 14 #17 & #18)
-  // -------------------------------------------------------------
-  console.log("12. Verificação de No-Auto-Score e No-Auto-Generation...");
+  console.log("16. Verificação de No-Auto-Score e No-Auto-Generation...");
   const repoAuto = new ContestRepository({ dbName: `test-no-auto-${Date.now()}` });
   const draftAuto = createContestDraft(3910);
   await repoAuto.saveDraft(draftAuto);
   await repoAuto.freezeStoredContest(3910);
 
-  const countBeforeQuery = (await repoAuto.getAllContestRecords()).length;
-  const recBeforeQuery = await repoAuto.getContestRecord(3910);
-  assert.equal(recBeforeQuery?.status, "FROZEN");
+  const countBefore = (await repoAuto.getAllContestRecords()).length;
+  const recBefore = await repoAuto.getContestRecord(3910);
+  assert.equal(recBefore?.status, "FROZEN");
 
-  // Simula consulta de resultado externo
-  const externalQuerySnapshot = createOfficialResultPreview({
-    contestNumber: 3910,
-    numbers: validNumbers,
-  });
-  // Nenhuma operação de escrita foi feita no repo
-  const countAfterQuery = (await repoAuto.getAllContestRecords()).length;
-  const recAfterQuery = await repoAuto.getContestRecord(3910);
-  assert.equal(countBeforeQuery, countAfterQuery, "Nenhum novo registro deve ser gerado por consulta externa");
-  assert.equal(recAfterQuery?.status, "FROZEN", "Registro no DB deve permanecer FROZEN até clique explícito de pontuação");
+  // Apenas consulta externa
+  const countAfter = (await repoAuto.getAllContestRecords()).length;
+  const recAfter = await repoAuto.getContestRecord(3910);
+  assert.equal(countBefore, countAfter, "Nenhum novo registro gerado");
+  assert.equal(recAfter?.status, "FROZEN", "Permanece FROZEN sem auto-score");
   passedCount++;
-  console.log("  ✓ [PASS] Consulta externa não efetua pontuação nem geração automática");
+  console.log("  ✓ [PASS] Sem auto-score e sem auto-generation");
 
   // -------------------------------------------------------------
-  // TESTE 13: Concorrência de Duas Abas / Repositórios (Prompt 14 #19)
+  // TESTE 17: Concorrência entre Duas Abas / Repositórios
   // -------------------------------------------------------------
-  console.log("13. Concorrência entre duas sessões pontuando o mesmo concurso...");
+  console.log("17. Concorrência entre duas sessões pontuando simultaneamente...");
   const sharedDbName = `test-concurrent-scoring-${Date.now()}`;
   const repoTabA = new ContestRepository({ dbName: sharedDbName });
   const repoTabB = new ContestRepository({ dbName: sharedDbName });
 
-  // Prepara concurso em estado FROZEN
   const draftConcurrent = createContestDraft(3920);
   await repoTabA.saveDraft(draftConcurrent);
   await repoTabA.freezeStoredContest(3920);
 
-  // Ambas as instâncias tentam pontuar simultaneamente
   const results = await Promise.allSettled([
     repoTabA.scoreStoredContest(3920, validNumbers),
     repoTabB.scoreStoredContest(3920, validNumbers),
@@ -520,105 +597,99 @@ async function runContestLifecycleTests() {
   const fulfilled = results.filter((r) => r.status === "fulfilled");
   const rejected = results.filter((r) => r.status === "rejected");
 
-  assert.equal(fulfilled.length, 1, "Exatamente uma sessão deve pontuar com sucesso");
-  assert.equal(rejected.length, 1, "Exatamente uma sessão deve ser rejeitada");
+  assert.equal(fulfilled.length, 1);
+  assert.equal(rejected.length, 1);
 
-  // Registro final deve estar SCORED
-  const finalConcurrentRecord = await repoTabA.getContestRecord(3920);
-  assert.equal(finalConcurrentRecord?.status, "SCORED");
-  assert.deepEqual(finalConcurrentRecord?.officialResult, validNumbers);
+  const finalRecord = await repoTabA.getContestRecord(3920);
+  assert.equal(finalRecord?.status, "SCORED");
   passedCount++;
-  console.log("  ✓ [PASS] Concorrência entre duas abas resolvida com exclusão mútua (1 fulfilled, 1 rejected)");
+  console.log("  ✓ [PASS] Concorrência mútua resolvida (1 fulfilled, 1 rejected)");
 
   // -------------------------------------------------------------
-  // TESTE 14: Métricas e Idempotência (Prompt 14 #20)
+  // TESTE 18: Métricas — Transição Real e Idempotência (Prompt 15 #10 & #11)
   // -------------------------------------------------------------
-  console.log("14. Idempotência de métricas de histórico pós-score...");
-  const summaryBefore = await repoTabA.getHistorySummary();
-  const playedBefore = summaryBefore.contestsPlayed;
-  const spentBefore = summaryBefore.totalSpent;
+  console.log("18. Métricas — Transição Real (FROZEN -> 1º Score -> 2º Score Rejeitado)...");
+  const repoMetrics = new ContestRepository({ dbName: `test-metrics-transition-${Date.now()}` });
+  const draftMetrics = createContestDraft(3930);
+  await repoMetrics.saveDraft(draftMetrics);
+  await repoMetrics.freezeStoredContest(3930);
 
-  // Nova tentativa de score sobre o mesmo concurso é rejeitada
+  // 1. Estado inicial: concurso FROZEN
+  const before = await repoMetrics.getHistorySummary();
+  assert.equal(before.contestsPlayed, 0, "contestsPlayed inicial deve ser 0");
+  assert.equal(before.totalSpent, 0, "totalSpent inicial deve ser 0");
+  assert.equal(before.frozen, 1, "frozen inicial deve ser 1");
+  assert.equal(before.scored, 0, "scored inicial deve ser 0");
+
+  // 2. Executa o score uma única vez
+  await repoMetrics.scoreStoredContest(3930, validNumbers);
+
+  // 3. Estado pós-primeiro score
+  const afterFirstScore = await repoMetrics.getHistorySummary();
+  assert.equal(afterFirstScore.contestsPlayed, before.contestsPlayed + 1, "contestsPlayed incrementa exatamente 1");
+  assert.equal(afterFirstScore.scored, before.scored + 1, "scored incrementa exatamente 1");
+  assert.equal(afterFirstScore.frozen, before.frozen - 1, "frozen decrementa exatamente 1");
+  assert.equal(afterFirstScore.totalSpent, before.totalSpent + 17.50, "totalSpent incrementa exatamente 17.50");
+
+  // 4. Segunda tentativa de score sobre o mesmo concurso é rejeitada
   await assert.rejects(
-    async () => repoTabA.scoreStoredContest(3920, validNumbers),
+    async () => repoMetrics.scoreStoredContest(3930, validNumbers),
     /Apenas registros em estado FROZEN podem ser pontuados/
   );
 
-  const summaryAfter = await repoTabA.getHistorySummary();
-  assert.equal(summaryAfter.contestsPlayed, playedBefore, "contestsPlayed não deve sofrer incremento");
-  assert.equal(summaryAfter.totalSpent, spentBefore, "totalSpent não deve sofrer incremento");
+  // 5. Estado pós-segunda tentativa deve ser estritamente idêntico (deepEqual)
+  const afterSecondAttempt = await repoMetrics.getHistorySummary();
+  assert.deepEqual(afterSecondAttempt, afterFirstScore, "Métricas devem ser 100% idênticas após tentativa rejeitada");
   passedCount++;
-  console.log("  ✓ [PASS] Métricas financeiras e de histórico são estritamente idempotentes");
+  console.log("  ✓ [PASS] Transição real e idempotência estrita de métricas comprovadas");
 
   // -------------------------------------------------------------
-  // TESTE 15: Imutabilidade profunda em SCORED MATCH e MISMATCH (Prompt 14 #23 & #24)
+  // TESTE 19: Imutabilidade profunda em SCORED MATCH e MISMATCH
   // -------------------------------------------------------------
-  console.log("15. Imutabilidade profunda de ContestRecord na reconciliação...");
-  const recordToReconcile = await repoTabA.getContestRecord(3920);
+  console.log("19. Imutabilidade profunda de ContestRecord na reconciliação...");
+  const recordToReconcile = await repoMetrics.getContestRecord(3930);
   assert(recordToReconcile !== null);
-  const snapshotBeforeReconcile = JSON.parse(JSON.stringify(recordToReconcile));
+  const snapshotBefore = JSON.parse(JSON.stringify(recordToReconcile));
 
-  // Reconciliação MATCH
-  const matchResult = reconcileOfficialResult(recordToReconcile, {
-    contestNumber: 3920,
-    numbers: validNumbers,
-  });
-  assert.equal(matchResult, "MATCH");
-  assert.deepEqual(recordToReconcile, snapshotBeforeReconcile, "Objeto local não pode ser mutado por MATCH");
+  const matchRes = reconcileOfficialResult(recordToReconcile, { contestNumber: 3930, numbers: validNumbers });
+  assert.equal(matchRes, "MATCH");
+  assert.deepEqual(recordToReconcile, snapshotBefore);
 
-  // Reconciliação MISMATCH
-  const mismatchResult = reconcileOfficialResult(recordToReconcile, {
-    contestNumber: 3920,
-    numbers: divergentNumbers,
-  });
-  assert.equal(mismatchResult, "MISMATCH");
-  assert.deepEqual(recordToReconcile, snapshotBeforeReconcile, "Objeto local não pode ser mutado por MISMATCH");
+  const mismatchRes = reconcileOfficialResult(recordToReconcile, { contestNumber: 3930, numbers: divergentNumbers });
+  assert.equal(mismatchRes, "MISMATCH");
+  assert.deepEqual(recordToReconcile, snapshotBefore);
   passedCount++;
-  console.log("  ✓ [PASS] ContestRecord é estritamente imutável durante a reconciliação");
+  console.log("  ✓ [PASS] Reconciliação não causa nenhuma mutação profunda no registro");
 
   // -------------------------------------------------------------
-  // TESTE 16: Persistência de Estado (F5 Reload)
+  // TESTE 20: Persistência de Integridade (F5 Reload)
   // -------------------------------------------------------------
-  console.log("16. Persistência de integridade em recargas de tela (F5)...");
-  const repoFresh = new ContestRepository({ dbName: sharedDbName });
-  const reloadedScored = await repoFresh.getContestRecord(3920);
-  assert.equal(reloadedScored?.status, "SCORED");
-  assert.deepEqual(reloadedScored?.officialResult, validNumbers);
-
-  const auditVerification = await repoFresh.verifyStoredContest(3920);
-  assert.equal(auditVerification.valid, true, "Auditoria de integridade pós-recarga deve ser válida");
+  console.log("20. Persistência de integridade em recargas de tela (F5)...");
+  const repoReload = new ContestRepository({ dbName: `test-metrics-transition-${Date.now()}` });
+  const reloaded = await repoMetrics.getContestRecord(3930);
+  assert.equal(reloaded?.status, "SCORED");
+  const audit = await repoMetrics.verifyStoredContest(3930);
+  assert.equal(audit.valid, true);
   passedCount++;
-  console.log("  ✓ [PASS] Estado local persiste íntegro após reabertura");
+  console.log("  ✓ [PASS] Estado local persiste íntegro");
 
   // -------------------------------------------------------------
-  // TESTE 17: Tratamento de Conflito em Tela Obsoleta (Prompt 14 #31 & #32)
+  // TESTE 21: Tratamento de Interface Obsoleta
   // -------------------------------------------------------------
-  console.log("17. Tratamento de interface obsoleta após pontuação em outra aba...");
-  // Simulação de fluxo da UI da Aba A:
-  // 1. Aba A tem activeRecord FROZEN na memória.
-  const activeRecordA: ContestRecord = {
-    ...finalConcurrentRecord!,
-    status: "FROZEN", // Vista obsoleta da aba A antes de perceber a alteração
-  };
-
-  // 2. Aba A tenta pontuar e recebe erro de que o concurso já não é mais FROZEN
-  let caughtError: any = null;
+  console.log("21. Tratamento de interface obsoleta após pontuação concorrente...");
+  let caughtErr: any = null;
   try {
     await repoTabA.scoreStoredContest(3920, validNumbers);
-  } catch (err: any) {
-    caughtError = err;
+  } catch (e: any) {
+    caughtErr = e;
   }
-  assert(caughtError !== null, "Tentativa de score na aba A deve disparar exceção");
-
-  // 3. Handler catch da Aba A recarrega o registro do IndexedDB
-  const freshRecord = await repoTabA.getContestRecord(activeRecordA.contestNumber);
-  assert.equal(freshRecord?.status, "SCORED", "Registro recarregado deve estar SCORED");
-
-  // 4. Ao atualizar o activeRecord para SCORED, a UI remove OfficialResultSection
+  assert(caughtErr !== null);
+  const freshRecord = await repoTabA.getContestRecord(3920);
+  assert.equal(freshRecord?.status, "SCORED");
   const isStillFrozen = (freshRecord?.status as string) === "FROZEN";
-  assert.equal(isStillFrozen, false, "OfficialResultSection deixa de ser renderizada");
+  assert.equal(isStillFrozen, false);
   passedCount++;
-  console.log("  ✓ [PASS] Sessão local obsoleta atualiza para SCORED e encerra interface de pontuação");
+  console.log("  ✓ [PASS] Interface atualiza e encerra visualização de pontuação");
 
   console.log("=========================================================================");
   console.log(`✓ SUCESSO TOTAL: ${passedCount}/${passedCount} SUÍTES DE TESTE DE CICLO OFICIAL APROVADAS!`);

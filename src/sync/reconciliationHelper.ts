@@ -34,6 +34,45 @@ export function resolveTargetContest(
 }
 
 /**
+ * Valida o concurso retornado pela fonte externa contra o concurso alvo.
+ * - Se targetContestRequested foi especificado (input não-vazio), exige correspondência exata.
+ *   Em caso de divergência, lança erro explícito:
+ *   "O resultado consultado pertence ao concurso <externo>, não ao concurso <alvo>."
+ * - Se targetContestRequested for null (input vazio), valida que externalContestNumber
+ *   é um inteiro positivo estrito (> 0, não-nulo, não-NaN, não-decimal, não-string).
+ * 
+ * Retorna o targetContest certificado ou lança erro explicativo para abortar a reconciliação.
+ */
+export function validateResolvedExternalContest(
+  targetContestRequested: number | null,
+  externalContestNumber: unknown
+): number {
+  if (
+    typeof externalContestNumber !== "number" ||
+    !Number.isInteger(externalContestNumber) ||
+    isNaN(externalContestNumber) ||
+    externalContestNumber <= 0
+  ) {
+    throw new Error(
+      `Número de concurso retornado pela fonte oficial é inválido: ${String(externalContestNumber)}.`
+    );
+  }
+
+  if (targetContestRequested !== null) {
+    if (externalContestNumber !== targetContestRequested) {
+      throw new Error(
+        `O resultado consultado pertence ao concurso ${externalContestNumber}, não ao concurso ${targetContestRequested}.`
+      );
+    }
+    return targetContestRequested;
+  }
+
+  return externalContestNumber;
+}
+
+export const assertExternalContestMatchesTarget = validateResolvedExternalContest;
+
+/**
  * Deduplica a lista de itens reconciliados, mantendo o item mais recente no topo.
  * Garante que nunca haverá mais de um item para o mesmo contestNumber.
  */
