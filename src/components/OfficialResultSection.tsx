@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useReducer } from "react";
 import { Ball } from "./Ball.tsx";
 import {
   Globe,
@@ -9,6 +9,7 @@ import {
   Edit3,
   RefreshCw,
   AlertTriangle,
+  ArrowRightLeft,
 } from "lucide-react";
 import {
   LotteryFetchError,
@@ -17,8 +18,13 @@ import {
 import {
   validateOfficialResult,
   createOfficialResultPreview,
-  type OfficialResultPreview,
 } from "../sync/operationalState.ts";
+import {
+  officialResultPreviewReducer,
+  INITIAL_OFFICIAL_PREVIEW_STATE,
+  evaluateIncomingPreviewAction,
+  canScoreOfficialPreview,
+} from "../sync/officialResultPreviewState.ts";
 import { ResultInputGrid } from "./ResultInputGrid.tsx";
 
 interface OfficialResultSectionProps {
@@ -34,14 +40,16 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<"fetch" | "manual">("fetch");
   const [isFetching, setIsFetching] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [previewResult, setPreviewResult] = useState<OfficialResultPreview | null>(null);
 
-  // Divergência entre duas consultas válidas consecutivas para o mesmo concurso (Seção 24)
-  const [divergenceWarning, setDivergenceWarning] = useState<string | null>(null);
-  const [divergenceBlocked, setDivergenceBlocked] = useState<boolean>(false);
+  // Máquina de estados pura para prévias e divergências
+  const [previewState, dispatch] = useReducer(
+    officialResultPreviewReducer,
+    INITIAL_OFFICIAL_PREVIEW_STATE
+  );
 
-  // Serialização de requisições externas e proteção contra race condition (Seção 44)
+  const { acceptedPreview, pendingPreview, error: fetchError } = previewState;
+
+  // Serialização de requisições externas e proteção contra race condition
   const fetchRunIdRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(true);
 
@@ -54,67 +62,47 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
 
   // Limpa estado se o contestNumber mudar
   useEffect(() => {
-    setPreviewResult(null);
-    setFetchError(null);
-    setDivergenceWarning(null);
-    setDivergenceBlocked(false);
+    dispatch({ type: "CLEAR" });
   }, [contestNumber]);
 
   /**
    * Consulta a fonte oficial CAIXA disparada exclusivamente por ação do usuário.
    * Regras estritas:
-   * - Exatamente 1 chamada por clique (Seção 3).
-   * - Descarte de respostas obsoletas via runId (Seção 44 e 45).
-   * - Preservação do preview anterior se a nova consulta falhar (Seção 23).
-   * - Detecção de concurso divergente (Seção 15 e 16).
-   * - Detecção de resultado divergente em relação à consulta anterior (Seção 24).
-   * - Validação das 15 dezenas (Seção 17).
+   * - Exatamente 1 chamada por clique.
+   * - Descarte de respostas obsoletas via runId.
+   * - Preservação do preview anterior se a nova consulta falhar.
+   * - Detecção de concurso divergente.
+   * - Detecção de resultado divergente com preservação de acceptedPreview e pendingPreview.
+   * - Validação das 15 dezenas.
    */
   const handleFetchOfficial = async () => {
     const currentRunId = ++fetchRunIdRef.current;
     setIsFetching(true);
-    setFetchError(null);
 
     try {
       const provider = getLotteryProvider();
       // Exatamente 1 chamada ao provider
       const response = await provider.getContest(contestNumber);
 
-      // Verificação de desmonte e corrida assíncrona
+      // Verificação de desmonte e corrida assíncrona (External Race)
       if (!isMountedRef.current || currentRunId !== fetchRunIdRef.current) {
         return;
       }
 
-      // Regra 15 & 16: Concurso Exato
+      // Regra: Concurso Exato (Contest Mismatch)
       if (response.contestNumber !== contestNumber) {
-        setFetchError(
-          `O resultado consultado pertence ao concurso ${response.contestNumber}, não ao concurso ${contestNumber}.`
-        );
+        dispatch({
+          type: "FETCH_FAILURE",
+          error: `O resultado consultado pertence ao concurso ${response.contestNumber}, não ao concurso ${contestNumber}.`,
+        });
         return;
       }
 
-      // Regra 17: Validação rigorosa das 15 dezenas
+      // Validação rigorosa das 15 dezenas
       const validatedNumbers = validateOfficialResult(response.numbers);
 
-      // Regra 24: Se já havia um preview para este concurso e o resultado diverge
-      if (previewResult && previewResult.contestNumber === contestNumber) {
-        const isSameNumbers =
-          previewResult.numbers.length === validatedNumbers.length &&
-          previewResult.numbers.every((val, idx) => val === validatedNumbers[idx]);
-
-        if (!isSameNumbers) {
-          setDivergenceWarning(
-            "ATENÇÃO: a fonte oficial retornou um resultado diferente da consulta anterior."
-          );
-          setDivergenceBlocked(true);
-        } else {
-          setDivergenceWarning(null);
-          setDivergenceBlocked(false);
-        }
-      }
-
-      // Regra 22: Criação de snapshot imutável do preview
-      const newPreview = createOfficialResultPreview({
+      // Criação de snapshot imutável do preview recebido
+      const incomingPreview = createOfficialResultPreview({
         contestNumber: response.contestNumber,
         numbers: validatedNumbers,
         drawDate: response.drawDate,
@@ -122,39 +110,32 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
         source: response.source,
       });
 
-      setPreviewResult(newPreview);
+      // Avaliação contra o estado atual para transição canônica
+      const nextAction = evaluateIncomingPreviewAction(previewState, incomingPreview);
+      dispatch(nextAction);
     } catch (err: any) {
       if (!isMountedRef.current || currentRunId !== fetchRunIdRef.current) {
         return;
       }
 
-      // Regra 23: Preserva preview válido anterior e informa falha da atualização
+      // Preserva preview válido anterior e informa falha da atualização
+      let errorMessage = "Não foi possível consultar a fonte oficial agora. Falha de rede ou conectividade.";
       if (err instanceof LotteryFetchError) {
         if (err.code === "NOT_FOUND") {
-          setFetchError(
-            `Resultado do concurso ${contestNumber} ainda não disponível na fonte oficial CAIXA.`
-          );
+          errorMessage = `Resultado do concurso ${contestNumber} ainda não disponível na fonte oficial CAIXA.`;
         } else if (err.code === "TIMEOUT") {
-          setFetchError(
-            "Tempo limite da consulta excedido (10s). Verifique sua conexão e tente novamente."
-          );
+          errorMessage = "Tempo limite da consulta excedido (10s). Verifique sua conexão e tente novamente.";
         } else if (
           err.code === "INVALID_PAYLOAD" ||
           err.code === "CONTEST_MISMATCH"
         ) {
-          setFetchError(
-            `A fonte respondeu, mas os dados são inválidos: ${err.message}. Nenhum resultado foi registrado.`
-          );
+          errorMessage = `A fonte respondeu, mas os dados são inválidos: ${err.message}. Nenhum resultado foi registrado.`;
         } else {
-          setFetchError(
-            `Não foi possível consultar o resultado: ${err.message}`
-          );
+          errorMessage = `Não foi possível consultar o resultado: ${err.message}`;
         }
-      } else {
-        setFetchError(
-          "Não foi possível consultar a fonte oficial agora. Falha de rede ou conectividade."
-        );
       }
+
+      dispatch({ type: "FETCH_FAILURE", error: errorMessage });
     } finally {
       if (isMountedRef.current && currentRunId === fetchRunIdRef.current) {
         setIsFetching(false);
@@ -163,27 +144,30 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
   };
 
   /**
-   * Confirmação explícita do usuário para pontuar o concurso (Regra 5 e 19).
-   * Utiliza exatamente o snapshot visualizado pelo usuário sem chamada silenciosa adicional (Regra 21).
+   * Confirmação explícita do usuário para pontuar o concurso.
+   * Utiliza exclusivamente acceptedPreview (Item 9).
    */
   const handleConfirmScore = async () => {
-    if (!previewResult) return;
-    if (divergenceBlocked) return;
+    if (!canScoreOfficialPreview(previewState) || !acceptedPreview) return;
 
-    // Pontua com o snapshot exato visualizado
-    await onSubmitResult([...previewResult.numbers]);
+    // Pontua com o snapshot exato de acceptedPreview
+    await onSubmitResult([...acceptedPreview.numbers]);
   };
 
   const handleCancelPreview = () => {
-    setPreviewResult(null);
-    setFetchError(null);
-    setDivergenceWarning(null);
-    setDivergenceBlocked(false);
+    dispatch({ type: "CLEAR" });
   };
 
-  const handleAcknowledgeDivergence = () => {
-    setDivergenceBlocked(false);
+  const handleKeepPrevious = () => {
+    dispatch({ type: "KEEP_PREVIOUS" });
   };
+
+  const handleAcceptNew = () => {
+    dispatch({ type: "ACCEPT_NEW" });
+  };
+
+  const isDivergent = pendingPreview !== null;
+  const canScore = canScoreOfficialPreview(previewState);
 
   return (
     <div
@@ -211,7 +195,6 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
             id="tab-mode-fetch"
             onClick={() => {
               setActiveTab("fetch");
-              setFetchError(null);
             }}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === "fetch"
@@ -227,7 +210,7 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
             id="tab-mode-manual"
             onClick={() => {
               setActiveTab("manual");
-              setPreviewResult(null);
+              dispatch({ type: "CLEAR" });
             }}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === "manual"
@@ -244,7 +227,7 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
       {/* MODO 1: Consulta Externa via Provider */}
       {activeTab === "fetch" && (
         <div className="space-y-4">
-          {!previewResult && (
+          {!acceptedPreview && (
             <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800/90 text-center space-y-4">
               <div className="space-y-1">
                 <p className="text-sm text-zinc-200 font-medium">
@@ -289,79 +272,108 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
                       Se o sorteio foi recente, aguarde alguns instantes ou use a aba "Digitar Manualmente".
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setFetchError(null)}
-                    className="text-zinc-400 hover:text-zinc-200 text-xs p-1"
-                    aria-label="Fechar erro"
-                  >
-                    ✕
-                  </button>
                 </div>
               )}
             </div>
           )}
 
-          {/* PRÉVIA OBRIGATÓRIA (Seção 18 e 22) */}
-          {previewResult && (
+          {/* PRÉVIA OBRIGATÓRIA */}
+          {acceptedPreview && (
             <div
               id="official-result-preview"
-              className="p-5 rounded-xl bg-zinc-950 border-2 border-emerald-500/50 space-y-5"
+              className={`p-5 rounded-xl bg-zinc-950 border-2 ${
+                isDivergent ? "border-amber-500/70" : "border-emerald-500/50"
+              } space-y-5`}
             >
+              {/* Header do Resultado Aceito/Atual */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-800">
                 <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
                   <CheckCircle2 className="w-5 h-5 shrink-0" />
-                  <span>RESULTADO OFICIAL DISPONÍVEL — Concurso {previewResult.contestNumber}</span>
+                  <span>
+                    {isDivergent
+                      ? `RESULTADO ANTERIOR (ACEITO) — Concurso ${acceptedPreview.contestNumber}`
+                      : `RESULTADO OFICIAL DISPONÍVEL — Concurso ${acceptedPreview.contestNumber}`}
+                  </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
-                  <span>Fonte: <strong className="text-zinc-200">{previewResult.source}</strong></span>
-                  {previewResult.drawDate && (
-                    <span>Data: <strong className="text-zinc-200">{previewResult.drawDate}</strong></span>
+                  <span>Fonte: <strong className="text-zinc-200">{acceptedPreview.source}</strong></span>
+                  {acceptedPreview.drawDate && (
+                    <span>Data: <strong className="text-zinc-200">{acceptedPreview.drawDate}</strong></span>
                   )}
-                  <span>Consulta: <strong className="text-zinc-200 font-mono text-[11px]">{new Date(previewResult.fetchedAt).toLocaleTimeString("pt-BR")}</strong></span>
+                  <span>Consulta: <strong className="text-zinc-200 font-mono text-[11px]">{new Date(acceptedPreview.fetchedAt).toLocaleTimeString("pt-BR")}</strong></span>
                 </div>
               </div>
 
-              {/* Dezenas Sorteadas da Prévia */}
-              <div>
-                <p className="text-xs text-zinc-400 mb-2 font-mono">
-                  15 DEZENAS OFICIAIS (ORDEM CRESCENTE):
+              {/* Dezenas Sorteadas de acceptedPreview */}
+              <div id="accepted-preview-numbers-container">
+                <p className="text-xs text-zinc-400 mb-2 font-mono font-medium">
+                  {isDivergent ? "RESULTADO ANTERIOR (15 DEZENAS):" : "15 DEZENAS OFICIAIS (ORDEM CRESCENTE):"}
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                  {previewResult.numbers.map((num) => (
-                    <Ball key={`preview-ball-${num}`} number={num} variant="official" />
+                  {acceptedPreview.numbers.map((num) => (
+                    <Ball key={`accepted-ball-${num}`} number={num} variant="official" />
                   ))}
                 </div>
               </div>
 
-              {/* Alerta de Divergência se duas consultas retornaram resultados diferentes (Seção 24) */}
-              {divergenceWarning && (
+              {/* ALERTA DE DIVERGÊNCIA E EXIBIÇÃO DE NOVO RESULTADO */}
+              {isDivergent && pendingPreview && (
                 <div
                   id="divergence-warning-banner"
                   role="alert"
-                  className="p-4 rounded-xl bg-red-950/40 border border-red-500/50 text-red-200 text-xs space-y-2"
+                  className="p-4 rounded-xl bg-amber-950/40 border border-amber-500/60 text-amber-200 text-xs space-y-4"
                 >
-                  <div className="flex items-center gap-2 font-bold text-red-300">
-                    <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                    <span>{divergenceWarning}</span>
+                  <div className="flex items-center gap-2 font-bold text-amber-300 text-sm">
+                    <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                    <span>DIVERGÊNCIA DETECTADA ENTRE CONSULTAS</span>
                   </div>
                   <p className="text-zinc-300 leading-relaxed">
-                    A pontuação foi bloqueada preventivamente para garantir que você esteja ciente da alteração do resultado retornado pela fonte oficial.
+                    A fonte oficial retornou um conjunto de dezenas diferente da consulta anterior para o concurso {acceptedPreview.contestNumber}.
+                    A pontuação foi <strong>bloqueada preventivamente</strong>. Escolha explicitamente qual resultado você deseja adotar.
                   </p>
-                  {divergenceBlocked && (
+
+                  {/* NOVO RESULTADO RETORNADO */}
+                  <div id="pending-preview-numbers-container" className="p-3.5 rounded-lg bg-zinc-900/90 border border-amber-500/40 space-y-2">
+                    <div className="flex items-center justify-between text-zinc-300">
+                      <span className="font-mono font-semibold text-amber-300">
+                        NOVO RESULTADO RETORNADO:
+                      </span>
+                      <span className="text-[11px] text-zinc-400">
+                        Consulta: {new Date(pendingPreview.fetchedAt).toLocaleTimeString("pt-BR")}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                      {pendingPreview.numbers.map((num) => (
+                        <Ball key={`pending-ball-${num}`} number={num} variant="official" />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ações Explícitas de Resolução de Divergência */}
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
                     <button
                       type="button"
-                      id="btn-confirm-divergent-preview"
-                      onClick={handleAcknowledgeDivergence}
-                      className="px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-700 text-white font-medium text-xs transition-colors cursor-pointer"
+                      id="btn-keep-previous-preview"
+                      onClick={handleKeepPrevious}
+                      className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-semibold text-xs transition-colors cursor-pointer border border-zinc-700 inline-flex items-center gap-1.5"
                     >
-                      CONFIRMAR RECONHECIMENTO DO NOVO RESULTADO
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>MANTER RESULTADO ANTERIOR</span>
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      id="btn-accept-new-preview"
+                      onClick={handleAcceptNew}
+                      className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5" />
+                      <span>ACEITAR NOVO RESULTADO</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Aviso de Confirmação Obrigatória (Regra 5) */}
+              {/* Aviso de Confirmação Obrigatória */}
               <div className="p-3.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300">
                 <p>
                   <strong>Atenção:</strong> A visualização desta prévia <em>não altera</em> o registro congelado nem recalcula pontuações no banco de dados.
@@ -369,20 +381,14 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
                 </p>
               </div>
 
-              {/* Erro de atualização caso tenha falhado mantendo o preview anterior (Regra 23) */}
+              {/* Erro de atualização caso tenha falhado mantendo o preview anterior */}
               {fetchError && (
                 <div
                   id="fetch-update-error-banner"
+                  role="alert"
                   className="p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between gap-2"
                 >
-                  <span>{fetchError} (Prévia válida anterior mantida).</span>
-                  <button
-                    type="button"
-                    onClick={() => setFetchError(null)}
-                    className="text-xs text-zinc-400 hover:text-zinc-200"
-                  >
-                    ✕
-                  </button>
+                  <span>{fetchError} (Prévia válida anterior mantida para pontuação).</span>
                 </div>
               )}
 
@@ -420,7 +426,7 @@ export const OfficialResultSection: React.FC<OfficialResultSectionProps> = ({
                   type="button"
                   id="btn-confirm-score-official"
                   onClick={handleConfirmScore}
-                  disabled={isLoading || isFetching || divergenceBlocked}
+                  disabled={isLoading || isFetching || !canScore}
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2 focus:ring-2 focus:ring-emerald-400"
                 >
                   {isLoading ? (

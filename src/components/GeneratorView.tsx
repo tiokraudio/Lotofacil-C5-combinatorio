@@ -531,6 +531,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             title: "Resultado Já Registrado",
             message: `O concurso ${updated.contestNumber} já foi pontuado em outra sessão. Registro recarregado.`,
           });
+          if (onRecordUpdated) onRecordUpdated();
           await refreshSync();
           return;
         }

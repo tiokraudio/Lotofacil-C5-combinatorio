@@ -19,6 +19,11 @@ import {
   type OfficialResultPreview,
   createOfficialResultPreview,
 } from "../sync/operationalState.ts";
+import {
+  resolveTargetContest,
+  deduplicateReconciledItems,
+  generateReconciliationFeedback,
+} from "../sync/reconciliationHelper.ts";
 
 export interface ReconciledContestItem {
   contestNumber: number;
@@ -62,13 +67,7 @@ export const ReconciliationSection: React.FC = () => {
       const allRecords = await repository.getAllContestRecords();
 
       // Determina qual concurso consultar: o informado no input ou o último registrado localmente
-      let contestToQuery: number | null = null;
-      if (targetContestInput.trim()) {
-        const parsed = parseInt(targetContestInput.trim(), 10);
-        if (!isNaN(parsed) && parsed > 0) {
-          contestToQuery = parsed;
-        }
-      }
+      let contestToQuery = resolveTargetContest(targetContestInput);
 
       const provider = getLotteryProvider();
       let externalData: any = null;
@@ -111,32 +110,10 @@ export const ReconciliationSection: React.FC = () => {
       };
 
       // Atualiza lista preservando as mais recentes no topo sem duplicatas
-      setReconciledItems((prev) => [
-        item,
-        ...prev.filter((i) => i.contestNumber !== contestToQuery),
-      ]);
+      setReconciledItems((prev) => deduplicateReconciledItems(item, prev));
 
-      if (status === "MATCH") {
-        setFeedback({
-          type: "success",
-          message: `Concurso ${contestToQuery}: Resultado armazenado é 100% IDÊNTICO ao retornado pela CAIXA (MATCH).`,
-        });
-      } else if (status === "MISMATCH") {
-        setFeedback({
-          type: "error",
-          message: `ALERTA DE RECONCILIAÇÃO: Resultado armazenado difere do resultado retornado atualmente pela fonte oficial para o concurso ${contestToQuery}.`,
-        });
-      } else if (status === "WAITING_EXTERNAL") {
-        setFeedback({
-          type: "info",
-          message: `Concurso ${contestToQuery}: Registro local aguardando apuração oficial.`,
-        });
-      } else {
-        setFeedback({
-          type: "info",
-          message: `Concurso ${contestToQuery}: Consulta realizada com sucesso na CAIXA.`,
-        });
-      }
+      // Feedback determinístico baseado exclusivamente no targetContest resolvido
+      setFeedback(generateReconciliationFeedback(targetContest, status));
     } catch (err: any) {
       if (!isMountedRef.current || currentRunId !== runIdRef.current) {
         return;
