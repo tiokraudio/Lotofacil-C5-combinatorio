@@ -98,8 +98,8 @@ export async function performAppBootstrap(options?: BootstrapOptions): Promise<A
 
     // 2. Verificação de Integridade do Manifesto e Versões
     if (
-      APP_VERSION !== "1.5.0" ||
-      APPLICATION_MANIFEST.appVersion !== "1.5.0" ||
+      APP_VERSION !== "1.6.0" ||
+      APPLICATION_MANIFEST.appVersion !== "1.6.0" ||
       C5_ALGORITHM_VERSION !== "C5-1.0.0" ||
       APPLICATION_MANIFEST.algorithmVersion !== "C5-1.0.0" ||
       APPLICATION_MANIFEST.canonicalSlots.length !== 25

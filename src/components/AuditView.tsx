@@ -27,6 +27,7 @@ import {
   type SelfDiagnosticResult,
 } from "../system/selfDiagnostic.ts";
 import { APPLICATION_MANIFEST } from "../system/manifest.ts";
+import { refreshCoordinator } from "../system/refreshCoordinator.ts";
 
 interface AuditViewProps {
   onImportSuccess?: () => void;
@@ -94,10 +95,18 @@ export const AuditView: React.FC<AuditViewProps> = ({ onImportSuccess }) => {
   useEffect(() => {
     isMountedRef.current = true;
     handleRunAudit();
+
+    const unsub = refreshCoordinator.subscribe(() => {
+      if (isMountedRef.current) {
+        handleRunAudit();
+      }
+    });
+
     return () => {
       isMountedRef.current = false;
       auditRunIdRef.current++;
       diagRunIdRef.current++;
+      unsub();
     };
   }, []);
 

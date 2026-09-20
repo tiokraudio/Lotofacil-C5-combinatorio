@@ -244,4 +244,5 @@ export interface StorageOptions {
   dbName?: string;
   clock?: Clock;
   notifyCoordinator?: boolean;
+  refreshCoordinator?: any;
 }

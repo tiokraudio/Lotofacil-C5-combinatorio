@@ -11,6 +11,7 @@ import {
   performAppBootstrap,
 } from "./system/bootstrap.ts";
 import { refreshCoordinator } from "./system/refreshCoordinator.ts";
+import { localSyncCoordinator } from "./system/localSyncCoordinator.ts";
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTab>("generator");

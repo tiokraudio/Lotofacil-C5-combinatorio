@@ -22,7 +22,7 @@ import {
 } from "./db.ts";
 import { C5_ALGORITHM_VERSION } from "../c5/version.ts";
 import { APP_VERSION } from "../system/manifest.ts";
-import { refreshCoordinator } from "../system/refreshCoordinator.ts";
+import { type RefreshCoordinator, refreshCoordinator } from "../system/refreshCoordinator.ts";
 import {
   BET_PRICE,
   BETS_PER_CONTEST,
@@ -122,6 +122,10 @@ export class ContestRepository {
     return this.options?.notifyCoordinator !== false;
   }
 
+  private getRefreshCoordinator(): RefreshCoordinator {
+    return this.options?.refreshCoordinator ?? refreshCoordinator;
+  }
+
   private async getDB(): Promise<IDBDatabase> {
     return openDatabase(this.options);
   }
@@ -171,7 +175,7 @@ export class ContestRepository {
       await promisifyRequest(store.add(clone));
       await waitForTransaction(tx);
       if (this.shouldNotifyCoordinator()) {
-        refreshCoordinator.notifyMutationCommitted("SAVE");
+        this.getRefreshCoordinator().notifyMutationCommitted("SAVE", record.contestNumber);
       }
     } catch (err: any) {
       if (
@@ -208,7 +212,7 @@ export class ContestRepository {
 
       await waitForTransaction(tx);
       if (this.shouldNotifyCoordinator()) {
-        refreshCoordinator.notifyMutationCommitted("IMPORT");
+        this.getRefreshCoordinator().notifyMutationCommitted("IMPORT");
       }
     } catch (err: any) {
       if (
@@ -315,7 +319,7 @@ export class ContestRepository {
       await promisifyRequest(store.put(clone));
       await waitForTransaction(tx);
       if (this.shouldNotifyCoordinator()) {
-        refreshCoordinator.notifyMutationCommitted("FREEZE");
+        this.getRefreshCoordinator().notifyMutationCommitted("FREEZE", contestNumber);
       }
 
       return deepCloneRecord(frozen);
@@ -396,7 +400,7 @@ export class ContestRepository {
       await promisifyRequest(store.put(clone));
       await waitForTransaction(tx);
       if (this.shouldNotifyCoordinator()) {
-        refreshCoordinator.notifyMutationCommitted("SCORE");
+        this.getRefreshCoordinator().notifyMutationCommitted("SCORE", contestNumber);
       }
 
       return deepCloneRecord(scored);
@@ -449,7 +453,7 @@ export class ContestRepository {
       await promisifyRequest(store.delete(contestNumber));
       await waitForTransaction(tx);
       if (this.shouldNotifyCoordinator()) {
-        refreshCoordinator.notifyMutationCommitted("DELETE");
+        this.getRefreshCoordinator().notifyMutationCommitted("DELETE", contestNumber);
       }
     } finally {
       closeDatabase(db);

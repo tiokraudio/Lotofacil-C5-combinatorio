@@ -88,14 +88,59 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     return unsub;
   }, []);
 
+  // Referência segura para o concurso atualmente aberto na interface
+  const activeRecordRef = useRef<ContestRecord | null>(null);
+  activeRecordRef.current = activeRecord;
+
   // 1. Carrega registros locais com tratamento estrito de erro de persistência (ZERO CHAMADAS DE REDE)
-  const refreshLocalState = useCallback(async () => {
+  const refreshLocalState = useCallback(async (isRemoteSync = false) => {
     const sequenceId = ++syncSequenceRef.current;
     try {
       const records = await repository.getAllContestRecords();
       if (sequenceId === syncSequenceRef.current) {
         setLocalRecords(records);
         setStorageBlocked(false);
+      }
+
+      // Se houver concurso ativo aberto na tela, relê da Fonte Única da Verdade (IndexedDB)
+      const currentActive = activeRecordRef.current;
+      if (currentActive) {
+        const freshRecord = await repository.getContestRecord(currentActive.contestNumber);
+        if (sequenceId === syncSequenceRef.current) {
+          if (!freshRecord) {
+            // Concurso foi excluído em outra aba (DELETE remoto)
+            setActiveRecord(null);
+            setShowFreezeConfirm(false);
+            setShowDiscardConfirm(false);
+            if (isRemoteSync) {
+              setFeedback({
+                type: "info",
+                title: "Concurso Atualizado",
+                message: "Este concurso foi atualizado em outra aba. Os dados exibidos foram recarregados.",
+              });
+            }
+          } else {
+            // Verifica se houve alteração semântica (status, integridade ou atualização)
+            const hasChanged =
+              freshRecord.status !== currentActive.status ||
+              freshRecord.integrityHash !== currentActive.integrityHash ||
+              freshRecord.frozenAt !== currentActive.frozenAt ||
+              freshRecord.scoredAt !== currentActive.scoredAt;
+
+            if (hasChanged) {
+              setActiveRecord(freshRecord);
+              setShowFreezeConfirm(false);
+              setShowDiscardConfirm(false);
+              if (isRemoteSync) {
+                setFeedback({
+                  type: "info",
+                  title: "Concurso Atualizado",
+                  message: "Este concurso foi atualizado em outra aba. Os dados exibidos foram recarregados.",
+                });
+              }
+            }
+          }
+        }
       }
     } catch (storageErr: any) {
       if (sequenceId === syncSequenceRef.current) {
@@ -159,8 +204,8 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
 
   // Inscrição no coordenador global de atualizações persistentes (apenas dados locais)
   useEffect(() => {
-    const unsub = refreshCoordinator.subscribe(() => {
-      refreshLocalState();
+    const unsub = refreshCoordinator.subscribe((_rev, _reason, _contestNumber, isRemote) => {
+      refreshLocalState(Boolean(isRemote));
     });
     return unsub;
   }, [refreshLocalState]);
