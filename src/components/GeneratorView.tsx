@@ -39,6 +39,10 @@ import { PrintSheet } from "./PrintSheet.tsx";
 import { actionLockController, type ActionLockState } from "../system/actionLock.ts";
 import { refreshCoordinator } from "../system/refreshCoordinator.ts";
 import { classifyOperationalError } from "../system/operationalErrors.ts";
+import {
+  GeneratorOperationalController,
+  type GeneratorOperationalState,
+} from "../system/generatorOperationalController.ts";
 
 interface GeneratorViewProps {
   onRecordUpdated?: () => void;
@@ -46,25 +50,25 @@ interface GeneratorViewProps {
 
 export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated }) => {
   const [contestInput, setContestInput] = useState<string>("");
-  const [activeRecord, setActiveRecord] = useState<ContestRecord | null>(null);
-  const [localRecords, setLocalRecords] = useState<ContestRecord[]>([]);
-  const [storageBlocked, setStorageBlocked] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isFetchingLatest, setIsFetchingLatest] = useState<boolean>(false);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [syncState, setSyncState] = useState<ContestSyncState | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
-  const syncSequenceRef = useRef<number>(0);
+
+  // Instancia e gerencia o ciclo operacional via GeneratorOperationalController de produção
+  const controllerRef = useRef<GeneratorOperationalController | null>(null);
+  if (!controllerRef.current) {
+    controllerRef.current = new GeneratorOperationalController(
+      repository,
+      refreshCoordinator,
+      getLotteryProvider
+    );
+  }
+  const controller = controllerRef.current;
+  const [opState, setOpState] = useState<GeneratorOperationalState>(controller.getState());
 
   // Verificação defensiva de Web Crypto
   const isCryptoAvailable = typeof window !== "undefined" && Boolean(window.crypto && window.crypto.subtle);
 
-  const [latestContestInfo, setLatestContestInfo] = useState<{
-    lastContest: number;
-    drawDate: string;
-    suggestedNext: number;
-  } | null>(null);
-  const [feedback, setFeedback] = useState<{
+  const [localFeedback, setLocalFeedback] = useState<{
     type: "success" | "error" | "warning" | "info";
     title?: string;
     message: string;
@@ -80,7 +84,23 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     currentOperation: actionLockController.getCurrentOperation(),
   });
 
-  const clearFeedback = () => setFeedback(null);
+  const clearFeedback = () => {
+    setLocalFeedback(null);
+    controller.clearFeedback();
+  };
+
+  const setFeedback = (
+    fb: {
+      type: "success" | "error" | "warning" | "info";
+      title?: string;
+      message: string;
+    } | null
+  ) => {
+    setLocalFeedback(fb);
+  };
+
+  // Feedback combinado (controller ou local)
+  const feedback = localFeedback || opState.feedback;
 
   // Inscrição no controlador de locks para feedback e bloqueio de cliques concorrentes
   useEffect(() => {
@@ -88,127 +108,51 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     return unsub;
   }, []);
 
-  // Referência segura para o concurso atualmente aberto na interface
-  const activeRecordRef = useRef<ContestRecord | null>(null);
-  activeRecordRef.current = activeRecord;
-
-  // 1. Carrega registros locais com tratamento estrito de erro de persistência (ZERO CHAMADAS DE REDE)
-  const refreshLocalState = useCallback(async (isRemoteSync = false) => {
-    const sequenceId = ++syncSequenceRef.current;
-    try {
-      const records = await repository.getAllContestRecords();
-      if (sequenceId === syncSequenceRef.current) {
-        setLocalRecords(records);
-        setStorageBlocked(false);
-      }
-
-      // Se houver concurso ativo aberto na tela, relê da Fonte Única da Verdade (IndexedDB)
-      const currentActive = activeRecordRef.current;
-      if (currentActive) {
-        const freshRecord = await repository.getContestRecord(currentActive.contestNumber);
-        if (sequenceId === syncSequenceRef.current) {
-          if (!freshRecord) {
-            // Concurso foi excluído em outra aba (DELETE remoto)
-            setActiveRecord(null);
-            setShowFreezeConfirm(false);
-            setShowDiscardConfirm(false);
-            if (isRemoteSync) {
-              setFeedback({
-                type: "info",
-                title: "Concurso Atualizado",
-                message: "Este concurso foi atualizado em outra aba. Os dados exibidos foram recarregados.",
-              });
-            }
-          } else {
-            // Verifica se houve alteração semântica (status, integridade ou atualização)
-            const hasChanged =
-              freshRecord.status !== currentActive.status ||
-              freshRecord.integrityHash !== currentActive.integrityHash ||
-              freshRecord.frozenAt !== currentActive.frozenAt ||
-              freshRecord.scoredAt !== currentActive.scoredAt;
-
-            if (hasChanged) {
-              setActiveRecord(freshRecord);
-              setShowFreezeConfirm(false);
-              setShowDiscardConfirm(false);
-              if (isRemoteSync) {
-                setFeedback({
-                  type: "info",
-                  title: "Concurso Atualizado",
-                  message: "Este concurso foi atualizado em outra aba. Os dados exibidos foram recarregados.",
-                });
-              }
-            }
-          }
-        }
-      }
-    } catch (storageErr: any) {
-      if (sequenceId === syncSequenceRef.current) {
-        setStorageBlocked(true);
-        const classified = classifyOperationalError(storageErr, "STORAGE_UNAVAILABLE");
-        setFeedback({
-          type: "error",
-          title: "Falha de Acesso ao Armazenamento",
-          message: classified.userMessage,
-        });
-      }
-    }
-  }, []);
-
-  // 2. Consulta externa explícita da CAIXA (acessada APENAS por ação do usuário, política one-call)
-  const refreshExternalSync = useCallback(async (): Promise<ContestSyncState | null> => {
-    if (!actionLockController.acquire("CAIXA_QUERY")) {
-      return null;
-    }
-    const sequenceId = ++syncSequenceRef.current;
-    setIsSyncing(true);
-    setIsFetchingLatest(true);
-    clearFeedback();
-
-    try {
-      const provider = getLotteryProvider();
-      const nextSync = await buildContestSyncState(provider, repository);
-
-      if (sequenceId === syncSequenceRef.current) {
-        setSyncState(nextSync);
-        if (nextSync.latestOfficialContest && nextSync.nextSuggestedContest) {
-          setLatestContestInfo({
-            lastContest: nextSync.latestOfficialContest,
-            drawDate: nextSync.latestDrawDate || "",
-            suggestedNext: nextSync.nextSuggestedContest,
-          });
-        }
-      }
-      return nextSync;
-    } catch (err: any) {
-      const classified = classifyOperationalError(err, "CAIXA_TEMPORARY_ERROR");
-      setFeedback({
-        type: "warning",
-        title: "Consulta Externa Indisponível",
-        message: classified.userMessage,
-      });
-      return null;
-    } finally {
-      actionLockController.release("CAIXA_QUERY");
-      if (sequenceId === syncSequenceRef.current) {
-        setIsSyncing(false);
-        setIsFetchingLatest(false);
-      }
-    }
-  }, []);
-
-  // Executa carregamento puramente local no carregamento inicial (ZERO PROVIDER CALLS NO BOOT)
+  // Inscrição no GeneratorOperationalController de produção
   useEffect(() => {
-    refreshLocalState();
-  }, [refreshLocalState]);
-
-  // Inscrição no coordenador global de atualizações persistentes (apenas dados locais)
-  useEffect(() => {
-    const unsub = refreshCoordinator.subscribe((_rev, _reason, _contestNumber, isRemote) => {
-      refreshLocalState(Boolean(isRemote));
+    const unsub = controller.subscribe((nextState) => {
+      setOpState(nextState);
+      if (!nextState.activeRecord) {
+        setShowFreezeConfirm(false);
+        setShowDiscardConfirm(false);
+      }
     });
-    return unsub;
-  }, [refreshLocalState]);
+    // Carregamento puramente local no boot (ZERO chamadas de rede)
+    controller.refreshLocalState(false);
+
+    return () => {
+      unsub();
+      controller.destroy();
+    };
+  }, [controller]);
+
+  // Estados operacionais sincronizados do controller de produção
+  const activeRecord = opState.activeRecord;
+  const localRecords = opState.localRecords;
+  const storageBlocked = opState.storageBlocked;
+  const syncState = opState.syncState;
+  const latestContestInfo = opState.latestContestInfo;
+  const isSyncing = opState.isSyncing;
+  const isFetchingLatest = opState.isFetchingLatest;
+
+  const setActiveRecord = useCallback(
+    (record: ContestRecord | null) => {
+      controller.setActiveRecord(record);
+    },
+    [controller]
+  );
+
+  const refreshLocalState = useCallback(
+    async (isRemoteSync = false) => {
+      await controller.refreshLocalState(isRemoteSync);
+    },
+    [controller]
+  );
+
+  const refreshExternalSync = useCallback(async (): Promise<ContestSyncState | null> => {
+    clearFeedback();
+    return await controller.refreshExternalSync();
+  }, [controller]);
 
   // Derivação pura e determinística da Ação Principal (Prompt 09 - Seção 2 e 9)
   const primaryAction = computePrimaryAction(syncState, localRecords);

@@ -872,6 +872,7 @@ export class ContestRepository {
  * Instância padrão compartilhada do repositório.
  */
 export const contestRepository = new ContestRepository();
+export const repository = contestRepository;
 
 // Funções delegadas para export direto compatível com a API solicitada
 export const saveDraft = (record: ContestRecord) => contestRepository.saveDraft(record);

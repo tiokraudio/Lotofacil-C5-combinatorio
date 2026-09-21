@@ -43,6 +43,55 @@ import {
 } from "../system/localSyncCoordinator.ts";
 import { createContestDraft } from "../c5/record.ts";
 import { closeDatabase } from "../storage/db.ts";
+import {
+  GeneratorOperationalController,
+  HistoryOperationalController,
+  AuditOperationalController,
+  AppSummaryController,
+} from "../system/generatorOperationalController.ts";
+import type {
+  LotteryResultProvider,
+  OfficialContestResult,
+} from "../lottery/types.ts";
+
+/**
+ * Mock determinístico e auditável do provedor oficial da CAIXA.
+ */
+class MockCaixaProvider implements LotteryResultProvider {
+  readonly providerName = "MockCaixaProvider";
+  public calls: { method: string; contestNumber?: number }[] = [];
+  public getContestDelayMs = 0;
+  public resultToReturn: { contestNumber: number; numbers: number[]; drawDate: string } = {
+    contestNumber: 4000,
+    numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    drawDate: "20/09/2026",
+  };
+
+  async getLatestContest(_signal?: AbortSignal): Promise<OfficialContestResult> {
+    this.calls.push({ method: "getLatestContest" });
+    return {
+      contestNumber: 4000,
+      numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      drawDate: "20/09/2026",
+      source: "CAIXA",
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  async getContest(contestNumber: number, _signal?: AbortSignal): Promise<OfficialContestResult> {
+    this.calls.push({ method: "getContest", contestNumber });
+    if (this.getContestDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.getContestDelayMs));
+    }
+    return {
+      contestNumber,
+      numbers: this.resultToReturn.numbers,
+      drawDate: this.resultToReturn.drawDate,
+      source: "CAIXA",
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+}
 
 export async function runMultiTabSyncTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
@@ -565,72 +614,157 @@ export async function runMultiTabSyncTests(): Promise<{ passed: number; failed: 
   }
 
   // ---------------------------------------------------------------------------
-  // 15. PREVIEW DA CAIXA DESCARTADO NO SCORE REMOTO
+  // 15. INVALIDAÇÃO REAL DE PREVIEW OFICIAL EM PRODUÇÃO (GeneratorOperationalController)
   // ---------------------------------------------------------------------------
-  console.log("▶ 15. Preview da CAIXA Descartado no Score Remoto");
+  console.log("▶ 15. Invalidação Real de Preview Oficial em Produção");
   {
-    const { tabA, tabB } = createSimulatedTabs("test_db_scenario_15");
+    const { tabA, tabB } = createSimulatedTabs("test_db_scenario_15_cert");
 
     const draft = createContestDraft(15000);
     await tabA.repo.saveDraft(draft);
     await tabA.repo.freezeStoredContest(15000);
 
-    // Aba A possui preview em memória
-    let abaAPreview: number[] | null = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    let abaAActiveRecord = await tabA.repo.getContestRecord(15000);
+    const mockProviderA = new MockCaixaProvider();
+    mockProviderA.getContestDelayMs = 0;
+    const controllerA = new GeneratorOperationalController(
+      tabA.repo,
+      tabA.coord,
+      () => mockProviderA
+    );
+    await controllerA.refreshLocalState();
+    const frozenRecord = await tabA.repo.getContestRecord(15000);
+    controllerA.setActiveRecord(frozenRecord);
 
-    let resolveScoreRefresh: () => void;
-    const scorePromise = new Promise<void>((resolve) => {
-      resolveScoreRefresh = resolve;
-    });
+    assert(
+      controllerA.getState().activeRecord?.status === "FROZEN",
+      "15.1. Aba A com concurso 15000 FROZEN ativo"
+    );
 
-    // Quando Aba A recebe invalidação de score:
-    tabA.coord.subscribe(async (_rev, _reason, _num, isRemote) => {
-      if (isRemote) {
-        abaAActiveRecord = await tabA.repo.getContestRecord(15000);
-        if (abaAActiveRecord?.status === "SCORED") {
-          // Descarta o preview obsoleto
-          abaAPreview = null;
-        }
-        resolveScoreRefresh();
-      }
-    });
+    // Aba A consulta CAIXA para concurso 15000 FROZEN
+    await controllerA.fetchOfficialResultPreview(15000);
+    assert(
+      controllerA.getState().previewState.acceptedPreview !== null,
+      "15.2. Preview oficial aceito e exibido na Aba A"
+    );
+    assert(controllerA.canScore(), "15.3. Ação PONTUAR disponível na Aba A");
+    assert(mockProviderA.calls.length === 1, "15.4. Exatamente 1 consulta inicial ao provider");
 
-    // Aba B pontua
-    await tabB.repo.scoreStoredContest(15000, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-    await scorePromise;
+    // Aba B pontua concurso 15000 no IndexedDB compartilhado
+    const officialResult = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    await tabB.repo.scoreStoredContest(15000, officialResult);
 
-    assert(abaAActiveRecord?.status === "SCORED", "15.1. Aba A atualizada para SCORED");
-    assert(abaAPreview === null, "15.2. Preview da CAIXA descartado na Aba A");
+    // Aguarda propagação pelo barramento em memória
+    await new Promise((resolve) => setTimeout(resolve, 20));
 
+    // Aba A recebeu evento remoto SCORE
+    assert(
+      controllerA.getState().activeRecord?.status === "SCORED",
+      "15.5. Aba A atualizada automaticamente para SCORED"
+    );
+    assert(
+      controllerA.getState().previewState.acceptedPreview === null,
+      "15.6. Preview oficial descartado/invalidado imediatamente"
+    );
+    assert(
+      !controllerA.canScore(),
+      "15.7. Ação PONTUAR não fica mais disponível"
+    );
+    assert(
+      mockProviderA.calls.length === 1,
+      "15.8. Zero chamadas adicionais ao provider da CAIXA provocadas pelo evento remoto (total = 1)"
+    );
+
+    controllerA.destroy();
     tabA.sync.close();
     tabB.sync.close();
   }
 
   // ---------------------------------------------------------------------------
-  // 16. RESPOSTA DA CAIXA EM VOO CANCELADA POR SEQUENCE ID
+  // 16. PROVIDER RACE REAL: RESPOSTA CAIXA EM VOO VS SCORE REMOTO EM PRODUÇÃO
   // ---------------------------------------------------------------------------
-  console.log("▶ 16. Resposta em Voo Cancelada por SequenceId");
+  console.log("▶ 16. Provider Race Real em Produção (Response Race)");
   {
-    let syncSequence = 0;
+    const { tabA, tabB } = createSimulatedTabs("test_db_scenario_16_cert");
 
-    // Dispara consulta externa
-    const reqSeq = ++syncSequence;
-    let uiApplied = false;
+    const draft = createContestDraft(16000);
+    await tabA.repo.saveDraft(draft);
+    await tabA.repo.freezeStoredContest(16000);
 
-    // Simula que Aba B altera o concurso e emite evento antes da resposta externa chegar
-    // Evento remoto invalida a sequência
-    ++syncSequence;
+    const mockProviderA = new MockCaixaProvider();
+    // Configura delay controlado de 60ms na consulta em voo
+    mockProviderA.getContestDelayMs = 60;
 
-    // Resposta antiga chega atrasada
-    const staleResponseHandler = () => {
-      if (reqSeq === syncSequence) {
-        uiApplied = true;
-      }
-    };
-    staleResponseHandler();
+    const controllerA = new GeneratorOperationalController(
+      tabA.repo,
+      tabA.coord,
+      () => mockProviderA
+    );
+    await controllerA.refreshLocalState();
+    const frozenRecord = await tabA.repo.getContestRecord(16000);
+    controllerA.setActiveRecord(frozenRecord);
 
-    assert(!uiApplied, "16.1. Resposta da CAIXA em voo foi cancelada por divergência de sequenceId");
+    const initialSeq = controllerA.getSequenceId();
+    assert(
+      controllerA.getState().activeRecord?.status === "FROZEN",
+      "16.1. Aba A com concurso 16000 FROZEN aberto"
+    );
+
+    // Aba A dispara consulta à CAIXA (em voo)
+    const inFlightPromise = controllerA.fetchOfficialResultPreview(16000);
+    assert(
+      controllerA.getState().isFetchingPreview === true,
+      "16.2. Consulta à CAIXA está em voo na Aba A"
+    );
+    assert(
+      mockProviderA.calls.length === 1,
+      "16.3. Provider da CAIXA chamado (chamada 1 em andamento)"
+    );
+
+    // Enquanto a promise está em voo:
+    // Aba B conclui pontuação do concurso 16000
+    const officialResult = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    await tabB.repo.scoreStoredContest(16000, officialResult);
+
+    // Aba A recebe evento remoto SCORE concurso 16000 e atualiza seu estado
+    await new Promise((resolve) => setTimeout(resolve, 15));
+
+    assert(
+      controllerA.getState().activeRecord?.status === "SCORED",
+      "16.4. Aba A recebeu evento remoto SCORE e atualizou para SCORED"
+    );
+    assert(
+      controllerA.getSequenceId() > initialSeq,
+      "16.5. sequenceId de produção incrementado pelo evento remoto"
+    );
+
+    // Agora aguarda a resolução da Promise atrasada da CAIXA na Aba A
+    await inFlightPromise;
+
+    // Verificações obrigatórias de certificação:
+    assert(
+      controllerA.getState().activeRecord?.status === "SCORED",
+      "16.6. Resposta atrasada da CAIXA NÃO rebaixa o concurso para FROZEN"
+    );
+    assert(
+      controllerA.getState().previewState.acceptedPreview === null,
+      "16.7. O preview pontuável NÃO é restaurado pela resposta atrasada"
+    );
+    assert(
+      !controllerA.canScore(),
+      "16.8. A ação PONTUAR não reaparece (canScore = false)"
+    );
+    assert(
+      mockProviderA.calls.length === 1,
+      "16.9. Provider calls = 1 (apenas a chamada original em voo; zero chamadas adicionais por evento remoto)"
+    );
+    assert(
+      controllerA.getState().isFetchingPreview === false,
+      "16.10. Flag isFetchingPreview finalizada com sucesso"
+    );
+
+    controllerA.destroy();
+    tabA.sync.close();
+    tabB.sync.close();
   }
 
   // ---------------------------------------------------------------------------
@@ -789,6 +923,318 @@ export async function runMultiTabSyncTests(): Promise<{ passed: number; failed: 
       LOCAL_SYNC_PROTOCOL_VERSION === 1,
       "20.6. Versão canônica do protocolo de sincronização: 1"
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 21. REFRESH DO HISTÓRICO EM PRODUÇÃO (HistoryOperationalController)
+  // ---------------------------------------------------------------------------
+  console.log("▶ 21. Refresh do Histórico em Produção");
+  {
+    const { tabA, tabB } = createSimulatedTabs("test_db_scenario_21_cert");
+
+    const historyControllerA = new HistoryOperationalController(
+      tabA.repo,
+      tabA.coord
+    );
+    await historyControllerA.loadHistoryData();
+    assert(
+      historyControllerA.getState().records.length === 0,
+      "21.1. Histórico da Aba A inicialmente vazio"
+    );
+
+    // Aba B congela o concurso 21000
+    const draft = createContestDraft(21000);
+    await tabB.repo.saveDraft(draft);
+    await tabB.repo.freezeStoredContest(21000);
+
+    // Aguarda propagação do evento remoto e releitura no IndexedDB
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const freshRecords = historyControllerA.getState().records;
+    assert(
+      freshRecords.length === 1 &&
+        freshRecords[0].contestNumber === 21000 &&
+        freshRecords[0].status === "FROZEN",
+      "21.2. Histórico da Aba A atualizou automaticamente com concurso 21000 FROZEN"
+    );
+
+    historyControllerA.destroy();
+    tabA.sync.close();
+    tabB.sync.close();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 22. REFRESH DA AUDITORIA EM PRODUÇÃO (AuditOperationalController)
+  // ---------------------------------------------------------------------------
+  console.log("▶ 22. Refresh da Auditoria em Produção");
+  {
+    const { tabA, tabB } = createSimulatedTabs("test_db_scenario_22_cert");
+
+    const draft = createContestDraft(22000);
+    await tabA.repo.saveDraft(draft);
+    await tabA.repo.freezeStoredContest(22000);
+
+    const auditControllerA = new AuditOperationalController(
+      tabA.repo,
+      tabA.coord
+    );
+    await auditControllerA.runAudit();
+    assert(
+      auditControllerA.getState().auditResult?.totalRecords === 1,
+      "22.1. Auditoria inicial reflete 1 concurso gravado"
+    );
+    const initialScored =
+      auditControllerA
+        .getState()
+        .auditResult?.records.filter((r: any) => r.status === "SCORED").length ?? 0;
+    assert(
+      initialScored === 0,
+      "22.2. Zero concursos pontuados na auditoria inicial"
+    );
+
+    // Aba B pontua concurso 22000 no IndexedDB compartilhado
+    const officialResult = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    await tabB.repo.scoreStoredContest(22000, officialResult);
+
+    // Aguarda propagação do evento remoto e re-execução da auditoria
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const updatedScored =
+      auditControllerA
+        .getState()
+        .auditResult?.records.filter((r: any) => r.status === "SCORED").length ?? 0;
+    assert(
+      updatedScored === 1,
+      "22.3. Auditoria da Aba A atualizou automaticamente e reflete 1 concurso SCORED"
+    );
+    assert(
+      auditControllerA.getState().isAuditing === false,
+      "22.4. Nenhum loop de auditoria disparado (isAuditing = false)"
+    );
+
+    auditControllerA.destroy();
+    tabA.sync.close();
+    tabB.sync.close();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 23. REFRESH DO RESUMO / CONTADOR DO APP (AppSummaryController)
+  // ---------------------------------------------------------------------------
+  console.log("▶ 23. Refresh do Resumo / Contador do App em Produção");
+  {
+    const { tabA, tabB } = createSimulatedTabs("test_db_scenario_23_cert");
+
+    const summaryControllerA = new AppSummaryController(
+      tabA.repo,
+      tabA.coord
+    );
+    await summaryControllerA.refreshCount();
+    assert(
+      summaryControllerA.getState().historyCount === 0,
+      "23.1. Contador inicial da Aba A = 0"
+    );
+
+    // Aba B cria novo concurso 23000
+    const draft = createContestDraft(23000);
+    await tabB.repo.saveDraft(draft);
+
+    // Aguarda propagação do evento remoto e releitura via IndexedDB
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    assert(
+      summaryControllerA.getState().historyCount === 1,
+      "23.2. Contador do App da Aba A atualizado via IndexedDB para 1"
+    );
+
+    summaryControllerA.destroy();
+    tabA.sync.close();
+    tabB.sync.close();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 24. EVENTO REMOTO COM FALHA DE STORAGE (MODO DEFENSIVO SEM INVENTAR DADOS)
+  // ---------------------------------------------------------------------------
+  console.log("▶ 24. Evento Remoto com Falha de Storage");
+  {
+    const sharedIdb = new IDBFactory();
+    const bus = new InMemoryLocalSyncBus();
+
+    const coordA = new RefreshCoordinator();
+    const coordB = new RefreshCoordinator();
+
+    const transportA = new InMemoryLocalSyncTransport(bus);
+    const transportB = new InMemoryLocalSyncTransport(bus);
+
+    const syncA = new LocalSyncCoordinator({
+      transport: transportA,
+      refreshCoordinator: coordA,
+    });
+    const syncB = new LocalSyncCoordinator({
+      transport: transportB,
+      refreshCoordinator: coordB,
+    });
+
+    const repoB = new ContestRepository({
+      idbFactory: sharedIdb,
+      dbName: "test_db_scenario_24",
+      refreshCoordinator: coordB,
+    });
+
+    // Mock defensivo de repositório na Aba A que falha intencionalmente na leitura
+    const failingRepoA = {
+      getAllContestRecords: async () => {
+        throw new Error("Simulated IndexedDB I/O Failure: Disk Read Error");
+      },
+      getContestRecord: async () => {
+        throw new Error("Simulated IndexedDB I/O Failure: Record Lookup Error");
+      },
+    } as unknown as ContestRepository;
+
+    const mockProviderA = new MockCaixaProvider();
+    const controllerA = new GeneratorOperationalController(
+      failingRepoA,
+      coordA,
+      () => mockProviderA
+    );
+
+    // Aba B emite evento remoto válido de FREEZE
+    const draft = createContestDraft(24000);
+    await repoB.saveDraft(draft);
+    await repoB.freezeStoredContest(24000);
+
+    // Aguarda Aba A receber o evento e falhar na releitura
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    // Verificações obrigatórias de segurança:
+    assert(
+      controllerA.getState().storageBlocked === true,
+      "24.1. Aba A entra em modo defensivo (storageBlocked = true)"
+    );
+    assert(
+      controllerA.getState().storageError !== null,
+      "24.2. Mensagem amigável de indisponibilidade de armazenamento exibida"
+    );
+    assert(
+      controllerA.getState().localRecords.length === 0,
+      "24.3. Aba A NÃO inventa dados e mantém registros vazios"
+    );
+    assert(
+      !controllerA.canScore(),
+      "24.4. Pontuação e ações críticas permanecem bloqueadas (canScore = false)"
+    );
+    assert(
+      mockProviderA.calls.length === 0,
+      "24.5. Aba A NÃO realiza fallback chamando a CAIXA diante de falha de storage"
+    );
+
+    controllerA.destroy();
+    syncA.close();
+    syncB.close();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 25. EVENTO REMOTO IRRELEVANTE
+  // ---------------------------------------------------------------------------
+  console.log("▶ 25. Evento Remoto Irrelevante");
+  {
+    const { tabA, tabB } = createSimulatedTabs("test_db_scenario_25_cert");
+
+    // Concurso 25000 aberto na Aba A
+    const draft25 = createContestDraft(25000);
+    await tabA.repo.saveDraft(draft25);
+    await tabA.repo.freezeStoredContest(25000);
+
+    const mockProviderA = new MockCaixaProvider();
+    const controllerA = new GeneratorOperationalController(
+      tabA.repo,
+      tabA.coord,
+      () => mockProviderA
+    );
+    await controllerA.refreshLocalState();
+    const record25 = await tabA.repo.getContestRecord(25000);
+    controllerA.setActiveRecord(record25);
+
+    assert(
+      controllerA.getState().activeRecord?.contestNumber === 25000,
+      "25.1. Concurso 25000 aberto inicialmente na Aba A"
+    );
+
+    // Aba B emite evento para concurso diferente (25999)
+    const draftOther = createContestDraft(25999);
+    await tabB.repo.saveDraft(draftOther);
+
+    // Aguarda propagação
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    // Verificações:
+    assert(
+      controllerA.getState().activeRecord?.contestNumber === 25000,
+      "25.2. Concurso 25000 aberto na Aba A não sofreu efeitos indevidos"
+    );
+    assert(
+      controllerA.getState().activeRecord?.status === "FROZEN",
+      "25.3. Status do concurso 25000 permaneceu FROZEN"
+    );
+    assert(
+      controllerA.getState().localRecords.some((r) => r.contestNumber === 25999),
+      "25.4. Lista geral de registros locais foi atualizada com concurso 25999"
+    );
+    assert(
+      mockProviderA.calls.length === 0,
+      "25.5. Zero chamadas à CAIXA na recepção de evento de outro concurso"
+    );
+
+    controllerA.destroy();
+    tabA.sync.close();
+    tabB.sync.close();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 26. MUTAÇÃO REMOTA DE DELETE (SEM RASCUNHO FANTASMA)
+  // ---------------------------------------------------------------------------
+  console.log("▶ 26. Mutação Remota de Delete sem Rascunho Fantasma");
+  {
+    const { tabA, tabB } = createSimulatedTabs("test_db_scenario_26_cert");
+
+    // Concurso 26000 DRAFT criado e aberto na Aba A
+    const draft = createContestDraft(26000);
+    await tabA.repo.saveDraft(draft);
+
+    const controllerA = new GeneratorOperationalController(
+      tabA.repo,
+      tabA.coord
+    );
+    await controllerA.refreshLocalState();
+    const storedDraft = await tabA.repo.getContestRecord(26000);
+    controllerA.setActiveRecord(storedDraft);
+
+    assert(
+      controllerA.getState().activeRecord?.contestNumber === 26000,
+      "26.1. Concurso 26000 DRAFT aberto na Aba A"
+    );
+
+    // Aba B exclui o concurso 26000
+    await tabB.repo.deleteDraft(26000);
+
+    // Aguarda propagação
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    assert(
+      controllerA.getState().activeRecord === null,
+      "26.2. Concurso excluído na Aba B desaparece da tela na Aba A (activeRecord = null)"
+    );
+    assert(
+      !controllerA.getState().localRecords.some((r) => r.contestNumber === 26000),
+      "26.3. Concurso excluído removido da lista geral (zero rascunhos fantasmas)"
+    );
+    assert(
+      !controllerA.canScore(),
+      "26.4. Ação PONTUAR permanece indisponível"
+    );
+
+    controllerA.destroy();
+    tabA.sync.close();
+    tabB.sync.close();
   }
 
   console.log("\n===============================================================================");
