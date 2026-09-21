@@ -244,7 +244,8 @@ export class GeneratorOperationalController {
               freshRecord.status !== currentActive.status ||
               freshRecord.integrityHash !== currentActive.integrityHash ||
               freshRecord.frozenAt !== currentActive.frozenAt ||
-              freshRecord.scoredAt !== currentActive.scoredAt;
+              freshRecord.scoredAt !== currentActive.scoredAt ||
+              freshRecord.betPlacedAt !== currentActive.betPlacedAt;
 
             if (hasChanged) {
               this.state.activeRecord = freshRecord;
@@ -505,6 +506,41 @@ export class GeneratorOperationalController {
       return scored;
     } finally {
       actionLockController.release("SCORE");
+      this.notifyListeners();
+    }
+  }
+
+  /**
+   * Confirma o registro/pagamento dos 5 jogos do concurso ativo (FROZEN ou SCORED).
+   */
+  async confirmBet(): Promise<ContestRecord> {
+    if (!this.state.activeRecord) {
+      throw new Error("Não há concurso selecionado para confirmar aposta.");
+    }
+    if (this.state.activeRecord.status === "DRAFT") {
+      throw new Error("Concursos em rascunho (DRAFT) não podem ter aposta confirmada.");
+    }
+    if (this.state.storageBlocked) {
+      throw new Error("Armazenamento local bloqueado. Operação impedida.");
+    }
+
+    if (!actionLockController.acquire("CONFIRM_BET")) {
+      throw new Error("Operação de confirmação de aposta bloqueada por lock concorrente.");
+    }
+
+    try {
+      const num = this.state.activeRecord.contestNumber;
+      const confirmed = await this.repository.confirmBetPlaced(num);
+      this.state.activeRecord = confirmed;
+      this.state.feedback = {
+        type: "success",
+        title: "Aposta Confirmada",
+        message: `Os 5 jogos do concurso ${num} foram confirmados e registrados no histórico financeiro.`,
+      };
+      await this.refreshLocalState();
+      return confirmed;
+    } finally {
+      actionLockController.release("CONFIRM_BET");
       this.notifyListeners();
     }
   }

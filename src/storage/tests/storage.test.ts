@@ -607,7 +607,7 @@ export async function runStorageTests(): Promise<{ passed: number; failed: numbe
     const parsed = JSON.parse(isSerializable);
 
     const backupOk =
-      parsed.schemaVersion === 1 &&
+      (parsed.schemaVersion === 1 || parsed.schemaVersion === 2) &&
       parsed.exportedAt === fixedDate3.toISOString() &&
       parsed.recordCount === 2 &&
       Array.isArray(parsed.algorithmVersions) &&

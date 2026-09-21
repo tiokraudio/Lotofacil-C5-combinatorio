@@ -121,6 +121,14 @@ export async function verifyContestIntegrity(record: ContestRecord): Promise<Int
     errors.push("Campo 'integrityHash' ausente no registro congelado.");
   }
 
+  if (record.betPlacedAt !== undefined) {
+    if (typeof record.betPlacedAt !== "string" || isNaN(Date.parse(record.betPlacedAt))) {
+      errors.push("Campo 'betPlacedAt' não é uma data ISO válida.");
+    } else if (record.frozenAt && Date.parse(record.betPlacedAt) < Date.parse(record.frozenAt)) {
+      errors.push("Violação de ordem temporal: 'betPlacedAt' é anterior a 'frozenAt'.");
+    }
+  }
+
   // 1. Validação estrutural das invariantes matemáticas C5
   const genValidation = validateC5(record.generation);
   const generationValid = genValidation.valid;

@@ -23,6 +23,7 @@ export const LOCAL_SYNC_PROTOCOL_VERSION = 1;
 export type LocalSyncReason =
   | "SAVE"
   | "FREEZE"
+  | "BET_CONFIRMED"
   | "SCORE"
   | "DELETE"
   | "IMPORT";
@@ -100,7 +101,7 @@ export function isValidLocalSyncEvent(event: unknown): event is LocalSyncEvent {
     return false;
   }
 
-  const validReasons: LocalSyncReason[] = ["SAVE", "FREEZE", "SCORE", "DELETE", "IMPORT"];
+  const validReasons: LocalSyncReason[] = ["SAVE", "FREEZE", "BET_CONFIRMED", "SCORE", "DELETE", "IMPORT"];
   if (!candidate.reason || !validReasons.includes(candidate.reason as LocalSyncReason)) {
     return false;
   }

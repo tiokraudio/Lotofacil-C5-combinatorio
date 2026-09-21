@@ -21,6 +21,7 @@ export function areContestRecordsIdentical(r1: ContestRecord, r2: ContestRecord)
   if (r1.algorithmVersion !== r2.algorithmVersion) return false;
   if (r1.generatedAt !== r2.generatedAt) return false;
   if (r1.frozenAt !== r2.frozenAt) return false;
+  if (r1.betPlacedAt !== r2.betPlacedAt) return false;
   if (r1.integrityHash !== r2.integrityHash) return false;
   if (r1.scoredAt !== r2.scoredAt) return false;
 

@@ -12,6 +12,7 @@
 export type AppOperation =
   | "GENERATE"
   | "FREEZE"
+  | "CONFIRM_BET"
   | "SCORE"
   | "DELETE"
   | "IMPORT"

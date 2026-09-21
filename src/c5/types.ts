@@ -229,6 +229,12 @@ export interface ContestRecord {
   generatedAt: string;
   frozenAt?: string;
 
+  /**
+   * Timestamp ISO 8601 da confirmação de registro/pagamento dos 5 jogos pelo usuário.
+   * Não pode existir em DRAFT. Pode existir em FROZEN e é preservado em SCORED.
+   */
+  betPlacedAt?: string;
+
   generation: C5Generation;
 
   integrityHash?: string;

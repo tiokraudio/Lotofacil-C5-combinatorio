@@ -1237,6 +1237,108 @@ export async function runMultiTabSyncTests(): Promise<{ passed: number; failed: 
     tabB.sync.close();
   }
 
+  // ---------------------------------------------------------------------------
+  // 27. ABA A CONFIRMA APOSTA -> ABA B ATUALIZA SEM F5 (PROMPT 15.1)
+  // ---------------------------------------------------------------------------
+  console.log("▶ 27. Aba A Confirma Aposta -> Aba B Atualiza sem F5");
+  {
+    const { tabA, tabB } = createSimulatedTabs("test_db_scenario_27");
+
+    // Prepara concurso 27000 FROZEN
+    const draft = createContestDraft(27000);
+    await tabA.repo.saveDraft(draft);
+    await tabA.repo.freezeStoredContest(27000);
+
+    const controllerA = new GeneratorOperationalController(tabA.repo, tabA.coord);
+    const controllerB = new GeneratorOperationalController(tabB.repo, tabB.coord);
+    const historyB = new HistoryOperationalController(tabB.repo, tabB.coord);
+
+    await Promise.all([
+      controllerA.refreshLocalState(),
+      controllerB.refreshLocalState(),
+      historyB.loadHistoryData(),
+    ]);
+
+    const frozenA = await tabA.repo.getContestRecord(27000);
+    const frozenB = await tabB.repo.getContestRecord(27000);
+    controllerA.setActiveRecord(frozenA);
+    controllerB.setActiveRecord(frozenB);
+
+    assert(
+      controllerA.getState().activeRecord?.betPlacedAt === undefined,
+      "27.1. Aba A com concurso 27000 FROZEN sem aposta confirmada"
+    );
+    assert(
+      controllerB.getState().activeRecord?.betPlacedAt === undefined,
+      "27.2. Aba B com concurso 27000 FROZEN sem aposta confirmada"
+    );
+    assert(
+      historyB.getState().summary?.confirmedBets === 0,
+      "27.3. Resumo de Aba B inicial com 0 apostas confirmadas"
+    );
+
+    // Prepara promessa que resolve quando Aba B recebe a atualização
+    const confirmPropagatedPromise = Promise.all([
+      new Promise<void>((resolve) => {
+        const unsub = controllerB.subscribe((state) => {
+          if (state.activeRecord?.betPlacedAt) {
+            unsub();
+            resolve();
+          }
+        });
+      }),
+      new Promise<void>((resolve) => {
+        const unsub = historyB.subscribe((state) => {
+          if (state.summary && state.summary.confirmedBets === 1) {
+            unsub();
+            resolve();
+          }
+        });
+      }),
+    ]);
+
+    // Aba A confirma a aposta via controller de produção
+    await controllerA.confirmBet();
+
+    // Aguarda propagação multiaba
+    await Promise.race([
+      confirmPropagatedPromise,
+      new Promise((resolve) => setTimeout(resolve, 300)),
+    ]);
+
+    // Verificações na Aba B
+    const activeB = controllerB.getState().activeRecord;
+    assert(
+      activeB !== null && activeB.contestNumber === 27000,
+      "27.4. Aba B mantém concurso 27000 aberto"
+    );
+    assert(
+      typeof activeB?.betPlacedAt === "string" && activeB.betPlacedAt.length > 0,
+      "27.5. Aba B atualizou betPlacedAt automaticamente via sinal multiaba (sem F5)"
+    );
+    assert(
+      activeB?.betPlacedAt === controllerA.getState().activeRecord?.betPlacedAt,
+      "27.6. Timestamp de betPlacedAt é idêntico entre Aba A e Aba B"
+    );
+
+    // Verificação de Histórico na Aba B
+    const histSummaryB = historyB.getState().summary;
+    assert(
+      histSummaryB?.confirmedBets === 1,
+      "27.7. Histórico da Aba B atualizou automaticamente confirmedBets para 1"
+    );
+    assert(
+      histSummaryB?.confirmedSpent === 17.50,
+      "27.8. Histórico da Aba B atualizou automaticamente confirmedSpent para R$ 17,50"
+    );
+
+    controllerA.destroy();
+    controllerB.destroy();
+    historyB.destroy();
+    tabA.sync.close();
+    tabB.sync.close();
+  }
+
   console.log("\n===============================================================================");
   console.log(` SUCESSO TOTAL: ${passed} PASSARAM, ${failed} FALHARAM EM SINCRONIZAÇÃO MULTIABA V1.6! `);
   console.log("===============================================================================\n");

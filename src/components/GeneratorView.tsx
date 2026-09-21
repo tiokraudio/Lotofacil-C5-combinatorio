@@ -19,6 +19,7 @@ import {
   ChevronUp,
   ShieldCheck,
   FileText,
+  DollarSign,
 } from "lucide-react";
 import type { ContestRecord } from "../c5/types.ts";
 import { createContestDraft } from "../c5/index.ts";
@@ -77,6 +78,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   // Modais de confirmação
   const [showFreezeConfirm, setShowFreezeConfirm] = useState<boolean>(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
+  const [showBetConfirmModal, setShowBetConfirmModal] = useState<boolean>(false);
   const [showHashModal, setShowHashModal] = useState<boolean>(false);
 
   const [lockState, setLockState] = useState<ActionLockState>({
@@ -551,6 +553,28 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
+  // 3.5. Confirmar Aposta Realizada (R$ 17,50)
+  const handleConfirmBet = async () => {
+    if (!activeRecord || activeRecord.status === "DRAFT") return;
+    setIsLoading(true);
+    clearFeedback();
+
+    try {
+      await controller.confirmBet();
+      setShowBetConfirmModal(false);
+      if (onRecordUpdated) onRecordUpdated();
+    } catch (err: any) {
+      const classified = classifyOperationalError(err);
+      setFeedback({
+        type: "error",
+        title: "Erro ao Confirmar Aposta",
+        message: classified.userMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 4. Registrar e Pontuar Resultado Oficial com Auditoria Rigorosa
   const handleScoreResult = async (officialResult: number[]) => {
     if (!activeRecord || activeRecord.status !== "FROZEN") return;
@@ -871,6 +895,9 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                   {activeRecord.frozenAt && (
                     <span>Congelado: <span className="text-zinc-300">{formatLocalDate(activeRecord.frozenAt)}</span></span>
                   )}
+                  {activeRecord.betPlacedAt && (
+                    <span>Aposta Confirmada: <span className="text-emerald-400 font-medium">{formatLocalDate(activeRecord.betPlacedAt)}</span></span>
+                  )}
                   {activeRecord.scoredAt && (
                     <span>Conferido: <span className="text-zinc-300">{formatLocalDate(activeRecord.scoredAt)}</span></span>
                   )}
@@ -928,6 +955,32 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                       <span>CONGELAR JOGOS</span>
                     </button>
                   </>
+                )}
+
+                {/* Ações para Concurso Congelado ou Conferido: Confirmação de Aposta */}
+                {(activeRecord.status === "FROZEN" || activeRecord.status === "SCORED") && (
+                  activeRecord.betPlacedAt ? (
+                    <div
+                      id="badge-bet-confirmed"
+                      className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
+                      title={`Aposta oficial registrada em ${formatLocalDate(activeRecord.betPlacedAt)}`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>APOSTA REGISTRADA (R$ 17,50)</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      id="btn-confirm-bet"
+                      onClick={() => setShowBetConfirmModal(true)}
+                      disabled={isLoading || lockState.isLocked}
+                      className="px-3.5 py-2 text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/40 hover:bg-emerald-600/80 border border-emerald-500/50 rounded-xl transition-all inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      title="Registrar que os 5 jogos foram apostados e pagos na lotérica (R$ 17,50)"
+                    >
+                      <DollarSign className="w-3.5 h-3.5" />
+                      <span>CONFIRMAR APOSTA (R$ 17,50)</span>
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -1148,6 +1201,19 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         isLoading={isLoading && lockState.currentOperation === "DELETE"}
         onConfirm={handleConfirmDiscard}
         onCancel={() => setShowDiscardConfirm(false)}
+      />
+
+      {/* Modal de Confirmação de Aposta Realizada */}
+      <ConfirmDialog
+        isOpen={showBetConfirmModal}
+        title="Confirmar Aposta Realizada"
+        description={`Confirmar que os 5 jogos do concurso ${activeRecord?.contestNumber} foram registrados e pagos na lotérica (Custo: R$ 17,50)?\n\nEssa confirmação atualizará os relatórios de despesas e desempenho financeiro no Histórico.`}
+        confirmLabel={lockState.currentOperation === "CONFIRM_BET" ? "CONFIRMANDO..." : "CONFIRMAR APOSTA"}
+        cancelLabel="VOLTAR"
+        variant="primary"
+        isLoading={isLoading && lockState.currentOperation === "CONFIRM_BET"}
+        onConfirm={handleConfirmBet}
+        onCancel={() => setShowBetConfirmModal(false)}
       />
 
       {/* Modal de Visualização de Hash */}

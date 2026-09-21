@@ -149,9 +149,24 @@ export interface HistorySummary {
   averageMaxHits: number | null;
 
   /**
-   * Custo total correspondente (contestsPlayed * COST_PER_CONTEST).
+   * Custo total correspondente teórico (contestsPlayed * COST_PER_CONTEST).
    */
   totalSpent: number;
+
+  /**
+   * Quantidade de concursos com aposta confirmada pelo usuário (betPlacedAt definido).
+   */
+  confirmedBets: number;
+
+  /**
+   * Gasto confirmado em centavos (confirmedBets * COST_PER_CONTEST_CENTS).
+   */
+  confirmedSpentCents: number;
+
+  /**
+   * Gasto confirmado em Reais (confirmedSpentCents / 100).
+   */
+  confirmedSpent: number;
 }
 
 /**

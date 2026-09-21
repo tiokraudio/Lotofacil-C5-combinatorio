@@ -142,6 +142,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
               </span>
             </div>
 
+            {/* Apostas Confirmadas */}
+            <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 shadow-sm">
+              <span className="text-xs text-zinc-400 block font-medium">Apostas confirmadas</span>
+              <span className="text-2xl font-bold font-mono text-emerald-400 mt-1 block">
+                {summary.confirmedBets}
+              </span>
+              <span className="text-[11px] text-zinc-400 mt-1 block">
+                {formatCurrency(summary.confirmedSpent)} total apostado
+              </span>
+            </div>
+
             {/* Melhor Resultado */}
             <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 shadow-sm">
               <span className="text-xs text-zinc-400 block font-medium">Melhor resultado</span>
@@ -332,6 +343,25 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
                             ? "CONGELADO"
                             : "CONFERIDO"}
                         </span>
+                        {rec.betPlacedAt ? (
+                          <span
+                            id={`badge-bet-confirmed-${rec.contestNumber}`}
+                            className="text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 font-mono font-medium flex items-center gap-1"
+                            title={`Aposta confirmada em ${formatLocalDate(rec.betPlacedAt)}`}
+                          >
+                            <DollarSign className="w-3 h-3" />
+                            <span>APOSTADO</span>
+                          </span>
+                        ) : (
+                          rec.status !== "DRAFT" && (
+                            <span
+                              className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 bg-zinc-800/60 text-zinc-400 font-mono"
+                              title="Aposta não confirmada na lotérica"
+                            >
+                              NÃO CONFIRMADO
+                            </span>
+                          )
+                        )}
                       </div>
                       <span className="text-xs text-zinc-400 mt-0.5 block">
                         {isScored && rec.scoredAt

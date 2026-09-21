@@ -254,6 +254,7 @@ export async function scoreFrozenContest(
     algorithmVersion: record.algorithmVersion,
     generatedAt: record.generatedAt,
     frozenAt: record.frozenAt,
+    betPlacedAt: record.betPlacedAt,
     generation: deepCloneGeneration(record.generation),
     integrityHash: record.integrityHash,
     officialResult: [...validatedResult],

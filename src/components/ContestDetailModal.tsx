@@ -156,6 +156,12 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
               <span className="text-zinc-400 block">Congelado em:</span>
               <span className="text-zinc-200">{formatLocalDate(record.frozenAt)}</span>
             </div>
+            {record.betPlacedAt && (
+              <div>
+                <span className="text-zinc-400 block">Aposta confirmada em:</span>
+                <span className="text-emerald-400 font-medium">{formatLocalDate(record.betPlacedAt)}</span>
+              </div>
+            )}
             {record.scoredAt && (
               <div>
                 <span className="text-zinc-400 block">Pontuado em:</span>

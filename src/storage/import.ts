@@ -51,9 +51,9 @@ export const MAX_JSON_SIZE_BYTES = 10 * 1024 * 1024;
 export const MAX_BACKUP_RECORDS = 100_000;
 
 /**
- * Versão do esquema suportada nesta versão (estritamente 1).
+ * Versão do esquema suportada nesta versão (aceita 1 e 2).
  */
-export const EXPECTED_SCHEMA_VERSION = 1;
+export const EXPECTED_SCHEMA_VERSION = 2;
 
 /**
  * Versões do algoritmo C5 aceitas nesta versão operacional.
@@ -405,9 +405,9 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
     );
   } else if (raw.schemaVersion > EXPECTED_SCHEMA_VERSION) {
     errors.push("Este backup foi criado por uma versão mais recente e não pode ser importado com segurança.");
-  } else if (raw.schemaVersion !== EXPECTED_SCHEMA_VERSION) {
+  } else if (raw.schemaVersion < 1 || raw.schemaVersion > 2) {
     errors.push(
-      `Versão de esquema incompatível: '${String(raw.schemaVersion)}'. Apenas schemaVersion = ${EXPECTED_SCHEMA_VERSION} é aceita.`
+      `Versão de esquema incompatível: '${String(raw.schemaVersion)}'. Apenas schemaVersion = 1 ou 2 é aceita.`
     );
   }
 
@@ -582,6 +582,9 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
       if (r.score !== undefined) {
         errors.push(`Concurso ${contestNumber}: registro em estado DRAFT não pode possuir 'score'.`);
       }
+      if (r.betPlacedAt !== undefined) {
+        errors.push(`Concurso ${contestNumber}: registro em estado DRAFT não pode possuir 'betPlacedAt'.`);
+      }
 
       sanitizedRecords.push({
         status: "DRAFT",
@@ -596,6 +599,14 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         errors.push(`Concurso ${contestNumber}: 'frozenAt' obrigatório e deve ser ISO 8601 válido.`);
       } else if (new Date(r.generatedAt).getTime() > new Date(r.frozenAt).getTime()) {
         errors.push(`Concurso ${contestNumber}: violação de ordem temporal (generatedAt > frozenAt).`);
+      }
+
+      if (r.betPlacedAt !== undefined) {
+        if (!isValidIsoDate(r.betPlacedAt)) {
+          errors.push(`Concurso ${contestNumber}: 'betPlacedAt' deve ser ISO 8601 válido.`);
+        } else if (isValidIsoDate(r.frozenAt) && new Date(r.frozenAt).getTime() > new Date(r.betPlacedAt).getTime()) {
+          errors.push(`Concurso ${contestNumber}: violação de ordem temporal (frozenAt > betPlacedAt).`);
+        }
       }
 
       if (typeof r.integrityHash !== "string" || !/^[0-9a-f]{64}$/.test(r.integrityHash)) {
@@ -619,6 +630,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         algorithmVersion: r.algorithmVersion,
         generatedAt: r.generatedAt,
         frozenAt: r.frozenAt,
+        betPlacedAt: r.betPlacedAt !== undefined ? r.betPlacedAt : undefined,
         integrityHash: r.integrityHash,
         generation: sanitizedGen,
       };
@@ -649,6 +661,14 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         }
       }
 
+      if (r.betPlacedAt !== undefined) {
+        if (!isValidIsoDate(r.betPlacedAt)) {
+          errors.push(`Concurso ${contestNumber}: 'betPlacedAt' deve ser ISO 8601 válido.`);
+        } else if (isValidIsoDate(r.frozenAt) && new Date(r.frozenAt).getTime() > new Date(r.betPlacedAt).getTime()) {
+          errors.push(`Concurso ${contestNumber}: violação de ordem temporal (frozenAt > betPlacedAt).`);
+        }
+      }
+
       if (typeof r.integrityHash !== "string" || !/^[0-9a-f]{64}$/.test(r.integrityHash)) {
         errors.push(`Concurso ${contestNumber}: 'integrityHash' obrigatório e deve possuir 64 caracteres hexadecimais em minúsculas.`);
       }
@@ -675,6 +695,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
           algorithmVersion: r.algorithmVersion,
           generatedAt: r.generatedAt,
           frozenAt: r.frozenAt,
+          betPlacedAt: r.betPlacedAt !== undefined ? r.betPlacedAt : undefined,
           integrityHash: r.integrityHash,
           officialResult: validatedOfficialResult,
           scoredAt: r.scoredAt,

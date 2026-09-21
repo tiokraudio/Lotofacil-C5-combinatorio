@@ -259,17 +259,17 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
       assert(!val.valid, "2.13. Concurso duplicado no arquivo resulta em rejeição do backup inteiro");
     }
 
-    // 2.14 schemaVersion desconhecido (2, 0, "1", null)
+    // 2.14 schemaVersion desconhecido (3, 0, "1", null)
     {
       const corrupt1 = JSON.parse(JSON.stringify(validBackup));
-      corrupt1.schemaVersion = 2;
+      corrupt1.schemaVersion = 3;
       const v1 = await validateHistoryBackup(corrupt1);
 
       const corrupt2 = JSON.parse(JSON.stringify(validBackup));
       corrupt2.schemaVersion = "1";
       const v2 = await validateHistoryBackup(corrupt2);
 
-      assert(!v1.valid && !v2.valid, "2.14. schemaVersion diferente de 1 é rejeitado sem tentativa de migração silenciosa");
+      assert(!v1.valid && !v2.valid, "2.14. schemaVersion desconhecido é rejeitado sem tentativa de migração silenciosa");
     }
   }
 

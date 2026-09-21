@@ -93,19 +93,35 @@ export function deepCloneRecord(record: ContestRecord): ContestRecord {
     }
   }
 
-  return {
+  const clonedRecord: ContestRecord = {
     status: record.status,
     contestNumber: record.contestNumber,
     generationId: record.generationId,
     algorithmVersion: record.algorithmVersion,
     generatedAt: record.generatedAt,
-    frozenAt: record.frozenAt,
-    integrityHash: record.integrityHash,
-    officialResult: record.officialResult ? [...record.officialResult] : undefined,
-    scoredAt: record.scoredAt,
-    score: clonedScore,
     generation: clonedGen,
   };
+
+  if (record.frozenAt !== undefined) {
+    clonedRecord.frozenAt = record.frozenAt;
+  }
+  if (record.integrityHash !== undefined) {
+    clonedRecord.integrityHash = record.integrityHash;
+  }
+  if (record.betPlacedAt !== undefined) {
+    clonedRecord.betPlacedAt = record.betPlacedAt;
+  }
+  if (record.officialResult !== undefined) {
+    clonedRecord.officialResult = [...record.officialResult];
+  }
+  if (record.scoredAt !== undefined) {
+    clonedRecord.scoredAt = record.scoredAt;
+  }
+  if (clonedScore !== undefined) {
+    clonedRecord.score = clonedScore;
+  }
+
+  return clonedRecord;
 }
 
 /**
@@ -410,6 +426,83 @@ export class ContestRepository {
   }
 
   /**
+   * Confirma o registro/pagamento dos 5 jogos de um concurso congelado (FROZEN) ou pontuado (SCORED).
+   *
+   * Requisitos:
+   * 1. Apenas registros nos estados FROZEN ou SCORED são permitidos;
+   * 2. Rejeita registros em DRAFT;
+   * 3. Idempotente: se já possuir betPlacedAt, retorna o registro clonado sem sobrescrever o timestamp original;
+   * 4. Validação de integridade antes da gravação;
+   * 5. Proteção atômica contra race conditions / TOCTOU;
+   * 6. Notifica o refreshCoordinator com motivo 'BET_CONFIRMED' pós-commit.
+   */
+  async confirmBetPlaced(
+    contestNumber: number,
+    options?: { clock?: Clock }
+  ): Promise<ContestRecord> {
+    const clock = options?.clock ?? this.options?.clock ?? defaultClock;
+    const snapshot = await this.getContestRecord(contestNumber);
+    if (!snapshot) {
+      throw new Error(`Concurso ${contestNumber} não encontrado para confirmação de aposta.`);
+    }
+
+    if (snapshot.status === "DRAFT") {
+      throw new Error(
+        `Operação inválida: apenas concursos congelados (FROZEN) ou pontuados (SCORED) podem ter aposta confirmada. Concurso ${contestNumber} está em estado DRAFT.`
+      );
+    }
+
+    if (snapshot.status !== "FROZEN" && snapshot.status !== "SCORED") {
+      throw new Error(
+        `Estado inválido para confirmação de aposta: '${snapshot.status}'.`
+      );
+    }
+
+    const verification = await this.verifyStoredContest(contestNumber);
+    if (!verification.valid) {
+      throw new Error(
+        `Operação bloqueada: o registro do concurso ${contestNumber} falhou na auditoria de integridade.`
+      );
+    }
+
+    // Idempotência: se já tiver betPlacedAt, retorna cópia sem alterar timestamp original
+    if (snapshot.betPlacedAt) {
+      return deepCloneRecord(snapshot);
+    }
+
+    const betPlacedAt = clock().toISOString();
+
+    const updated: ContestRecord = {
+      ...deepCloneRecord(snapshot),
+      betPlacedAt,
+    };
+
+    const db = await this.getDB();
+    try {
+      const tx = db.transaction(CONTEST_STORE_NAME, "readwrite");
+      const store = tx.objectStore(CONTEST_STORE_NAME);
+
+      const current = await promisifyRequest<ContestRecord | undefined>(store.get(contestNumber));
+      if (!current || !areContestRecordsIdentical(current, snapshot)) {
+        throw new Error(
+          `O registro do concurso ${contestNumber} mudou durante a operação. Confirmação cancelada para evitar sobrescrita concorrente.`
+        );
+      }
+
+      const clone = deepCloneRecord(updated);
+      await promisifyRequest(store.put(clone));
+      await waitForTransaction(tx);
+      if (this.shouldNotifyCoordinator()) {
+        this.getRefreshCoordinator().notifyMutationCommitted("BET_CONFIRMED", contestNumber);
+      }
+
+      return deepCloneRecord(updated);
+    } finally {
+      closeDatabase(db);
+    }
+  }
+
+  /**
    * Exclui um registro que esteja ESTRITAMENTE em estado DRAFT.
    * Tentativas de excluir registros FROZEN ou SCORED são terminantemente rejeitadas.
    */
@@ -531,6 +624,7 @@ export class ContestRepository {
       errors.push(`Status de concurso inválido ou desconhecido: '${String(record.status)}'.`);
     } else if (record.status === "DRAFT") {
       if (record.frozenAt !== undefined) errors.push("DRAFT não deve possuir frozenAt");
+      if (record.betPlacedAt !== undefined) errors.push("DRAFT não deve possuir betPlacedAt");
       if (record.integrityHash !== undefined) errors.push("DRAFT não deve possuir integrityHash");
       if (record.officialResult !== undefined) errors.push("DRAFT não deve possuir officialResult");
       if (record.score !== undefined) errors.push("DRAFT não deve possuir score");
@@ -538,6 +632,13 @@ export class ContestRepository {
     } else if (record.status === "FROZEN") {
       if (!isValidIsoDate(record.frozenAt)) {
         errors.push("FROZEN deve possuir frozenAt com timestamp ISO 8601 válido");
+      }
+      if (record.betPlacedAt !== undefined) {
+        if (!isValidIsoDate(record.betPlacedAt)) {
+          errors.push("FROZEN com betPlacedAt deve possuir timestamp ISO 8601 válido");
+        } else if (isValidIsoDate(record.frozenAt) && Date.parse(record.betPlacedAt) < Date.parse(record.frozenAt)) {
+          errors.push("Incoerência temporal: betPlacedAt anterior a frozenAt");
+        }
       }
       if (
         typeof record.integrityHash !== "string" ||
@@ -571,6 +672,13 @@ export class ContestRepository {
     } else if (record.status === "SCORED") {
       if (!isValidIsoDate(record.frozenAt)) {
         errors.push("SCORED deve possuir frozenAt com timestamp ISO 8601 válido");
+      }
+      if (record.betPlacedAt !== undefined) {
+        if (!isValidIsoDate(record.betPlacedAt)) {
+          errors.push("SCORED com betPlacedAt deve possuir timestamp ISO 8601 válido");
+        } else if (isValidIsoDate(record.frozenAt) && Date.parse(record.betPlacedAt) < Date.parse(record.frozenAt)) {
+          errors.push("Incoerência temporal: betPlacedAt anterior a frozenAt");
+        }
       }
       if (
         typeof record.integrityHash !== "string" ||
@@ -687,6 +795,7 @@ export class ContestRepository {
     let scored = 0;
     let validRecords = 0;
     let quarantinedRecords = 0;
+    let confirmedBets = 0;
 
     let hits11 = 0;
     let hits12 = 0;
@@ -710,6 +819,10 @@ export class ContestRepository {
       }
 
       validRecords++;
+
+      if (record.betPlacedAt !== undefined) {
+        confirmedBets++;
+      }
 
       if (record.status === "DRAFT") {
         drafts++;
@@ -745,6 +858,8 @@ export class ContestRepository {
         : null;
 
     const totalSpent = calculateTotalCostCents(contestsPlayed) / 100;
+    const confirmedSpentCents = calculateTotalCostCents(confirmedBets);
+    const confirmedSpent = confirmedSpentCents / 100;
 
     return {
       totalRecords: all.length,
@@ -767,6 +882,9 @@ export class ContestRepository {
       bestMaxHits,
       averageMaxHits,
       totalSpent,
+      confirmedBets,
+      confirmedSpentCents,
+      confirmedSpent,
     };
   }
 
@@ -832,7 +950,7 @@ export class ContestRepository {
     const clock = this.options?.clock ?? defaultClock;
 
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       exportedAt: clock().toISOString(),
       recordCount: all.length,
       algorithmVersions: versions,
@@ -886,6 +1004,8 @@ export const scoreStoredContest = (
   officialResult: number[],
   options?: { clock?: Clock }
 ) => contestRepository.scoreStoredContest(contestNumber, officialResult, options);
+export const confirmBetPlaced = (contestNumber: number, options?: { clock?: Clock }) =>
+  contestRepository.confirmBetPlaced(contestNumber, options);
 export const deleteDraft = (contestNumber: number) => contestRepository.deleteDraft(contestNumber);
 export const verifyStoredContest = (contestNumber: number) =>
   contestRepository.verifyStoredContest(contestNumber);

@@ -13,6 +13,7 @@
 export type DataMutationReason =
   | "SAVE"
   | "FREEZE"
+  | "BET_CONFIRMED"
   | "SCORE"
   | "DELETE"
   | "IMPORT"
