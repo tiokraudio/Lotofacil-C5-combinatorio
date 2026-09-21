@@ -566,6 +566,8 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
       continue;
     }
 
+    const isSchema1 = raw.schemaVersion === 1;
+
     if (status === "DRAFT") {
       if (r.frozenAt !== undefined) {
         errors.push(`Concurso ${contestNumber}: registro em estado DRAFT não pode possuir 'frozenAt'.`);
@@ -601,11 +603,14 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         errors.push(`Concurso ${contestNumber}: violação de ordem temporal (generatedAt > frozenAt).`);
       }
 
-      if (r.betPlacedAt !== undefined) {
+      let candidateBetPlacedAt: string | undefined = undefined;
+      if (!isSchema1 && r.betPlacedAt !== undefined) {
         if (!isValidIsoDate(r.betPlacedAt)) {
           errors.push(`Concurso ${contestNumber}: 'betPlacedAt' deve ser ISO 8601 válido.`);
         } else if (isValidIsoDate(r.frozenAt) && new Date(r.frozenAt).getTime() > new Date(r.betPlacedAt).getTime()) {
           errors.push(`Concurso ${contestNumber}: violação de ordem temporal (frozenAt > betPlacedAt).`);
+        } else {
+          candidateBetPlacedAt = r.betPlacedAt;
         }
       }
 
@@ -630,7 +635,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         algorithmVersion: r.algorithmVersion,
         generatedAt: r.generatedAt,
         frozenAt: r.frozenAt,
-        betPlacedAt: r.betPlacedAt !== undefined ? r.betPlacedAt : undefined,
+        ...(candidateBetPlacedAt ? { betPlacedAt: candidateBetPlacedAt } : {}),
         integrityHash: r.integrityHash,
         generation: sanitizedGen,
       };
@@ -661,11 +666,14 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         }
       }
 
-      if (r.betPlacedAt !== undefined) {
+      let candidateBetPlacedAt: string | undefined = undefined;
+      if (!isSchema1 && r.betPlacedAt !== undefined) {
         if (!isValidIsoDate(r.betPlacedAt)) {
           errors.push(`Concurso ${contestNumber}: 'betPlacedAt' deve ser ISO 8601 válido.`);
         } else if (isValidIsoDate(r.frozenAt) && new Date(r.frozenAt).getTime() > new Date(r.betPlacedAt).getTime()) {
           errors.push(`Concurso ${contestNumber}: violação de ordem temporal (frozenAt > betPlacedAt).`);
+        } else {
+          candidateBetPlacedAt = r.betPlacedAt;
         }
       }
 
@@ -695,7 +703,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
           algorithmVersion: r.algorithmVersion,
           generatedAt: r.generatedAt,
           frozenAt: r.frozenAt,
-          betPlacedAt: r.betPlacedAt !== undefined ? r.betPlacedAt : undefined,
+          ...(candidateBetPlacedAt ? { betPlacedAt: candidateBetPlacedAt } : {}),
           integrityHash: r.integrityHash,
           officialResult: validatedOfficialResult,
           scoredAt: r.scoredAt,

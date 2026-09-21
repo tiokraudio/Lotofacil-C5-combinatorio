@@ -166,6 +166,12 @@ export class ContestRepository {
       throw new Error(`Número de concurso inválido: ${record.contestNumber}`);
     }
 
+    if (record.betPlacedAt !== undefined) {
+      throw new Error(
+        `Registro em estado DRAFT não pode conter aposta confirmada ('betPlacedAt').`
+      );
+    }
+
     const validation = validateC5(record.generation);
     if (!validation.valid) {
       throw new Error(
@@ -448,13 +454,19 @@ export class ContestRepository {
 
     if (snapshot.status === "DRAFT") {
       throw new Error(
-        `Operação inválida: apenas concursos congelados (FROZEN) ou pontuados (SCORED) podem ter aposta confirmada. Concurso ${contestNumber} está em estado DRAFT.`
+        `Operação inválida: apenas concursos congelados (FROZEN) podem ter aposta confirmada. Concurso ${contestNumber} está em estado DRAFT.`
       );
     }
 
-    if (snapshot.status !== "FROZEN" && snapshot.status !== "SCORED") {
+    if (snapshot.status === "SCORED") {
       throw new Error(
-        `Estado inválido para confirmação de aposta: '${snapshot.status}'.`
+        `Proibição de confirmação retroativa: o concurso ${contestNumber} já foi apurado (SCORED). A aposta só pode ser confirmada antes da apuração (em estado FROZEN).`
+      );
+    }
+
+    if (snapshot.status !== "FROZEN") {
+      throw new Error(
+        `Estado inválido para confirmação de aposta: '${snapshot.status}'. Apenas concursos em estado FROZEN podem ser confirmados.`
       );
     }
 
@@ -471,6 +483,12 @@ export class ContestRepository {
     }
 
     const betPlacedAt = clock().toISOString();
+
+    if (snapshot.frozenAt && Date.parse(betPlacedAt) < Date.parse(snapshot.frozenAt)) {
+      throw new Error(
+        `Violação de ordem temporal: o timestamp da aposta ('${betPlacedAt}') não pode ser anterior ao congelamento ('${snapshot.frozenAt}').`
+      );
+    }
 
     const updated: ContestRecord = {
       ...deepCloneRecord(snapshot),

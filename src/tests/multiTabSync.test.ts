@@ -1238,9 +1238,10 @@ export async function runMultiTabSyncTests(): Promise<{ passed: number; failed: 
   }
 
   // ---------------------------------------------------------------------------
-  // 27. ABA A CONFIRMA APOSTA -> ABA B ATUALIZA SEM F5 (PROMPT 15.1)
+  // 27. ABA A CONFIRMA APOSTA (V1.7) -> ABA B ATUALIZA SEM F5 (PROMPT 16 / V1.7)
+  // Exercita a capacidade V1.7 BET_CONFIRMED sobre a infraestrutura multiaba v1.6
   // ---------------------------------------------------------------------------
-  console.log("▶ 27. Aba A Confirma Aposta -> Aba B Atualiza sem F5");
+  console.log("▶ 27. [V1.7] Aba A Confirma Aposta (BET_CONFIRMED) -> Aba B Atualiza sem F5");
   {
     const { tabA, tabB } = createSimulatedTabs("test_db_scenario_27");
 

@@ -520,6 +520,12 @@ export class GeneratorOperationalController {
     if (this.state.activeRecord.status === "DRAFT") {
       throw new Error("Concursos em rascunho (DRAFT) não podem ter aposta confirmada.");
     }
+    if (this.state.activeRecord.status === "SCORED") {
+      throw new Error("Proibição de confirmação retroativa: concursos já apurados (SCORED) não podem ter aposta confirmada.");
+    }
+    if (this.state.activeRecord.status !== "FROZEN") {
+      throw new Error("Apenas concursos congelados (FROZEN) podem ter aposta confirmada.");
+    }
     if (this.state.storageBlocked) {
       throw new Error("Armazenamento local bloqueado. Operação impedida.");
     }

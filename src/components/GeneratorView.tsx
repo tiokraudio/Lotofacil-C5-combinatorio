@@ -968,7 +968,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                       <span>APOSTA REGISTRADA (R$ 17,50)</span>
                     </div>
-                  ) : (
+                  ) : activeRecord.status === "FROZEN" ? (
                     <button
                       type="button"
                       id="btn-confirm-bet"
@@ -980,6 +980,14 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                       <DollarSign className="w-3.5 h-3.5" />
                       <span>CONFIRMAR APOSTA (R$ 17,50)</span>
                     </button>
+                  ) : (
+                    <div
+                      id="badge-bet-not-confirmed"
+                      className="px-3 py-2 rounded-xl bg-zinc-950/40 border border-zinc-800 text-zinc-400 font-mono text-xs font-medium inline-flex items-center gap-1.5"
+                      title="Concurso conferido sem registro prévio de aposta na lotérica"
+                    >
+                      <span>NÃO APOSTADO</span>
+                    </div>
                   )
                 )}
               </div>
