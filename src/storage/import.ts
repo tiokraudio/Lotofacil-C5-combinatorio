@@ -23,6 +23,7 @@ import type {
   C5Generation,
   C5Score,
   HitCount,
+  PrizeRecord,
 } from "../c5/types.ts";
 import {
   type HistoryExportData,
@@ -51,9 +52,9 @@ export const MAX_JSON_SIZE_BYTES = 10 * 1024 * 1024;
 export const MAX_BACKUP_RECORDS = 100_000;
 
 /**
- * Versão do esquema suportada nesta versão (aceita 1 e 2).
+ * Versão do esquema suportada nesta versão (aceita 1, 2 e 3).
  */
-export const EXPECTED_SCHEMA_VERSION = 2;
+export const EXPECTED_SCHEMA_VERSION = 3;
 
 /**
  * Versões do algoritmo C5 aceitas nesta versão operacional.
@@ -405,9 +406,9 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
     );
   } else if (raw.schemaVersion > EXPECTED_SCHEMA_VERSION) {
     errors.push("Este backup foi criado por uma versão mais recente e não pode ser importado com segurança.");
-  } else if (raw.schemaVersion < 1 || raw.schemaVersion > 2) {
+  } else if (raw.schemaVersion < 1 || raw.schemaVersion > 3) {
     errors.push(
-      `Versão de esquema incompatível: '${String(raw.schemaVersion)}'. Apenas schemaVersion = 1 ou 2 é aceita.`
+      `Versão de esquema incompatível: '${String(raw.schemaVersion)}'. Apenas schemaVersion = 1, 2 ou 3 é aceita.`
     );
   }
 
@@ -587,6 +588,9 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
       if (r.betPlacedAt !== undefined) {
         errors.push(`Concurso ${contestNumber}: registro em estado DRAFT não pode possuir 'betPlacedAt'.`);
       }
+      if (r.prize !== undefined) {
+        errors.push(`Concurso ${contestNumber}: registro em estado DRAFT não pode possuir 'prize'.`);
+      }
 
       sanitizedRecords.push({
         status: "DRAFT",
@@ -626,6 +630,9 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
       }
       if (r.score !== undefined) {
         errors.push(`Concurso ${contestNumber}: registro em estado FROZEN não pode possuir 'score'.`);
+      }
+      if (r.prize !== undefined) {
+        errors.push(`Concurso ${contestNumber}: registro em estado FROZEN não pode possuir 'prize'.`);
       }
 
       const candidateFrozen: ContestRecord = {
@@ -695,6 +702,44 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
       // score
       const sanitizedSc = sanitizeScore(r.score, contestNumber, errors);
 
+      let candidatePrize: PrizeRecord | undefined = undefined;
+      if (!isSchema1 && r.prize !== undefined) {
+        if (!candidateBetPlacedAt && r.betPlacedAt === undefined) {
+          errors.push(`Concurso ${contestNumber}: registro com prêmio deve possuir aposta confirmada ('betPlacedAt').`);
+        }
+        if (typeof r.prize !== "object" || r.prize === null) {
+          errors.push(`Concurso ${contestNumber}: 'prize' deve ser um objeto válido.`);
+        } else {
+          if (
+            typeof r.prize.amountCents !== "number" ||
+            !Number.isInteger(r.prize.amountCents) ||
+            !Number.isSafeInteger(r.prize.amountCents) ||
+            r.prize.amountCents < 0
+          ) {
+            errors.push(`Concurso ${contestNumber}: 'prize.amountCents' deve ser um número inteiro seguro >= 0.`);
+          }
+          if (r.prize.source !== "MANUAL") {
+            errors.push(`Concurso ${contestNumber}: 'prize.source' deve ser 'MANUAL'.`);
+          }
+          if (!isValidIsoDate(r.prize.recordedAt)) {
+            errors.push(`Concurso ${contestNumber}: 'prize.recordedAt' deve ser ISO 8601 válido.`);
+          } else {
+            if (isValidIsoDate(r.scoredAt) && new Date(r.scoredAt).getTime() > new Date(r.prize.recordedAt).getTime()) {
+              errors.push(`Concurso ${contestNumber}: violação de ordem temporal (scoredAt > prize.recordedAt).`);
+            }
+            const bTime = candidateBetPlacedAt ?? r.betPlacedAt;
+            if (isValidIsoDate(bTime) && new Date(bTime).getTime() > new Date(r.prize.recordedAt).getTime()) {
+              errors.push(`Concurso ${contestNumber}: violação de ordem temporal (betPlacedAt > prize.recordedAt).`);
+            }
+          }
+          candidatePrize = {
+            amountCents: r.prize.amountCents,
+            recordedAt: r.prize.recordedAt,
+            source: "MANUAL",
+          };
+        }
+      }
+
       if (validatedOfficialResult && sanitizedSc) {
         const candidateScored: ContestRecord = {
           status: "SCORED",
@@ -704,6 +749,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
           generatedAt: r.generatedAt,
           frozenAt: r.frozenAt,
           ...(candidateBetPlacedAt ? { betPlacedAt: candidateBetPlacedAt } : {}),
+          ...(candidatePrize ? { prize: candidatePrize } : {}),
           integrityHash: r.integrityHash,
           officialResult: validatedOfficialResult,
           scoredAt: r.scoredAt,

@@ -15,6 +15,7 @@ export type DataMutationReason =
   | "FREEZE"
   | "BET_CONFIRMED"
   | "SCORE"
+  | "PRIZE_RECORDED"
   | "DELETE"
   | "IMPORT"
   | "INITIAL_LOAD";

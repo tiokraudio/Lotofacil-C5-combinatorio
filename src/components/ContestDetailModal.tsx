@@ -3,6 +3,7 @@ import { X, ShieldCheck, CheckCircle2, AlertCircle, Copy, Check, Award } from "l
 import type { ContestRecord } from "../c5/types.ts";
 import type { StoredContestVerification } from "../storage/types.ts";
 import { formatLocalDate } from "../storage/service.ts";
+import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
 import { GamesDisplay } from "./GamesDisplay.tsx";
 import { Ball } from "./Ball.tsx";
 
@@ -176,7 +177,73 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
               <span className="text-zinc-400 block">Custo do Concurso:</span>
               <span className="text-zinc-200 font-mono font-medium">R$ 17,50 (5 apostas)</span>
             </div>
+            {record.prize && (
+              <div>
+                <span className="text-zinc-400 block">Prêmio Oficial:</span>
+                <span className="text-emerald-400 font-mono font-medium">
+                  {formatBRLFromCents(record.prize.amountCents)}
+                </span>
+              </div>
+            )}
+            {record.prize && record.betPlacedAt && (
+              <div>
+                <span className="text-zinc-400 block">Resultado Líquido:</span>
+                <span
+                  className={`font-mono font-medium ${
+                    record.prize.amountCents >= 1750 ? "text-emerald-400" : "text-rose-400"
+                  }`}
+                >
+                  {formatSignedBRLFromCents(record.prize.amountCents - 1750)}
+                </span>
+              </div>
+            )}
           </div>
+
+          {/* Fechamento Financeiro Oficial (V1.8) */}
+          {isScored && record.betPlacedAt && (
+            <div
+              className={`p-3.5 rounded-xl border text-xs ${
+                record.prize
+                  ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-200"
+                  : "bg-amber-950/20 border-amber-500/30 text-amber-200"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-mono font-bold uppercase tracking-wider text-[11px]">
+                  {record.prize ? "Fechamento Financeiro Concluído" : "Fechamento Financeiro Pendente"}
+                </span>
+                {record.prize && (
+                  <span className="text-[11px] text-zinc-400">
+                    Registrado em {formatLocalDate(record.prize.recordedAt)} ({record.prize.source})
+                  </span>
+                )}
+              </div>
+              {record.prize ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs">
+                  <span>
+                    Prêmio: <strong className="font-mono text-emerald-300">{formatBRLFromCents(record.prize.amountCents)}</strong>
+                  </span>
+                  <span>
+                    Aposta: <strong className="font-mono text-zinc-300">R$ 17,50</strong>
+                  </span>
+                  <span>
+                    Saldo:{" "}
+                    <strong
+                      className={`font-mono ${
+                        record.prize.amountCents >= 1750 ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {formatSignedBRLFromCents(record.prize.amountCents - 1750)}
+                    </strong>
+                  </span>
+                </div>
+              ) : (
+                <p className="text-[11px] text-amber-300/80 mt-0.5">
+                  Este concurso foi registrado como apostado na lotérica, mas o prêmio obtido ainda não foi registrado pelo Gerador.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Hash SHA-256 */}
           {record.integrityHash && (

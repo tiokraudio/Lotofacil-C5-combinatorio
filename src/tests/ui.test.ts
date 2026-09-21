@@ -105,7 +105,7 @@ async function runUITests() {
   // 8. Exportação de Backup
   console.log("8. Testando exportação de backup...");
   const backup = await repo.exportHistory();
-  assert(backup.schemaVersion === 1 || backup.schemaVersion === 2, "Versão do schema deve ser 1 ou 2.");
+  assert(backup.schemaVersion === 1 || backup.schemaVersion === 2 || backup.schemaVersion === 3, "Versão do schema deve ser 1, 2 ou 3.");
   assert(backup.records.length === 1, "Backup deve conter o registro 3400.");
   assert(backup.records[0].contestNumber === 3400, "Concurso 3400 no backup.");
   assert(backup.records[0].integrityHash === scoredRecord?.integrityHash, "Hash idêntico no backup.");

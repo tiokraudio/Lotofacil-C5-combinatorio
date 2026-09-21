@@ -259,10 +259,10 @@ export async function runImportTests(): Promise<{ passed: number; failed: number
       assert(!val.valid, "2.13. Concurso duplicado no arquivo resulta em rejeição do backup inteiro");
     }
 
-    // 2.14 schemaVersion desconhecido (3, 0, "1", null)
+    // 2.14 schemaVersion desconhecido (4, 0, "1", null)
     {
       const corrupt1 = JSON.parse(JSON.stringify(validBackup));
-      corrupt1.schemaVersion = 3;
+      corrupt1.schemaVersion = 4;
       const v1 = await validateHistoryBackup(corrupt1);
 
       const corrupt2 = JSON.parse(JSON.stringify(validBackup));

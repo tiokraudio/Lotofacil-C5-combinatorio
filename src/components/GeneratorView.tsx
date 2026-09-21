@@ -37,6 +37,8 @@ import { PrimaryActionBar } from "./PrimaryActionBar.tsx";
 import { computePrimaryAction, type PrimaryAction } from "../sync/primaryAction.ts";
 import { copyGamesToClipboard } from "../utils/clipboard.ts";
 import { PrintSheet } from "./PrintSheet.tsx";
+import { PrizeRecordModal } from "./PrizeRecordModal.tsx";
+import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
 import { actionLockController, type ActionLockState } from "../system/actionLock.ts";
 import { refreshCoordinator } from "../system/refreshCoordinator.ts";
 import { classifyOperationalError } from "../system/operationalErrors.ts";
@@ -79,6 +81,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   const [showFreezeConfirm, setShowFreezeConfirm] = useState<boolean>(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
   const [showBetConfirmModal, setShowBetConfirmModal] = useState<boolean>(false);
+  const [showPrizeModal, setShowPrizeModal] = useState<boolean>(false);
   const [showHashModal, setShowHashModal] = useState<boolean>(false);
 
   const [lockState, setLockState] = useState<ActionLockState>({
@@ -575,6 +578,28 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
+  // 3.6. Registrar Fechamento Financeiro / Prêmio Oficial (V1.8)
+  const handleRecordPrize = async (amountCents: number) => {
+    if (!activeRecord || activeRecord.status !== "SCORED") return;
+    setIsLoading(true);
+    clearFeedback();
+
+    try {
+      await controller.recordPrize(amountCents);
+      setShowPrizeModal(false);
+      if (onRecordUpdated) onRecordUpdated();
+    } catch (err: any) {
+      const classified = classifyOperationalError(err);
+      setFeedback({
+        type: "error",
+        title: "Erro ao Registrar Prêmio",
+        message: classified.userMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 4. Registrar e Pontuar Resultado Oficial com Auditoria Rigorosa
   const handleScoreResult = async (officialResult: number[]) => {
     if (!activeRecord || activeRecord.status !== "FROZEN") return;
@@ -957,38 +982,66 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                   </>
                 )}
 
-                {/* Ações para Concurso Congelado ou Conferido: Confirmação de Aposta */}
+                {/* Ações para Concurso Congelado ou Conferido: Confirmação de Aposta e Registro de Prêmio */}
                 {(activeRecord.status === "FROZEN" || activeRecord.status === "SCORED") && (
-                  activeRecord.betPlacedAt ? (
-                    <div
-                      id="badge-bet-confirmed"
-                      className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
-                      title={`Aposta oficial registrada em ${formatLocalDate(activeRecord.betPlacedAt)}`}
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>APOSTA REGISTRADA (R$ 17,50)</span>
-                    </div>
-                  ) : activeRecord.status === "FROZEN" ? (
-                    <button
-                      type="button"
-                      id="btn-confirm-bet"
-                      onClick={() => setShowBetConfirmModal(true)}
-                      disabled={isLoading || lockState.isLocked}
-                      className="px-3.5 py-2 text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/40 hover:bg-emerald-600/80 border border-emerald-500/50 rounded-xl transition-all inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                      title="Registrar que os 5 jogos foram apostados e pagos na lotérica (R$ 17,50)"
-                    >
-                      <DollarSign className="w-3.5 h-3.5" />
-                      <span>CONFIRMAR APOSTA (R$ 17,50)</span>
-                    </button>
-                  ) : (
-                    <div
-                      id="badge-bet-not-confirmed"
-                      className="px-3 py-2 rounded-xl bg-zinc-950/40 border border-zinc-800 text-zinc-400 font-mono text-xs font-medium inline-flex items-center gap-1.5"
-                      title="Concurso conferido sem registro prévio de aposta na lotérica"
-                    >
-                      <span>NÃO APOSTADO</span>
-                    </div>
-                  )
+                  <>
+                    {activeRecord.betPlacedAt ? (
+                      <div
+                        id="badge-bet-confirmed"
+                        className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
+                        title={`Aposta oficial registrada em ${formatLocalDate(activeRecord.betPlacedAt)}`}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>APOSTA REGISTRADA (R$ 17,50)</span>
+                      </div>
+                    ) : activeRecord.status === "FROZEN" ? (
+                      <button
+                        type="button"
+                        id="btn-confirm-bet"
+                        onClick={() => setShowBetConfirmModal(true)}
+                        disabled={isLoading || lockState.isLocked}
+                        className="px-3.5 py-2 text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/40 hover:bg-emerald-600/80 border border-emerald-500/50 rounded-xl transition-all inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                        title="Registrar que os 5 jogos foram apostados e pagos na lotérica (R$ 17,50)"
+                      >
+                        <DollarSign className="w-3.5 h-3.5" />
+                        <span>CONFIRMAR APOSTA (R$ 17,50)</span>
+                      </button>
+                    ) : (
+                      <div
+                        id="badge-bet-not-confirmed"
+                        className="px-3 py-2 rounded-xl bg-zinc-950/40 border border-zinc-800 text-zinc-400 font-mono text-xs font-medium inline-flex items-center gap-1.5"
+                        title="Concurso conferido sem registro prévio de aposta na lotérica"
+                      >
+                        <span>NÃO APOSTADO</span>
+                      </div>
+                    )}
+
+                    {/* V1.8: Botão ou Badge de Registro de Prêmio para concursos SCORED com aposta confirmada */}
+                    {activeRecord.status === "SCORED" && activeRecord.betPlacedAt && (
+                      activeRecord.prize !== undefined ? (
+                        <div
+                          id="badge-prize-recorded"
+                          className="px-3 py-2 rounded-xl bg-emerald-950/60 border border-emerald-500/60 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm"
+                          title={`Prêmio oficial registrado em ${formatLocalDate(activeRecord.prize.recordedAt)}`}
+                        >
+                          <Award className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>PRÊMIO: {formatBRLFromCents(activeRecord.prize.amountCents)}</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          id="btn-open-record-prize"
+                          onClick={() => setShowPrizeModal(true)}
+                          disabled={isLoading || lockState.isLocked}
+                          className="px-3.5 py-2 text-xs font-semibold text-emerald-200 hover:text-white bg-emerald-700/80 hover:bg-emerald-600 border border-emerald-500/60 rounded-xl transition-all inline-flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
+                          title="Registrar fechamento financeiro e valor do prêmio recebido neste concurso"
+                        >
+                          <Award className="w-3.5 h-3.5 text-emerald-300" />
+                          <span>REGISTRAR PRÊMIO</span>
+                        </button>
+                      )
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1120,6 +1173,69 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                   )}
                 </div>
               )}
+
+              {/* Fechamento Financeiro Oficial (V1.8) */}
+              <div className="mt-5 pt-4 border-t border-zinc-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block font-semibold">
+                      Fechamento Financeiro Oficial
+                    </span>
+                    {activeRecord.betPlacedAt ? (
+                      activeRecord.prize !== undefined ? (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs">
+                          <span className="text-zinc-300">
+                            Prêmio Recebido:{" "}
+                            <strong className="text-emerald-400 font-mono text-sm">
+                              {formatBRLFromCents(activeRecord.prize.amountCents)}
+                            </strong>
+                          </span>
+                          <span className="text-zinc-400">
+                            Custo das apostas:{" "}
+                            <strong className="font-mono text-zinc-300">R$ 17,50</strong>
+                          </span>
+                          <span className="text-zinc-300">
+                            Resultado Líquido:{" "}
+                            <strong
+                              className={`font-mono text-sm ${
+                                activeRecord.prize.amountCents >= 1750 ? "text-emerald-400" : "text-rose-400"
+                              }`}
+                            >
+                              {formatSignedBRLFromCents(activeRecord.prize.amountCents - 1750)}
+                            </strong>
+                          </span>
+                          <span className="text-[11px] text-zinc-400">
+                            (Registrado em {formatLocalDate(activeRecord.prize.recordedAt)})
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-amber-300 font-medium">
+                            Fechamento financeiro pendente (aposta realizada na lotérica).
+                          </span>
+                        </div>
+                      )
+                    ) : (
+                      <span className="text-xs text-zinc-400 mt-1 block italic">
+                        Concurso conferido sem aposta confirmada na lotérica (não gera impacto financeiro).
+                      </span>
+                    )}
+                  </div>
+
+                  {activeRecord.betPlacedAt && activeRecord.prize === undefined && (
+                    <button
+                      type="button"
+                      id="btn-card-record-prize"
+                      onClick={() => setShowPrizeModal(true)}
+                      disabled={isLoading || lockState.isLocked}
+                      className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all inline-flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                    >
+                      <Award className="w-3.5 h-3.5" />
+                      <span>REGISTRAR PRÊMIO</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1229,6 +1345,15 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         isOpen={showHashModal}
         record={activeRecord}
         onClose={() => setShowHashModal(false)}
+      />
+
+      {/* Modal de Registro de Prêmio / Fechamento Financeiro Oficial (V1.8) */}
+      <PrizeRecordModal
+        isOpen={showPrizeModal}
+        record={activeRecord}
+        isLoading={isLoading && lockState.currentOperation === "RECORD_PRIZE"}
+        onClose={() => setShowPrizeModal(false)}
+        onRecordPrize={handleRecordPrize}
       />
 
       {/* Folha de Impressão Oficial Limpa (visível exclusivamente em @media print) */}

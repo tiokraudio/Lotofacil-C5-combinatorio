@@ -14,6 +14,7 @@ export type AppOperation =
   | "FREEZE"
   | "CONFIRM_BET"
   | "SCORE"
+  | "RECORD_PRIZE"
   | "DELETE"
   | "IMPORT"
   | "EXPORT"
@@ -107,6 +108,10 @@ export class ActionLockController {
         return "CONGELANDO...";
       case "SCORE":
         return "PONTUANDO...";
+      case "CONFIRM_BET":
+        return "CONFIRMANDO APOSTA...";
+      case "RECORD_PRIZE":
+        return "REGISTRANDO PRÊMIO...";
       case "DELETE":
         return "EXCLUINDO...";
       case "IMPORT":

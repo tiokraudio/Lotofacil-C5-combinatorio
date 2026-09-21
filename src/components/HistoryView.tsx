@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   History,
   TrendingUp,
+  TrendingDown,
   DollarSign,
   Award,
   Layers,
@@ -15,6 +16,7 @@ import {
 import type { ContestRecord } from "../c5/types.ts";
 import type { HistorySummary, StoredContestVerification } from "../storage/types.ts";
 import { repository, formatLocalDate } from "../storage/service.ts";
+import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
 import { ContestDetailModal } from "./ContestDetailModal.tsx";
 import { refreshCoordinator } from "../system/refreshCoordinator.ts";
 import { classifyOperationalError } from "../system/operationalErrors.ts";
@@ -150,6 +152,40 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
               </span>
               <span className="text-[11px] text-zinc-400 mt-1 block">
                 {formatCurrency(summary.confirmedSpent)} total apostado
+              </span>
+            </div>
+
+            {/* Total de Prêmios (V1.8) */}
+            <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 shadow-sm">
+              <span className="text-xs text-zinc-400 block font-medium">Total de Prêmios</span>
+              <span className="text-2xl font-bold font-mono text-emerald-400 mt-1 block">
+                {formatBRLFromCents(summary.totalPrizeCents)}
+              </span>
+              <span className="text-[11px] text-zinc-400 mt-1 block">
+                {summary.prizesRecorded} concurso(s) com prêmio registrado
+              </span>
+            </div>
+
+            {/* Resultado Líquido (V1.8) */}
+            <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 shadow-sm">
+              <span className="text-xs text-zinc-400 block font-medium">Resultado Líquido</span>
+              <span
+                className={`text-2xl font-bold font-mono mt-1 block flex items-center gap-1.5 ${
+                  summary.netResultCents > 0
+                    ? "text-emerald-400"
+                    : summary.netResultCents < 0
+                    ? "text-rose-400"
+                    : "text-zinc-300"
+                }`}
+              >
+                {summary.netResultCents > 0 && <TrendingUp className="w-5 h-5 shrink-0" />}
+                {summary.netResultCents < 0 && <TrendingDown className="w-5 h-5 shrink-0" />}
+                <span>{formatSignedBRLFromCents(summary.netResultCents)}</span>
+              </span>
+              <span className="text-[11px] text-zinc-400 mt-1 block">
+                {summary.financialHistoryComplete
+                  ? "Fechamento 100% auditado"
+                  : `${summary.pendingFinancialClosures} concurso(s) pendente(s)`}
               </span>
             </div>
 
@@ -359,6 +395,28 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
                               title="Aposta não confirmada na lotérica"
                             >
                               NÃO CONFIRMADO
+                            </span>
+                          )
+                        )}
+
+                        {/* Status de Prêmio (V1.8) */}
+                        {rec.prize !== undefined ? (
+                          <span
+                            id={`badge-prize-${rec.contestNumber}`}
+                            className="text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/50 bg-emerald-950/50 text-emerald-300 font-mono font-medium flex items-center gap-1"
+                            title={`Prêmio oficial: ${formatBRLFromCents(rec.prize.amountCents)}`}
+                          >
+                            <Award className="w-3 h-3 text-emerald-400" />
+                            <span>PRÊMIO: {formatBRLFromCents(rec.prize.amountCents)}</span>
+                          </span>
+                        ) : (
+                          isScored && rec.betPlacedAt && (
+                            <span
+                              id={`badge-pending-prize-${rec.contestNumber}`}
+                              className="text-[10px] px-2 py-0.5 rounded-full border border-amber-500/50 bg-amber-950/40 text-amber-300 font-mono font-medium"
+                              title="Concurso apostado aguardando registro do prêmio recebido"
+                            >
+                              FECHAMENTO PENDENTE
                             </span>
                           )
                         )}

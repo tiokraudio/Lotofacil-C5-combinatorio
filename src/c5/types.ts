@@ -244,6 +244,32 @@ export interface ContestRecord {
   scoredAt?: string;
 
   score?: C5Score;
+
+  /**
+   * Registro oficial e imutável de fechamento financeiro / premiação obtida no concurso.
+   * Somente pode existir em SCORED com betPlacedAt previamente confirmado.
+   */
+  prize?: PrizeRecord;
+}
+
+/**
+ * Registro oficial de fechamento financeiro / premiação de um concurso apurado.
+ */
+export interface PrizeRecord {
+  /**
+   * Valor total obtido em centavos (inteiro seguro >= 0).
+   */
+  amountCents: number;
+
+  /**
+   * Timestamp ISO 8601 do momento da gravação manual do prêmio.
+   */
+  recordedAt: string;
+
+  /**
+   * Origem da informação (sempre "MANUAL" na V1.8).
+   */
+  source: "MANUAL";
 }
 
 /**

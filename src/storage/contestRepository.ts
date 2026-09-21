@@ -12,7 +12,7 @@ import {
 } from "../c5/record.ts";
 import { verifyContestIntegrity } from "../c5/integrity.ts";
 import { areContestRecordsIdentical } from "./recordComparison.ts";
-import type { ContestRecord, ContestRecordStatus, Clock } from "../c5/types.ts";
+import type { ContestRecord, ContestRecordStatus, Clock, PrizeRecord } from "../c5/types.ts";
 import {
   openDatabase,
   closeDatabase,
@@ -120,6 +120,13 @@ export function deepCloneRecord(record: ContestRecord): ContestRecord {
   if (clonedScore !== undefined) {
     clonedRecord.score = clonedScore;
   }
+  if (record.prize !== undefined) {
+    clonedRecord.prize = {
+      amountCents: record.prize.amountCents,
+      recordedAt: record.prize.recordedAt,
+      source: record.prize.source,
+    };
+  }
 
   return clonedRecord;
 }
@@ -169,6 +176,12 @@ export class ContestRepository {
     if (record.betPlacedAt !== undefined) {
       throw new Error(
         `Registro em estado DRAFT não pode conter aposta confirmada ('betPlacedAt').`
+      );
+    }
+
+    if (record.prize !== undefined) {
+      throw new Error(
+        `Registro em estado DRAFT não pode conter premiação ('prize').`
       );
     }
 
@@ -521,6 +534,128 @@ export class ContestRepository {
   }
 
   /**
+   * Registra o fechamento financeiro / premiação oficial obtida em um concurso SCORED.
+   *
+   * Requisitos estritos:
+   * 1. amountCents deve ser um número inteiro seguro maior ou igual a zero;
+   * 2. O concurso deve existir e estar no estado SCORED;
+   * 3. O concurso deve ter aposta confirmada (betPlacedAt definido);
+   * 4. Imutabilidade: se já possuir prize registrado, a operação é rejeitada (não pode ser sobrescrito);
+   * 5. O registro deve passar na auditoria de integridade antes da mutação;
+   * 6. Coerência temporal: recordedAt >= scoredAt e recordedAt >= betPlacedAt;
+   * 7. Proteção contra TOCTOU com abort em caso de divergência concorrente;
+   * 8. Notifica o refreshCoordinator com motivo 'PRIZE_RECORDED' após o commit da transação.
+   */
+  async recordPrize(
+    contestNumber: number,
+    amountCents: number,
+    options?: { clock?: Clock }
+  ): Promise<ContestRecord> {
+    if (
+      typeof amountCents !== "number" ||
+      !Number.isInteger(amountCents) ||
+      !Number.isSafeInteger(amountCents) ||
+      amountCents < 0
+    ) {
+      throw new Error(
+        `Valor de premiação inválido: ${amountCents}. Deve ser um número inteiro seguro maior ou igual a zero (centavos).`
+      );
+    }
+
+    const snapshot = await this.getContestRecord(contestNumber);
+    if (!snapshot) {
+      throw new Error(`Concurso ${contestNumber} não encontrado para registro de prêmio.`);
+    }
+
+    if (snapshot.status === "DRAFT") {
+      throw new Error(
+        `Operação inválida: concursos em estado DRAFT não podem registrar prêmio. Concurso ${contestNumber} está em rascunho.`
+      );
+    }
+
+    if (snapshot.status === "FROZEN") {
+      throw new Error(
+        `Operação inválida: concursos em estado FROZEN não podem registrar prêmio antes da apuração. Concurso ${contestNumber} ainda não foi apurado.`
+      );
+    }
+
+    if (snapshot.status !== "SCORED") {
+      throw new Error(
+        `Estado inválido para registro de prêmio: '${snapshot.status}'. Apenas concursos em estado SCORED podem registrar prêmio.`
+      );
+    }
+
+    if (snapshot.betPlacedAt === undefined) {
+      throw new Error(
+        `Fechamento financeiro indisponível: o concurso ${contestNumber} não teve sua aposta confirmada antes da apuração.`
+      );
+    }
+
+    if (snapshot.prize !== undefined) {
+      throw new Error(
+        `Fechamento financeiro já realizado para o concurso ${contestNumber}. O registro de prêmio é imutável e não pode ser reescrito.`
+      );
+    }
+
+    const verification = await this.verifyStoredContest(contestNumber);
+    if (!verification.valid) {
+      throw new Error(
+        `Operação bloqueada: o registro do concurso ${contestNumber} falhou na auditoria de integridade.`
+      );
+    }
+
+    const clock = options?.clock ?? this.options?.clock ?? defaultClock;
+    const recordedAt = clock().toISOString();
+
+    if (snapshot.scoredAt && Date.parse(recordedAt) < Date.parse(snapshot.scoredAt)) {
+      throw new Error(
+        `Violação de ordem temporal: o timestamp do prêmio ('${recordedAt}') não pode ser anterior à apuração ('${snapshot.scoredAt}').`
+      );
+    }
+
+    if (snapshot.betPlacedAt && Date.parse(recordedAt) < Date.parse(snapshot.betPlacedAt)) {
+      throw new Error(
+        `Violação de ordem temporal: o timestamp do prêmio ('${recordedAt}') não pode ser anterior à aposta ('${snapshot.betPlacedAt}').`
+      );
+    }
+
+    const prize: PrizeRecord = {
+      amountCents,
+      recordedAt,
+      source: "MANUAL",
+    };
+
+    const updated: ContestRecord = {
+      ...deepCloneRecord(snapshot),
+      prize,
+    };
+
+    const db = await this.getDB();
+    try {
+      const tx = db.transaction(CONTEST_STORE_NAME, "readwrite");
+      const store = tx.objectStore(CONTEST_STORE_NAME);
+
+      const current = await promisifyRequest<ContestRecord | undefined>(store.get(contestNumber));
+      if (!current || !areContestRecordsIdentical(current, snapshot)) {
+        throw new Error(
+          `O registro do concurso ${contestNumber} mudou durante a operação. Registro de prêmio cancelado para evitar sobrescrita concorrente.`
+        );
+      }
+
+      const clone = deepCloneRecord(updated);
+      await promisifyRequest(store.put(clone));
+      await waitForTransaction(tx);
+      if (this.shouldNotifyCoordinator()) {
+        this.getRefreshCoordinator().notifyMutationCommitted("PRIZE_RECORDED", contestNumber);
+      }
+
+      return deepCloneRecord(updated);
+    } finally {
+      closeDatabase(db);
+    }
+  }
+
+  /**
    * Exclui um registro que esteja ESTRITAMENTE em estado DRAFT.
    * Tentativas de excluir registros FROZEN ou SCORED são terminantemente rejeitadas.
    */
@@ -643,6 +778,7 @@ export class ContestRepository {
     } else if (record.status === "DRAFT") {
       if (record.frozenAt !== undefined) errors.push("DRAFT não deve possuir frozenAt");
       if (record.betPlacedAt !== undefined) errors.push("DRAFT não deve possuir betPlacedAt");
+      if (record.prize !== undefined) errors.push("DRAFT não deve possuir prize");
       if (record.integrityHash !== undefined) errors.push("DRAFT não deve possuir integrityHash");
       if (record.officialResult !== undefined) errors.push("DRAFT não deve possuir officialResult");
       if (record.score !== undefined) errors.push("DRAFT não deve possuir score");
@@ -658,6 +794,7 @@ export class ContestRepository {
           errors.push("Incoerência temporal: betPlacedAt anterior a frozenAt");
         }
       }
+      if (record.prize !== undefined) errors.push("FROZEN não deve possuir prize");
       if (
         typeof record.integrityHash !== "string" ||
         !/^[0-9a-fA-F]{64}$/.test(record.integrityHash)
@@ -721,6 +858,44 @@ export class ContestRepository {
         Date.parse(record.scoredAt) < Date.parse(record.frozenAt)
       ) {
         errors.push("Incoerência temporal: scoredAt anterior a frozenAt");
+      }
+
+      // Validação de fechamento financeiro / premiação (prize)
+      if (record.prize !== undefined) {
+        if (record.betPlacedAt === undefined) {
+          errors.push("SCORED com prêmio deve possuir aposta previamente confirmada ('betPlacedAt')");
+        }
+        if (typeof record.prize !== "object" || record.prize === null) {
+          errors.push("Campo 'prize' deve ser um objeto válido");
+        } else {
+          if (
+            typeof record.prize.amountCents !== "number" ||
+            !Number.isInteger(record.prize.amountCents) ||
+            !Number.isSafeInteger(record.prize.amountCents) ||
+            record.prize.amountCents < 0
+          ) {
+            errors.push("Campo 'prize.amountCents' deve ser um número inteiro seguro maior ou igual a zero");
+          }
+          if (record.prize.source !== "MANUAL") {
+            errors.push("Campo 'prize.source' deve ser 'MANUAL'");
+          }
+          if (!isValidIsoDate(record.prize.recordedAt)) {
+            errors.push("Campo 'prize.recordedAt' deve ser um timestamp ISO 8601 válido");
+          } else {
+            if (
+              isValidIsoDate(record.scoredAt) &&
+              Date.parse(record.prize.recordedAt) < Date.parse(record.scoredAt)
+            ) {
+              errors.push("Incoerência temporal: prize.recordedAt anterior a scoredAt");
+            }
+            if (
+              isValidIsoDate(record.betPlacedAt) &&
+              Date.parse(record.prize.recordedAt) < Date.parse(record.betPlacedAt)
+            ) {
+              errors.push("Incoerência temporal: prize.recordedAt anterior a betPlacedAt");
+            }
+          }
+        }
       }
 
       // Integridade criptográfica da geração
@@ -814,6 +989,9 @@ export class ContestRepository {
     let validRecords = 0;
     let quarantinedRecords = 0;
     let confirmedBets = 0;
+    let prizesRecorded = 0;
+    let totalPrizeCents = 0;
+    let pendingFinancialClosures = 0;
 
     let hits11 = 0;
     let hits12 = 0;
@@ -865,6 +1043,16 @@ export class ContestRepository {
         if (s.has15) contestsWith15++;
 
         maxHitsList.push(s.maxHits);
+
+        // Acompanhamento financeiro de prêmios
+        if (record.betPlacedAt !== undefined) {
+          if (record.prize !== undefined) {
+            prizesRecorded++;
+            totalPrizeCents += record.prize.amountCents;
+          } else {
+            pendingFinancialClosures++;
+          }
+        }
       }
     }
 
@@ -878,6 +1066,11 @@ export class ContestRepository {
     const totalSpent = calculateTotalCostCents(contestsPlayed) / 100;
     const confirmedSpentCents = calculateTotalCostCents(confirmedBets);
     const confirmedSpent = confirmedSpentCents / 100;
+
+    const totalPrize = totalPrizeCents / 100;
+    const netResultCents = totalPrizeCents - confirmedSpentCents;
+    const netResult = netResultCents / 100;
+    const financialHistoryComplete = pendingFinancialClosures === 0;
 
     return {
       totalRecords: all.length,
@@ -903,6 +1096,13 @@ export class ContestRepository {
       confirmedBets,
       confirmedSpentCents,
       confirmedSpent,
+      prizesRecorded,
+      totalPrizeCents,
+      totalPrize,
+      netResultCents,
+      netResult,
+      pendingFinancialClosures,
+      financialHistoryComplete,
     };
   }
 
@@ -968,7 +1168,7 @@ export class ContestRepository {
     const clock = this.options?.clock ?? defaultClock;
 
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: clock().toISOString(),
       recordCount: all.length,
       algorithmVersions: versions,
@@ -1024,6 +1224,11 @@ export const scoreStoredContest = (
 ) => contestRepository.scoreStoredContest(contestNumber, officialResult, options);
 export const confirmBetPlaced = (contestNumber: number, options?: { clock?: Clock }) =>
   contestRepository.confirmBetPlaced(contestNumber, options);
+export const recordPrize = (
+  contestNumber: number,
+  amountCents: number,
+  options?: { clock?: Clock }
+) => contestRepository.recordPrize(contestNumber, amountCents, options);
 export const deleteDraft = (contestNumber: number) => contestRepository.deleteDraft(contestNumber);
 export const verifyStoredContest = (contestNumber: number) =>
   contestRepository.verifyStoredContest(contestNumber);

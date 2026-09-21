@@ -109,5 +109,13 @@ export function areContestRecordsIdentical(r1: ContestRecord, r2: ContestRecord)
     }
   }
 
+  // Comparação de prize
+  if (Boolean(r1.prize) !== Boolean(r2.prize)) return false;
+  if (r1.prize && r2.prize) {
+    if (r1.prize.amountCents !== r2.prize.amountCents) return false;
+    if (r1.prize.recordedAt !== r2.prize.recordedAt) return false;
+    if (r1.prize.source !== r2.prize.source) return false;
+  }
+
   return true;
 }

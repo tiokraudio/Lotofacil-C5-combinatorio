@@ -3,8 +3,11 @@ import type {
   ContestRecordStatus,
   IntegrityVerification,
   ScoreIntegrityVerification,
+  PrizeRecord,
   Clock,
 } from "../c5/types.ts";
+
+export type { PrizeRecord };
 
 /**
  * Constantes financeiras canônicas do sistema Lotofácil C₅.
@@ -167,6 +170,43 @@ export interface HistorySummary {
    * Gasto confirmado em Reais (confirmedSpentCents / 100).
    */
   confirmedSpent: number;
+
+  /**
+   * Quantidade de concursos com fechamento financeiro registrado (prize definido).
+   */
+  prizesRecorded: number;
+
+  /**
+   * Total acumulado de premiações em centavos.
+   */
+  totalPrizeCents: number;
+
+  /**
+   * Total acumulado de premiações em Reais (totalPrizeCents / 100).
+   */
+  totalPrize: number;
+
+  /**
+   * Quantidade de concursos SCORED com aposta confirmada aguardando fechamento financeiro.
+   */
+  pendingFinancialClosures: number;
+
+  /**
+   * Resultado financeiro líquido em centavos (totalPrizeCents - confirmedSpentCents).
+   * Negativo indica prejuízo acumulado; positivo indica lucro.
+   */
+  netResultCents: number;
+
+  /**
+   * Resultado financeiro líquido em Reais (netResultCents / 100).
+   */
+  netResult: number;
+
+  /**
+   * Indica se todo o histórico de apostas confirmadas e apuradas possui fechamento concluído.
+   * Verdadeiro se pendingFinancialClosures === 0.
+   */
+  financialHistoryComplete: boolean;
 }
 
 /**

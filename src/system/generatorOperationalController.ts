@@ -550,6 +550,47 @@ export class GeneratorOperationalController {
       this.notifyListeners();
     }
   }
+
+  /**
+   * Registra o fechamento financeiro / premiação oficial obtida no concurso ativo (SCORED com aposta confirmada).
+   */
+  async recordPrize(amountCents: number): Promise<ContestRecord> {
+    if (!this.state.activeRecord) {
+      throw new Error("Não há concurso selecionado para registrar prêmio.");
+    }
+    if (this.state.activeRecord.status !== "SCORED") {
+      throw new Error("Apenas concursos apurados (SCORED) podem ter prêmio registrado.");
+    }
+    if (this.state.activeRecord.betPlacedAt === undefined) {
+      throw new Error("Não é possível registrar prêmio para um concurso cuja aposta não foi confirmada.");
+    }
+    if (this.state.activeRecord.prize !== undefined) {
+      throw new Error("O prêmio deste concurso já foi registrado e é imutável.");
+    }
+    if (this.state.storageBlocked) {
+      throw new Error("Armazenamento local bloqueado. Operação impedida.");
+    }
+
+    if (!actionLockController.acquire("RECORD_PRIZE")) {
+      throw new Error("Operação de registro de prêmio bloqueada por lock concorrente.");
+    }
+
+    try {
+      const num = this.state.activeRecord.contestNumber;
+      const updated = await this.repository.recordPrize(num, amountCents);
+      this.state.activeRecord = updated;
+      this.state.feedback = {
+        type: "success",
+        title: "Prêmio Registrado",
+        message: `O valor do prêmio do concurso ${num} foi registrado com sucesso no histórico financeiro.`,
+      };
+      await this.refreshLocalState();
+      return updated;
+    } finally {
+      actionLockController.release("RECORD_PRIZE");
+      this.notifyListeners();
+    }
+  }
 }
 
 /**

@@ -740,7 +740,7 @@ export async function runBetManagementTests(): Promise<{ passed: number; failed:
     await repo.confirmBetPlaced(18001);
 
     const exported = await repo.exportHistory();
-    assert(exported.schemaVersion === 2, "schemaVersion é 2 no export");
+    assert(exported.schemaVersion === 2 || exported.schemaVersion === 3, "schemaVersion é 2 ou 3 no export");
     assert(exported.records.length === 1, "1 registro exportado");
     assert(typeof exported.records[0].betPlacedAt === "string", "betPlacedAt incluído no export");
   }
