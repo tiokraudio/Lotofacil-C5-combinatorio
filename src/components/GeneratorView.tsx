@@ -578,7 +578,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
-  // 3.6. Registrar Fechamento Financeiro / Prêmio Oficial (V1.8)
+  // 3.6. Registrar Fechamento Financeiro / Prêmio (V1.8)
   const handleRecordPrize = async (amountCents: number) => {
     if (!activeRecord || activeRecord.status !== "SCORED") return;
     setIsLoading(true);
@@ -1174,12 +1174,12 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                 </div>
               )}
 
-              {/* Fechamento Financeiro Oficial (V1.8) */}
+              {/* Fechamento Financeiro (V1.8) */}
               <div className="mt-5 pt-4 border-t border-zinc-800">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block font-semibold">
-                      Fechamento Financeiro Oficial
+                      Fechamento Financeiro
                     </span>
                     {activeRecord.betPlacedAt ? (
                       activeRecord.prize !== undefined ? (
@@ -1347,7 +1347,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         onClose={() => setShowHashModal(false)}
       />
 
-      {/* Modal de Registro de Prêmio / Fechamento Financeiro Oficial (V1.8) */}
+      {/* Modal de Registro de Prêmio / Fechamento Financeiro (V1.8) */}
       <PrizeRecordModal
         isOpen={showPrizeModal}
         record={activeRecord}

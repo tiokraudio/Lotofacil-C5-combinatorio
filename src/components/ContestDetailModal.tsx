@@ -179,7 +179,7 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
             </div>
             {record.prize && (
               <div>
-                <span className="text-zinc-400 block">Prêmio Oficial:</span>
+                <span className="text-zinc-400 block">Prêmio Registrado:</span>
                 <span className="text-emerald-400 font-mono font-medium">
                   {formatBRLFromCents(record.prize.amountCents)}
                 </span>
@@ -199,7 +199,7 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
             )}
           </div>
 
-          {/* Fechamento Financeiro Oficial (V1.8) */}
+          {/* Fechamento Financeiro (V1.8) */}
           {isScored && record.betPlacedAt && (
             <div
               className={`p-3.5 rounded-xl border text-xs ${

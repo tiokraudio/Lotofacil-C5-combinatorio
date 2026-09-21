@@ -11,6 +11,24 @@ interface PrizeRecordModalProps {
   onRecordPrize: (amountCents: number) => Promise<void>;
 }
 
+export interface PrizeModalInitialState {
+  inputValue: string;
+  parsedCents: number | null;
+  inputError: string | null;
+}
+
+/**
+ * Retorna o estado inicial neutro do modal de registro de prêmio.
+ * Não infere nem calcula valores a partir do score ou de faixas de acertos.
+ */
+export function getPrizeModalInitialState(): PrizeModalInitialState {
+  return {
+    inputValue: "",
+    parsedCents: null,
+    inputError: null,
+  };
+}
+
 export const PrizeRecordModal: React.FC<PrizeRecordModalProps> = ({
   isOpen,
   record,
@@ -24,39 +42,13 @@ export const PrizeRecordModal: React.FC<PrizeRecordModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Inicializa o valor com base nas faixas fixas conhecidas da Lotofácil (se aplicável)
+  // Inicializa o modal SEMPRE sem valor financeiro pré-selecionado (neutro)
   useEffect(() => {
     if (isOpen && record) {
-      setInputError(null);
-      const score = record.score;
-      if (score) {
-        // Se todas as cotas tiveram < 11 acertos, o padrão mais comum é zero
-        if (!score.has11Plus) {
-          setInputValue("0,00");
-          setParsedCents(0);
-        } else {
-          // Calcula valor padrão estimado para faixas fixas se aplicável
-          // 11 acertos = R$ 6,00 por jogo premiado; 12 acertos = R$ 12,00; 13 acertos = R$ 30,00
-          const hits11 = score.prizeCounts.hits11 || 0;
-          const hits12 = score.prizeCounts.hits12 || 0;
-          const hits13 = score.prizeCounts.hits13 || 0;
-          const hits14 = score.prizeCounts.hits14 || 0;
-          const hits15 = score.prizeCounts.hits15 || 0;
-
-          if (hits14 === 0 && hits15 === 0) {
-            const estimatedCents = (hits11 * 600) + (hits12 * 1200) + (hits13 * 3000);
-            const formatted = (estimatedCents / 100).toFixed(2).replace(".", ",");
-            setInputValue(formatted);
-            setParsedCents(estimatedCents);
-          } else {
-            setInputValue("");
-            setParsedCents(null);
-          }
-        }
-      } else {
-        setInputValue("");
-        setParsedCents(null);
-      }
+      const initial = getPrizeModalInitialState();
+      setInputValue(initial.inputValue);
+      setParsedCents(initial.parsedCents);
+      setInputError(initial.inputError);
 
       // Foco no input
       setTimeout(() => {
@@ -123,16 +115,15 @@ export const PrizeRecordModal: React.FC<PrizeRecordModalProps> = ({
     }
   };
 
-  const handleSetQuickAmount = (cents: number) => {
-    const formatted = (cents / 100).toFixed(2).replace(".", ",");
-    setInputValue(formatted);
-    setParsedCents(cents);
+  const handleSetZeroPrize = () => {
+    setInputValue("0,00");
+    setParsedCents(0);
     setInputError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (isLoading || parsedCents === null) return;
 
     try {
       const cents = parseBRLToCents(inputValue);
@@ -165,7 +156,7 @@ export const PrizeRecordModal: React.FC<PrizeRecordModalProps> = ({
             </div>
             <div>
               <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-400 block font-semibold">
-                Fechamento Financeiro Oficial
+                Fechamento Financeiro
               </span>
               <h3 id="prize-modal-title" className="text-lg font-bold text-zinc-100 font-mono">
                 Registrar Prêmio • Concurso {record.contestNumber}
@@ -183,7 +174,7 @@ export const PrizeRecordModal: React.FC<PrizeRecordModalProps> = ({
           </button>
         </div>
 
-        {/* Resumo do Concurso */}
+        {/* Resumo do Concurso (Informação Matemática) */}
         <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <span className="text-zinc-400 block">Desempenho da Carteira C₅:</span>
@@ -192,7 +183,7 @@ export const PrizeRecordModal: React.FC<PrizeRecordModalProps> = ({
             </span>
           </div>
           <div className="text-left sm:text-right">
-            <span className="text-zinc-400 block">Custo da aposta oficial:</span>
+            <span className="text-zinc-400 block">Custo das apostas:</span>
             <span className="font-mono font-semibold text-emerald-400 text-sm">R$ 17,50</span>
           </div>
         </div>
@@ -204,7 +195,7 @@ export const PrizeRecordModal: React.FC<PrizeRecordModalProps> = ({
               htmlFor="prize-amount-input"
               className="block text-xs font-semibold text-zinc-200 mb-1.5"
             >
-              Valor Total do Prêmio Recebido (R$):
+              Valor Total Efetivamente Recebido (R$):
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-mono text-zinc-400 font-semibold">
@@ -233,57 +224,32 @@ export const PrizeRecordModal: React.FC<PrizeRecordModalProps> = ({
               </p>
             ) : (
               <p className="mt-1.5 text-[11px] text-zinc-400">
-                Digite o valor total líquido ou bruto recebido na lotérica para as 5 apostas (ex: 0,00 ou 18,00).
+                Informe o valor total efetivamente recebido referente aos 5 jogos deste concurso.
               </p>
             )}
           </div>
 
-          {/* Atalhos Rápidos */}
+          {/* Ação explícita de R$ 0,00 */}
           <div>
-            <span className="text-[11px] text-zinc-400 block font-medium mb-1.5">
-              Atalhos rápidos:
-            </span>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => handleSetQuickAmount(0)}
-                disabled={isLoading}
-                className="px-2.5 py-1 text-xs font-mono rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                R$ 0,00 (Não premiou)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSetQuickAmount(600)}
-                disabled={isLoading}
-                className="px-2.5 py-1 text-xs font-mono rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                R$ 6,00 (1× 11)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSetQuickAmount(1200)}
-                disabled={isLoading}
-                className="px-2.5 py-1 text-xs font-mono rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                R$ 12,00 (1× 12 ou 2× 11)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSetQuickAmount(1800)}
-                disabled={isLoading}
-                className="px-2.5 py-1 text-xs font-mono rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                R$ 18,00 (3× 11)
-              </button>
-            </div>
+            <button
+              type="button"
+              id="btn-explicit-zero-prize"
+              onClick={handleSetZeroPrize}
+              disabled={isLoading}
+              className="px-3.5 py-2 text-xs font-mono font-medium rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 hover:border-zinc-600 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              <span>NÃO RECEBI PRÊMIO — R$ 0,00</span>
+            </button>
           </div>
 
-          {/* Pré-visualização do Impacto Financeiro */}
+          {/* Confirmação explícita antes do commit */}
           {parsedCents !== null && (
-            <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-xs space-y-2">
+            <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-xs space-y-2.5">
+              <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-emerald-200 font-medium">
+                Registrar prêmio de {formatBRLFromCents(parsedCents)} no concurso {record.contestNumber}?
+              </div>
               <div className="flex items-center justify-between text-zinc-400">
-                <span>Prêmio informado:</span>
+                <span>Valor efetivamente recebido:</span>
                 <span className="font-mono text-zinc-200 font-semibold">
                   {formatBRLFromCents(parsedCents)}
                 </span>
@@ -340,7 +306,7 @@ export const PrizeRecordModal: React.FC<PrizeRecordModalProps> = ({
               ) : (
                 <CheckCircle2 className="w-3.5 h-3.5" />
               )}
-              <span>{isLoading ? "REGISTRANDO..." : "SALVAR PRÊMIO"}</span>
+              <span>{isLoading ? "REGISTRANDO..." : "REGISTRAR PRÊMIO"}</span>
             </button>
           </div>
         </form>

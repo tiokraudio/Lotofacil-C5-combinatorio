@@ -44,6 +44,8 @@
  * 38. Metadados financeiros no detalhamento de concurso (Modal/Detail)
  * 39. ZERO chamadas à rede/CAIXA provocadas pelo fluxo de premiação
  * 40. Preservação estrita do SHA-256 canônico da FrozenC5Payload
+ * 41. Não inferência financeira na UI (Casos A, B, C)
+ * 42. Independência estrita entre C5Score e PrizeRecord.amountCents
  * ===============================================================================
  */
 
@@ -63,6 +65,7 @@ import { actionLockController } from "../system/actionLock.ts";
 import { createContestDraft } from "../c5/record.ts";
 import { verifyContestIntegrity } from "../c5/integrity.ts";
 import { parseBRLToCents, formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
+import { getPrizeModalInitialState } from "../components/PrizeRecordModal.tsx";
 import { importHistory, validateHistoryBackup, prepareHistoryImport } from "../storage/import.ts";
 import { promisifyRequest, waitForTransaction, closeDatabase, CONTEST_STORE_NAME } from "../storage/db.ts";
 import type { ContestRecord, PrizeRecord } from "../c5/types.ts";
@@ -1228,8 +1231,178 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // 41. NÃO INFERÊNCIA FINANCEIRA NA UI (CASOS A, B, C)
+  // ---------------------------------------------------------------------------
+  console.log("\n▶ 41. Não inferência financeira na UI (Casos A, B, C)");
+  {
+    const { repo, coord, bus } = createIsolatedRepo("test_c41_no_inference");
+    const transportB = new InMemoryLocalSyncTransport(bus);
+    const events: any[] = [];
+    transportB.subscribe((e) => events.push(e));
+
+    // --- CASO A ---
+    // Registro: SCORED + betPlacedAt + score.has11Plus === false + prize ausente
+    const draftA = createContestDraft(41001);
+    await repo.saveDraft(draftA);
+    await repo.freezeStoredContest(41001);
+    await repo.confirmBetPlaced(41001);
+
+    const frozenA = (await repo.getContestRecord(41001))!;
+    const gamesA = frozenA.generation.games;
+
+    // Encontrar 15 dezenas com maxHits < 11 em todos os 5 jogos
+    let drawA: number[] = [];
+    for (let seed = 1; seed < 1000; seed++) {
+      const set = new Set<number>();
+      for (let n = 1; n <= 25; n++) {
+        if (((n * 13 + seed * 7) % 25) < 15) set.add(n);
+      }
+      for (let n = 1; set.size < 15 && n <= 25; n++) set.add(n);
+      const cand = Array.from(set).slice(0, 15).sort((a, b) => a - b);
+      const candSet = new Set(cand);
+      const maxHits = Math.max(...gamesA.map((g) => g.filter((x) => candSet.has(x)).length));
+      if (maxHits < 11) {
+        drawA = cand;
+        break;
+      }
+    }
+    assert(drawA.length === 15, "Sorteio gerado com maxHits < 11");
+
+    await repo.scoreStoredContest(41001, drawA);
+    const scoredA = (await repo.getContestRecord(41001))!;
+    assert(scoredA.status === "SCORED", "Caso A: status é SCORED");
+    assert(scoredA.betPlacedAt !== undefined, "Caso A: possui betPlacedAt");
+    assert(scoredA.score?.has11Plus === false, "Caso A: score.has11Plus é estritamente false");
+    assert(scoredA.prize === undefined, "Caso A: prize ausente inicialmente");
+
+    const preRevA = coord.getRevision();
+    const initialA = getPrizeModalInitialState();
+    assert(initialA.inputValue === "", "Caso A: input vazio ao abrir fluxo financeiro");
+    assert(initialA.parsedCents === null, "Caso A: parsedCents === null");
+    assert(initialA.inputError === null, "Caso A: inputError === null");
+
+    // Nenhum PrizeRecord criado, nenhuma mutação de revisão, nenhum evento
+    const currentA = (await repo.getContestRecord(41001))!;
+    assert(currentA.prize === undefined, "Caso A: Nenhum PrizeRecord após inicialização da UI");
+    assert(coord.getRevision() === preRevA, "Caso A: Nenhuma mutação de revisão disparada");
+    assert(areContestRecordsIdentical(scoredA, currentA), "Caso A: Registro idêntico ao estado pré-modal");
+    const prizeEventsA = events.filter((e) => e.reason === "PRIZE_RECORDED");
+    assert(prizeEventsA.length === 0, "Caso A: Nenhum evento PRIZE_RECORDED disparado");
+
+    // --- CASO B ---
+    // Registro com: hits11 > 0 ou hits12 > 0 ou hits13 > 0
+    const draftB = createContestDraft(41002);
+    await repo.saveDraft(draftB);
+    await repo.freezeStoredContest(41002);
+    await repo.confirmBetPlaced(41002);
+
+    const frozenB = (await repo.getContestRecord(41002))!;
+    const gamesB = frozenB.generation.games;
+    const g0 = gamesB[0];
+    const outsideB = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].filter(
+      (n) => !g0.includes(n)
+    );
+    // 13 acertos no jogo 0: 13 dezenas de g0 + 2 dezenas de fora
+    const drawB = [...g0.slice(0, 13), ...outsideB.slice(0, 2)].sort((a, b) => a - b);
+    await repo.scoreStoredContest(41002, drawB);
+
+    const scoredB = (await repo.getContestRecord(41002))!;
+    assert(scoredB.score?.has11Plus === true, "Caso B: possui acertos premiados (score.has11Plus === true)");
+    assert(
+      (scoredB.score?.prizeCounts.hits13 || 0) > 0 ||
+      (scoredB.score?.prizeCounts.hits12 || 0) > 0 ||
+      (scoredB.score?.prizeCounts.hits11 || 0) > 0,
+      "Caso B: hits11, hits12 ou hits13 > 0"
+    );
+
+    // Ao abrir o fluxo: nenhum valor monetário deve ser automaticamente calculado ou preenchido
+    const initialB = getPrizeModalInitialState();
+    assert(initialB.inputValue === "", "Caso B: nenhum valor monetário preenchido automaticamente");
+    assert(initialB.parsedCents === null, "Caso B: parsedCents permanece estritamente null");
+    assert(
+      initialB.inputValue !== "6,00" && initialB.inputValue !== "12,00" && initialB.inputValue !== "30,00",
+      "Caso B: proibido auto-preencher valores de faixas fixas"
+    );
+
+    // --- CASO C ---
+    // Somente após ação explícita do usuário selecionando/digitando R$ 0,00
+    // recordPrize(contest, 0) pode ser executado.
+    const explicitUserActionZeroCents = 0;
+    await repo.recordPrize(41001, explicitUserActionZeroCents);
+
+    const committedC = (await repo.getContestRecord(41001))!;
+    assert(committedC.prize !== undefined, "Caso C: PrizeRecord gravado somente após ação explícita");
+    assert(committedC.prize?.amountCents === 0, "Caso C: Prêmio R$ 0,00 registrado com fidelidade");
+    assert(committedC.prize?.source === "MANUAL", "Caso C: Origem é estritamente MANUAL");
+    assert(
+      events.some((e) => e.reason === "PRIZE_RECORDED" && e.contestNumber === 41001),
+      "Caso C: Evento PRIZE_RECORDED emitido após ação explícita"
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 42. INDEPENDÊNCIA ESTRITA ENTRE C5Score E PrizeRecord.amountCents
+  // ---------------------------------------------------------------------------
+  console.log("\n▶ 42. Independência estrita entre C5Score e PrizeRecord.amountCents");
+  {
+    const { repo } = createIsolatedRepo("test_c42_independence");
+
+    // Criar dois concursos independentes
+    const draft1 = createContestDraft(42001);
+    await repo.saveDraft(draft1);
+    await repo.freezeStoredContest(42001);
+    await repo.confirmBetPlaced(42001);
+
+    const draft2 = createContestDraft(42002);
+    // Injetar os mesmos jogos para obter rigorosamente o mesmo C5Score
+    const frozen1 = (await repo.getContestRecord(42001))!;
+    draft2.generation = deepCloneRecord(frozen1).generation;
+    await repo.saveDraft(draft2);
+    await repo.freezeStoredContest(42002);
+    await repo.confirmBetPlaced(42002);
+
+    // Apurar ambos com o mesmo resultado oficial
+    const officialDraw = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    await repo.scoreStoredContest(42001, officialDraw);
+    await repo.scoreStoredContest(42002, officialDraw);
+
+    const scored1 = (await repo.getContestRecord(42001))!;
+    const scored2 = (await repo.getContestRecord(42002))!;
+
+    // Provar que os scores matemáticos são rigorosamente idênticos
+    assert(
+      JSON.stringify(scored1.score) === JSON.stringify(scored2.score),
+      "Os dois concursos possuem exatamente o mesmo C5Score"
+    );
+
+    // Registrar valores financeiros manuais distintos para cada concurso
+    const valorManual1 = 1200; // R$ 12,00
+    const valorManual2 = 0;    // R$ 0,00
+    await repo.recordPrize(42001, valorManual1);
+    await repo.recordPrize(42002, valorManual2);
+
+    const final1 = (await repo.getContestRecord(42001))!;
+    const final2 = (await repo.getContestRecord(42002))!;
+
+    assert(final1.prize?.amountCents === 1200, "Concurso 42001 registrou R$ 12,00");
+    assert(final2.prize?.amountCents === 0, "Concurso 42002 registrou R$ 0,00");
+    assert(
+      final1.prize?.amountCents !== final2.prize?.amountCents,
+      "Dois registros com o mesmo C5Score receberam valores financeiros manuais diferentes"
+    );
+    assert(
+      JSON.stringify(final1.score) === JSON.stringify(final2.score),
+      "C5Score preservado e inalterado pelo registro financeiro"
+    );
+    assert(
+      final1.prize?.source === "MANUAL" && final2.prize?.source === "MANUAL",
+      "Origem de ambos é MANUAL — o score matemático não determinou o valor financeiro"
+    );
+  }
+
   console.log("\n===============================================================================");
-  console.log(` SUÍTE V1.8 CONCLUÍDA: ${passed} PASSARAM, ${failed} FALHARAM EM 40 CENÁRIOS! `);
+  console.log(` SUÍTE V1.8 CONCLUÍDA: ${passed} PASSARAM, ${failed} FALHARAM EM 42 CENÁRIOS! `);
   console.log("===============================================================================");
 
   return { passed, failed };

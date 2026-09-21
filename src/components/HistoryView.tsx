@@ -404,7 +404,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
                           <span
                             id={`badge-prize-${rec.contestNumber}`}
                             className="text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/50 bg-emerald-950/50 text-emerald-300 font-mono font-medium flex items-center gap-1"
-                            title={`Prêmio oficial: ${formatBRLFromCents(rec.prize.amountCents)}`}
+                            title={`Prêmio registrado: ${formatBRLFromCents(rec.prize.amountCents)}`}
                           >
                             <Award className="w-3 h-3 text-emerald-400" />
                             <span>PRÊMIO: {formatBRLFromCents(rec.prize.amountCents)}</span>
