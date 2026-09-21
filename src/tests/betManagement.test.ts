@@ -103,7 +103,7 @@ export async function runBetManagementTests(): Promise<{ passed: number; failed:
       dbName: `${dbPrefix}_db`,
       refreshCoordinator: coord,
     });
-    return { repo, sync, coord, fakeIdb };
+    return { repo, sync, coord, fakeIdb, bus, transport };
   }
 
   // ---------------------------------------------------------------------------
@@ -319,6 +319,7 @@ export async function runBetManagementTests(): Promise<{ passed: number; failed:
   // ---------------------------------------------------------------------------
   console.log("▶ 10. Prevenção de Double-Click e Locks Concorrentes (CONFIRM_BET)");
   {
+    // Verificação unitária atômica de acquire e release
     const acquired1 = actionLockController.acquire("CONFIRM_BET");
     assert(acquired1, "Primeiro lock CONFIRM_BET adquirido com sucesso");
 
@@ -327,6 +328,76 @@ export async function runBetManagementTests(): Promise<{ passed: number; failed:
 
     actionLockController.release("CONFIRM_BET");
     assert(!actionLockController.isLocked(), "Lock liberado após término");
+
+    // Caminho REAL de produção: duas chamadas concorrentes controller.confirmBet() sobre o mesmo FROZEN
+    const { repo, coord, sync, bus } = createIsolatedRepo("test_real_double_click");
+    const transportB = new InMemoryLocalSyncTransport(bus);
+    const events: any[] = [];
+    transportB.subscribe((evt) => events.push(evt));
+
+    const draft = createContestDraft(10001);
+    await repo.saveDraft(draft);
+    await repo.freezeStoredContest(10001);
+
+    const controller = new GeneratorOperationalController(repo, coord);
+    await controller.refreshLocalState();
+    const frozenRec = await repo.getContestRecord(10001);
+    controller.setActiveRecord(frozenRec);
+
+    events.length = 0;
+    const revBefore = coord.getRevision();
+
+    // Executa duas chamadas concorrentes reais simultâneas (double-click real de usuário)
+    const p1 = controller.confirmBet();
+    const p2 = controller.confirmBet();
+
+    const [res1, res2] = await Promise.allSettled([p1, p2]);
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Apenas uma mutação efetiva
+    const fulfilledCount = [res1, res2].filter((r) => r.status === "fulfilled").length;
+    const rejectedCount = [res1, res2].filter((r) => r.status === "rejected").length;
+    assert(fulfilledCount === 1, "Apenas uma mutação efetiva ocorreu com sucesso");
+    assert(rejectedCount === 1, "Segunda chamada simultânea foi rejeitada por lock concorrente");
+
+    const rejectedError = res1.status === "rejected" ? (res1 as any).reason : (res2 as any).reason;
+    assert(
+      rejectedError.message.includes("lock concorrente"),
+      "Erro canônico de lock concorrente retornado na tentativa simultânea"
+    );
+
+    // Registro final persistido no IndexedDB
+    const finalRecord = await repo.getContestRecord(10001);
+    assert(finalRecord !== null, "Registro final existe no IndexedDB");
+    if (!finalRecord) throw new Error("finalRecord is null");
+    assert(
+      typeof finalRecord.betPlacedAt === "string" && finalRecord.betPlacedAt.length > 0,
+      "Exatamente um betPlacedAt gravado"
+    );
+
+    // Timestamp não é sobrescrito
+    const successfulRecord = res1.status === "fulfilled" ? (res1 as any).value : (res2 as any).value;
+    assert(
+      finalRecord.betPlacedAt === successfulRecord.betPlacedAt,
+      "Timestamp de aposta não é sobrescrito"
+    );
+
+    // Revision +1 referente à confirmação
+    assert(
+      coord.getRevision() === revBefore + 1,
+      "revision +1 referente à confirmação"
+    );
+
+    // Exatamente um BET_CONFIRMED
+    const betConfirmedEvents = events.filter((e) => e.reason === "BET_CONFIRMED");
+    assert(betConfirmedEvents.length === 1, "Exatamente um BET_CONFIRMED publicado");
+
+    // Registro final válido
+    const verification = await repo.verifyStoredContest(10001);
+    assert(verification.valid, "Registro final válido na auditoria");
+
+    sync.close();
+    transportB.close();
   }
 
   // ---------------------------------------------------------------------------
@@ -376,22 +447,155 @@ export async function runBetManagementTests(): Promise<{ passed: number; failed:
   }
 
   // ---------------------------------------------------------------------------
-  // 12. RESILIÊNCIA A FALHAS DE ARMAZENAMENTO (IndexedDB)
+  // 12. RESILIÊNCIA A FALHAS DE ARMAZENAMENTO E FALHA ANTES DO COMMIT
   // ---------------------------------------------------------------------------
-  console.log("▶ 12. Resiliência a Falhas de Armazenamento");
+  console.log("▶ 12. Resiliência a Falhas de Armazenamento e Falha Antes do Commit");
   {
-    const { repo } = createIsolatedRepo("test_storage_failure");
-    const draft = createContestDraft(12001);
-    await repo.saveDraft(draft);
-    await repo.freezeStoredContest(12001);
+    // 12.1. Reabertura transparente e segura após fechamento de conexão
+    const { repo: repo1 } = createIsolatedRepo("test_storage_failure");
+    const draft1 = createContestDraft(12001);
+    await repo1.saveDraft(draft1);
+    await repo1.freezeStoredContest(12001);
 
-    // Fecha conexão ativa e verifica recuperação transparente
-    const db = await (repo as any).getDB();
-    closeDatabase(db);
+    const db1 = await (repo1 as any).getDB();
+    closeDatabase(db1);
 
-    // Repo deve lidar limpamente sem quebrar processo reabrindo nova conexão
-    const record = await repo.getContestRecord(12001);
-    assert(record !== null && record.contestNumber === 12001, "Reabertura transparente e segura do banco");
+    const record1 = await repo1.getContestRecord(12001);
+    assert(record1 !== null && record1.contestNumber === 12001, "Reabertura transparente e segura do banco");
+
+    // 12.2. Falha Real antes do Commit usando repo.confirmBetPlaced()
+    const { repo: repo2, coord: coord2, sync: sync2, bus: bus2 } = createIsolatedRepo("test_failure_before_commit");
+    const transportB2 = new InMemoryLocalSyncTransport(bus2);
+    const eventsB2: any[] = [];
+    transportB2.subscribe((evt) => eventsB2.push(evt));
+
+    const draft2 = createContestDraft(12101);
+    await repo2.saveDraft(draft2);
+    await repo2.freezeStoredContest(12101);
+
+    eventsB2.length = 0;
+    const revBefore2 = coord2.getRevision();
+
+    // Intercepta e injeta falha real na transação/objectStore antes da conclusão do commit
+    const origGetDB2 = (repo2 as any).getDB.bind(repo2);
+    let injectCommitFailure2 = true;
+    (repo2 as any).getDB = async () => {
+      const dbInstance = await origGetDB2();
+      const origTx = dbInstance.transaction.bind(dbInstance);
+      dbInstance.transaction = function(storeNames: any, mode: any) {
+        const tx = origTx(storeNames, mode);
+        if (mode === "readwrite" && injectCommitFailure2) {
+          const origStore = tx.objectStore.bind(tx);
+          tx.objectStore = function(name: string) {
+            const store = origStore(name);
+            store.put = function(..._args: any[]) {
+              tx.abort();
+              throw new DOMException("Falha de persistência simulada antes da conclusão do commit", "QuotaExceededError");
+            };
+            return store;
+          };
+        }
+        return tx;
+      };
+      return dbInstance;
+    };
+
+    let promiseRejeitada = false;
+    try {
+      await repo2.confirmBetPlaced(12101);
+    } catch (e: any) {
+      promiseRejeitada = true;
+      assert(
+        e.name === "QuotaExceededError" || e.message.includes("Falha de persistência"),
+        "Erro na persistência antes do commit capturado"
+      );
+    }
+    assert(promiseRejeitada, "Promise rejeitada devido à falha antes do commit");
+
+    // Restaura conexão normal para verificar integridade persistida
+    injectCommitFailure2 = false;
+    (repo2 as any).getDB = origGetDB2;
+
+    const persistedAfterFailure = await repo2.getContestRecord(12101);
+    assert(persistedAfterFailure !== null, "Registro existe");
+    if (!persistedAfterFailure) throw new Error("persistedAfterFailure is null");
+    assert(persistedAfterFailure.betPlacedAt === undefined, "registro persistido continua sem betPlacedAt");
+    assert(coord2.getRevision() === revBefore2, "dataRevision não aumentou por causa da confirmação falha");
+
+    const betConfirmedPublished = eventsB2.filter((e) => e.reason === "BET_CONFIRMED");
+    assert(betConfirmedPublished.length === 0, "zero evento BET_CONFIRMED publicado");
+
+    const rereadRecord = await repo2.getContestRecord(12101);
+    assert(rereadRecord?.betPlacedAt === undefined, "nenhuma falsa confirmação aparece na releitura");
+
+    sync2.close();
+    transportB2.close();
+
+    // 12.3. Lock e Retry pelo Caminho Operacional (GeneratorOperationalController.confirmBet())
+    const { repo: repo3, coord: coord3, sync: sync3, bus: bus3 } = createIsolatedRepo("test_lock_retry_operational");
+    const transportB3 = new InMemoryLocalSyncTransport(bus3);
+    const eventsB3: any[] = [];
+    transportB3.subscribe((evt) => eventsB3.push(evt));
+
+    const draft3 = createContestDraft(12201);
+    await repo3.saveDraft(draft3);
+    await repo3.freezeStoredContest(12201);
+
+    const controller3 = new GeneratorOperationalController(repo3, coord3);
+    await controller3.refreshLocalState();
+    const frozenRec3 = await repo3.getContestRecord(12201);
+    controller3.setActiveRecord(frozenRec3);
+
+    eventsB3.length = 0;
+    const revBefore3 = coord3.getRevision();
+
+    // Simula falha na primeira tentativa do repository.confirmBetPlaced
+    const origConfirm3 = repo3.confirmBetPlaced.bind(repo3);
+    let attempts3 = 0;
+    repo3.confirmBetPlaced = async (num: number, opts?: any) => {
+      attempts3++;
+      if (attempts3 === 1) {
+        throw new Error("Falha transitória de transação durante confirmação");
+      }
+      return origConfirm3(num, opts);
+    };
+
+    let controllerCallFailed = false;
+    try {
+      await controller3.confirmBet();
+    } catch (e: any) {
+      controllerCallFailed = true;
+    }
+    assert(controllerCallFailed, "Primeira tentativa falhou conforme esperado");
+
+    // Prova que CONFIRM_BET não permanece travado
+    assert(!actionLockController.isLocked(), "CONFIRM_BET não permanece travado após a falha");
+
+    // Prova que nenhuma confirmação ocorreu na primeira tentativa
+    assert(eventsB3.filter((e) => e.reason === "BET_CONFIRMED").length === 0, "Zero eventos BET_CONFIRMED na falha");
+    assert(coord3.getRevision() === revBefore3, "dataRevision inalterada após falha inicial");
+
+    // Segunda tentativa (retry) pelo caminho operacional REAL
+    const retryRecord = await controller3.confirmBet();
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Assertivas obrigatórias
+    assert(!actionLockController.isLocked(), "CONFIRM_BET liberado após sucesso do retry");
+    assert(
+      typeof retryRecord.betPlacedAt === "string" && retryRecord.betPlacedAt.length > 0,
+      "retry produz exatamente um betPlacedAt"
+    );
+
+    const inDb3 = await repo3.getContestRecord(12201);
+    assert(inDb3 !== null && inDb3.betPlacedAt === retryRecord.betPlacedAt, "retry produz exatamente um commit");
+
+    assert(coord3.getRevision() === revBefore3 + 1, "retry incrementa revision exatamente uma vez");
+
+    const retryEvents = eventsB3.filter((e) => e.reason === "BET_CONFIRMED");
+    assert(retryEvents.length === 1, "retry publica exatamente um BET_CONFIRMED");
+
+    sync3.close();
+    transportB3.close();
   }
 
   // ---------------------------------------------------------------------------
@@ -412,32 +616,55 @@ export async function runBetManagementTests(): Promise<{ passed: number; failed:
   }
 
   // ---------------------------------------------------------------------------
-  // 14. EXATAMENTE UM EVENTO BET_CONFIRMED PÓS-COMMIT
+  // 14. EXATAMENTE UM EVENTO BET_CONFIRMED PÓS-COMMIT (FLUXO REAL DE PRODUÇÃO)
   // ---------------------------------------------------------------------------
   console.log("▶ 14. Exatamente 1 Evento BET_CONFIRMED Pós-Commit");
   {
-    const bus = new InMemoryLocalSyncBus();
-    const transportA = new InMemoryLocalSyncTransport(bus);
+    const { repo, coord, sync, bus } = createIsolatedRepo("test_scenario_14_real_production");
     const transportB = new InMemoryLocalSyncTransport(bus);
 
     const receivedEvents: any[] = [];
-    transportB.subscribe((evt) => {
+    let recordInIdbWhenObserved: any = null;
+    transportB.subscribe(async (evt) => {
       receivedEvents.push(evt);
+      // Quando o evento é observado na Aba B, consulta o estado persistido no IndexedDB
+      recordInIdbWhenObserved = await repo.getContestRecord(14001);
     });
 
-    const syncA = new LocalSyncCoordinator({ transport: transportA });
-    const syncB = new LocalSyncCoordinator({ transport: transportB });
+    const draft = createContestDraft(14001);
+    await repo.saveDraft(draft);
+    await repo.freezeStoredContest(14001);
 
-    // Emite evento BET_CONFIRMED pós-commit
-    syncA.broadcast("BET_CONFIRMED", 14001);
+    // Limpa eventos anteriores de setup (SAVE/FREEZE) para auditar exclusivamente a confirmação
+    receivedEvents.length = 0;
+    const revBefore = coord.getRevision();
+
+    // FLUXO REAL DE PRODUÇÃO: repo.confirmBetPlaced(14001)
+    // confirmBetPlaced -> commit IndexedDB -> notifyMutationCommitted("BET_CONFIRMED") -> listener pós-commit -> LocalSyncCoordinator -> transport -> Aba B
+    const confirmed = await repo.confirmBetPlaced(14001);
+    assert(confirmed.status === "FROZEN", "Concurso confirmado permanece FROZEN");
+
+    // Aguarda despacho dos listeners assíncronos
+    await new Promise((r) => setTimeout(r, 20));
 
     assert(receivedEvents.length === 1, "Exatamente 1 evento recebido pela Aba B");
-    assert(receivedEvents[0].reason === "BET_CONFIRMED", "Tipo de evento é BET_CONFIRMED");
-    assert(receivedEvents[0].contestNumber === 14001, "Concurso é 14001");
+    assert(receivedEvents[0].reason === "BET_CONFIRMED", "reason === 'BET_CONFIRMED'");
+    assert(receivedEvents[0].contestNumber === 14001, "contestNumber correto");
     assert(typeof receivedEvents[0].eventId === "string", "Possui eventId criptográfico");
+    assert(coord.getRevision() === revBefore + 1, "dataRevision da origem incrementou exatamente uma vez pela confirmação");
 
-    syncA.close();
-    syncB.close();
+    const inDb = await repo.getContestRecord(14001);
+    assert(
+      typeof inDb?.betPlacedAt === "string" && inDb.betPlacedAt.length > 0,
+      "registro no IndexedDB já contém betPlacedAt quando o evento é observado"
+    );
+    assert(
+      typeof recordInIdbWhenObserved?.betPlacedAt === "string",
+      "registro no IndexedDB já continha betPlacedAt quando o evento foi observado na Aba B"
+    );
+
+    sync.close();
+    transportB.close();
   }
 
   // ---------------------------------------------------------------------------
