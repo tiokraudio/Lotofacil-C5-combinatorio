@@ -212,12 +212,12 @@ export async function runSelfDiagnostic(
   // -------------------------------------------------------------------------
   {
     const t0 = Date.now();
-    const isAppVerOk = APP_VERSION === "1.7.0";
+    const isAppVerOk = APP_VERSION === "1.8.0";
     const isAlgoVerOk = C5_ALGORITHM_VERSION === "C5-1.0.0";
     const isManifestOk =
-      APPLICATION_MANIFEST.appVersion === "1.7.0" &&
+      APPLICATION_MANIFEST.appVersion === "1.8.0" &&
       APPLICATION_MANIFEST.algorithmVersion === "C5-1.0.0" &&
-      APPLICATION_MANIFEST.backupSchemaVersion === 2 &&
+      APPLICATION_MANIFEST.backupSchemaVersion === 3 &&
       APPLICATION_MANIFEST.canonicalSlots.length === 25;
 
     const pass = isAppVerOk && isAlgoVerOk && isManifestOk;

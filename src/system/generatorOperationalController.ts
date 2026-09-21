@@ -41,6 +41,7 @@ import {
   validateOfficialResult,
   createOfficialResultPreview,
 } from "../sync/operationalState.ts";
+import { areContestRecordsIdentical } from "../storage/recordComparison.ts";
 
 export interface GeneratorOperationalState {
   activeRecord: ContestRecord | null;
@@ -240,12 +241,7 @@ export class GeneratorOperationalController {
               };
             }
           } else {
-            const hasChanged =
-              freshRecord.status !== currentActive.status ||
-              freshRecord.integrityHash !== currentActive.integrityHash ||
-              freshRecord.frozenAt !== currentActive.frozenAt ||
-              freshRecord.scoredAt !== currentActive.scoredAt ||
-              freshRecord.betPlacedAt !== currentActive.betPlacedAt;
+            const hasChanged = !areContestRecordsIdentical(freshRecord, currentActive);
 
             if (hasChanged) {
               this.state.activeRecord = freshRecord;
