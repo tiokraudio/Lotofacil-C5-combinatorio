@@ -3,7 +3,7 @@
  * SUÍTE CANÔNICA DE CERTIFICAÇÃO V1.8: GESTÃO DE PRÊMIOS E RASTREAMENTO FINANCEIRO
  * Arquivo: src/tests/prizeManagement.test.ts
  *
- * Cobertura Completa dos 40 Cenários de Certificação (P17 / P17.1):
+ * Cobertura Completa dos 42 Cenários de Certificação (P17 / P17.1 / P17.2 / P17.3):
  *  1. DRAFT rejeita prêmio
  *  2. FROZEN rejeita prêmio
  *  3. SCORED sem betPlacedAt rejeita prêmio
@@ -49,6 +49,9 @@
  * ===============================================================================
  */
 
+import "./setupDom.ts";
+import React, { act } from "react";
+import ReactDOM from "react-dom/client";
 import { IDBFactory } from "fake-indexeddb";
 import { ContestRepository, deepCloneRecord } from "../storage/contestRepository.ts";
 import { areContestRecordsIdentical } from "../storage/recordComparison.ts";
@@ -65,7 +68,10 @@ import { actionLockController } from "../system/actionLock.ts";
 import { createContestDraft } from "../c5/record.ts";
 import { verifyContestIntegrity } from "../c5/integrity.ts";
 import { parseBRLToCents, formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
-import { getPrizeModalInitialState } from "../components/PrizeRecordModal.tsx";
+import { PrizeRecordModal, getPrizeModalInitialState } from "../components/PrizeRecordModal.tsx";
+import { ContestDetailModal } from "../components/ContestDetailModal.tsx";
+import { GeneratorView } from "../components/GeneratorView.tsx";
+import { repository } from "../storage/service.ts";
 import { importHistory, validateHistoryBackup, prepareHistoryImport } from "../storage/import.ts";
 import { promisifyRequest, waitForTransaction, closeDatabase, CONTEST_STORE_NAME } from "../storage/db.ts";
 import type { ContestRecord, PrizeRecord } from "../c5/types.ts";
@@ -145,7 +151,7 @@ async function prepareScoredContestWithBet(
 
 export async function runPrizeManagementCertification(): Promise<{ passed: number; failed: number }> {
   console.log("===============================================================================");
-  console.log(" SUÍTE CANÔNICA DE CERTIFICAÇÃO V1.8 — GESTÃO DE PRÊMIOS (40 CENÁRIOS)");
+  console.log(" SUÍTE CANÔNICA DE CERTIFICAÇÃO V1.8 — GESTÃO DE PRÊMIOS (42 CENÁRIOS)");
   console.log("===============================================================================");
 
   // ---------------------------------------------------------------------------
@@ -1134,22 +1140,68 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
   // ---------------------------------------------------------------------------
   console.log("\n▶ 37. Estados derivados da interface de usuário");
   {
-    const { repo } = createIsolatedRepo("test_c37_ui_states");
-    await prepareScoredContestWithBet(repo, 37001);
-    const unrecorded = (await repo.getContestRecord(37001))!;
+    const container = document.getElementById("root") || document.createElement("div");
+    if (!container.id) {
+      container.id = "root";
+      document.body.appendChild(container);
+    }
+    const root = ReactDOM.createRoot(container);
 
-    // Verificação de lógica condicional de UI
-    const canRecordUnrecorded = unrecorded.status === "SCORED" && unrecorded.betPlacedAt !== undefined && unrecorded.prize === undefined;
-    assert(canRecordUnrecorded === true, "UI: Botão 'Registrar Prêmio' ativo para concurso elegível");
+    // Concurso 37001 no repositório de produção: SCORED + betPlacedAt + prize ausente
+    const draft37 = createContestDraft(37001);
+    await repository.saveDraft(draft37);
+    await repository.freezeStoredContest(37001);
+    await repository.confirmBetPlaced(37001);
+    await repository.scoreStoredContest(37001, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
-    await repo.recordPrize(37001, 3500);
-    const recorded = (await repo.getContestRecord(37001))!;
+    await act(async () => {
+      root.render(React.createElement(GeneratorView, {}));
+    });
 
-    const canRecordAfter = recorded.status === "SCORED" && recorded.betPlacedAt !== undefined && recorded.prize === undefined;
-    assert(canRecordAfter === false, "UI: Botão 'Registrar Prêmio' oculto após gravação");
+    const input = container.querySelector("#contest-number-input") as HTMLInputElement;
+    const generateBtn = container.querySelector("#btn-generate-contest") as HTMLButtonElement;
+    assert(input !== null && generateBtn !== null, "Controles de formulário do GeneratorView presentes no DOM");
 
-    const badgePrizeVisible = recorded.prize !== undefined;
-    assert(badgePrizeVisible === true, "UI: Badge de prêmio visível");
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      nativeSetter.call(input, "37001");
+      input.dispatchEvent(new window.Event("input", { bubbles: true }));
+    });
+
+    await act(async () => {
+      generateBtn.click();
+      await new Promise((r) => setTimeout(r, 60));
+    });
+
+    // 1. SCORED + betPlacedAt + prize ausente: ação REGISTRAR PRÊMIO real no DOM
+    const btnOpen = container.querySelector("#btn-open-record-prize") as HTMLButtonElement;
+    assert(btnOpen !== null, "Ação 'REGISTRAR PRÊMIO' disponível no DOM para concurso elegível");
+    assert(
+      btnOpen.textContent?.includes("REGISTRAR PRÊMIO") === true,
+      "Texto da ação no DOM é estritamente 'REGISTRAR PRÊMIO'"
+    );
+
+    // 2. Após PrizeRecord persistido: ação deve desaparecer e badge de prêmio deve surgir
+    await repository.recordPrize(37001, 3500);
+
+    await act(async () => {
+      generateBtn.click();
+      await new Promise((r) => setTimeout(r, 60));
+    });
+
+    const btnOpenAfter = container.querySelector("#btn-open-record-prize");
+    assert(btnOpenAfter === null, "Ação 'REGISTRAR PRÊMIO' desaparece do DOM após PrizeRecord persistido");
+
+    const badgeRecorded = container.querySelector("#badge-prize-recorded");
+    assert(badgeRecorded !== null, "Badge de prêmio registrado presente no DOM");
+    assert(
+      badgeRecorded?.textContent?.replace(/\u00a0/g, " ").includes("PRÊMIO: R$ 35,00") === true,
+      "Badge exibe valor do prêmio registrado (PRÊMIO: R$ 35,00)"
+    );
+
+    await act(async () => {
+      root.unmount();
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -1157,15 +1209,58 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
   // ---------------------------------------------------------------------------
   console.log("\n▶ 38. Metadados financeiros no detalhamento de concurso");
   {
+    const container = document.getElementById("root") || document.createElement("div");
+    if (!container.id) {
+      container.id = "root";
+      document.body.appendChild(container);
+    }
+    const root = ReactDOM.createRoot(container);
+
+    // Concurso 38001 com valor literal conhecido: prêmio 4500 (R$ 45,00) e custo canônico 1750 (R$ 17,50)
+    // Resultado líquido literal conhecido: + R$ 27,50
     const { repo } = createIsolatedRepo("test_c38_modal_detail");
     await prepareScoredContestWithBet(repo, 38001);
     await repo.recordPrize(38001, 4500, { clock: () => new Date("2026-09-21T10:00:00.000Z") });
-    const rec = (await repo.getContestRecord(38001))!;
+    const contestRecord = (await repo.getContestRecord(38001))!;
 
-    const netBalance = rec.prize!.amountCents - 1750;
-    assert(netBalance === 2750, "Cálculo de balanço individual do concurso: +R$ 27,50");
-    assert(rec.prize?.source === "MANUAL", "Source exibida no modal é MANUAL");
-    assert(rec.prize?.recordedAt === "2026-09-21T10:00:00.000Z", "Timestamp de registro exibido");
+    await act(async () => {
+      root.render(
+        React.createElement(ContestDetailModal, {
+          isOpen: true,
+          record: contestRecord,
+          onClose: () => {},
+        })
+      );
+    });
+
+    const renderedText = (container.textContent || "").replace(/\u00a0/g, " ");
+
+    // 1. Apresenta o prêmio registrado literal (R$ 45,00)
+    assert(renderedText.includes("R$ 45,00"), "ContestDetailModal exibe prêmio registrado literal 'R$ 45,00'");
+
+    // 2. Apresenta o resultado do concurso literal (+ R$ 27,50)
+    assert(renderedText.includes("+ R$ 27,50"), "ContestDetailModal exibe resultado líquido literal '+ R$ 27,50'");
+
+    // 3. Data/hora de registro
+    assert(
+      renderedText.includes("Registrado em"),
+      "ContestDetailModal exibe data/hora de registro do prêmio"
+    );
+
+    // 4. Indicação de origem manual
+    assert(
+      renderedText.includes("(MANUAL)"),
+      "ContestDetailModal exibe indicação de origem manual (MANUAL)"
+    );
+
+    // 5. Ausência de botão de novo registro quando prize já existe
+    const recordBtn = container.querySelector("#btn-open-record-prize");
+    const confirmBtn = container.querySelector("#btn-confirm-record-prize");
+    assert(recordBtn === null && confirmBtn === null, "Ausência de botão de novo registro quando prize já existe");
+
+    await act(async () => {
+      root.unmount();
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -1232,10 +1327,17 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
   }
 
   // ---------------------------------------------------------------------------
-  // 41. NÃO INFERÊNCIA FINANCEIRA NA UI (CASOS A, B, C)
+  // 41. NÃO INFERÊNCIA FINANCEIRA NA UI (CASOS A, B, C) E INTERAÇÃO REAL DO MODAL
   // ---------------------------------------------------------------------------
-  console.log("\n▶ 41. Não inferência financeira na UI (Casos A, B, C)");
+  console.log("\n▶ 41. Não inferência financeira na UI e interação real do modal (Casos A, B, C)");
   {
+    const container = document.getElementById("root") || document.createElement("div");
+    if (!container.id) {
+      container.id = "root";
+      document.body.appendChild(container);
+    }
+    const root = ReactDOM.createRoot(container);
+
     const { repo, coord, bus } = createIsolatedRepo("test_c41_no_inference");
     const transportB = new InMemoryLocalSyncTransport(bus);
     const events: any[] = [];
@@ -1282,6 +1384,27 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
     assert(initialA.parsedCents === null, "Caso A: parsedCents === null");
     assert(initialA.inputError === null, "Caso A: inputError === null");
 
+    // Montar componente real PrizeRecordModal no DOM para o Caso A
+    let recordedCentsA: number | null = null;
+    await act(async () => {
+      root.render(
+        React.createElement(PrizeRecordModal, {
+          isOpen: true,
+          record: scoredA,
+          isLoading: false,
+          onClose: () => {},
+          onRecordPrize: async (c) => {
+            recordedCentsA = c;
+            await repo.recordPrize(41001, c);
+          },
+        })
+      );
+    });
+
+    const inputDomA = container.querySelector("#prize-amount-input") as HTMLInputElement;
+    assert(inputDomA !== null, "Caso A: Campo de input presente no DOM do modal");
+    assert(inputDomA.value === "", "Caso A: Campo de input inicia estritamente vazio (input.value === '')");
+
     // Nenhum PrizeRecord criado, nenhuma mutação de revisão, nenhum evento
     const currentA = (await repo.getContestRecord(41001))!;
     assert(currentA.prize === undefined, "Caso A: Nenhum PrizeRecord após inicialização da UI");
@@ -1289,6 +1412,34 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
     assert(areContestRecordsIdentical(scoredA, currentA), "Caso A: Registro idêntico ao estado pré-modal");
     const prizeEventsA = events.filter((e) => e.reason === "PRIZE_RECORDED");
     assert(prizeEventsA.length === 0, "Caso A: Nenhum evento PRIZE_RECORDED disparado");
+
+    // --- AÇÃO R$ 0,00 VIA COMPONENTE REAL (CASO C) ---
+    // Clicar na ação "NÃO RECEBI PRÊMIO — R$ 0,00" e confirmar
+    const btnZero = container.querySelector("#btn-explicit-zero-prize") as HTMLButtonElement;
+    assert(btnZero !== null, "Ação de R$ 0,00 presente no DOM");
+
+    await act(async () => {
+      btnZero.click();
+    });
+    assert(inputDomA.value === "0,00", "Input preenchido com '0,00' após clique na ação explícita");
+
+    const btnSubmitA = container.querySelector("#btn-confirm-record-prize") as HTMLButtonElement;
+    assert(btnSubmitA !== null, "Botão de confirmação de prêmio presente no DOM");
+
+    await act(async () => {
+      btnSubmitA.click();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    assert(recordedCentsA === 0, "Callback onRecordPrize invocado com 0 centavos");
+    const committedC = (await repo.getContestRecord(41001))!;
+    assert(committedC.prize !== undefined, "Caso C: PrizeRecord gravado somente após ação explícita");
+    assert(committedC.prize?.amountCents === 0, "Caso C: Prêmio R$ 0,00 registrado com fidelidade");
+    assert(committedC.prize?.source === "MANUAL", "Caso C: Origem é estritamente MANUAL");
+    assert(
+      events.some((e) => e.reason === "PRIZE_RECORDED" && e.contestNumber === 41001),
+      "Caso C: Evento PRIZE_RECORDED emitido após ação explícita"
+    );
 
     // --- CASO B ---
     // Registro com: hits11 > 0 ou hits12 > 0 ou hits13 > 0
@@ -1316,29 +1467,56 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
       "Caso B: hits11, hits12 ou hits13 > 0"
     );
 
-    // Ao abrir o fluxo: nenhum valor monetário deve ser automaticamente calculado ou preenchido
-    const initialB = getPrizeModalInitialState();
-    assert(initialB.inputValue === "", "Caso B: nenhum valor monetário preenchido automaticamente");
-    assert(initialB.parsedCents === null, "Caso B: parsedCents permanece estritamente null");
+    // Montar componente real PrizeRecordModal no DOM para o Caso B
+    let recordedCentsB: number | null = null;
+    await act(async () => {
+      root.render(
+        React.createElement(PrizeRecordModal, {
+          isOpen: true,
+          record: scoredB,
+          isLoading: false,
+          onClose: () => {},
+          onRecordPrize: async (c) => {
+            recordedCentsB = c;
+            await repo.recordPrize(41002, c);
+          },
+        })
+      );
+    });
+
+    const inputDomB = container.querySelector("#prize-amount-input") as HTMLInputElement;
+    assert(inputDomB !== null, "Caso B: Campo de input presente no DOM do modal");
     assert(
-      initialB.inputValue !== "6,00" && initialB.inputValue !== "12,00" && initialB.inputValue !== "30,00",
-      "Caso B: proibido auto-preencher valores de faixas fixas"
+      inputDomB.value === "",
+      "Caso B: Provar ausência de inferência com C5Score contendo 11+, 12+, 13+ (input.value === '')"
     );
 
-    // --- CASO C ---
-    // Somente após ação explícita do usuário selecionando/digitando R$ 0,00
-    // recordPrize(contest, 0) pode ser executado.
-    const explicitUserActionZeroCents = 0;
-    await repo.recordPrize(41001, explicitUserActionZeroCents);
+    const beforeTypingB = await repo.getContestRecord(41002);
+    assert(beforeTypingB?.prize === undefined, "Caso B: Nenhum PrizeRecord criado na abertura do modal");
 
-    const committedC = (await repo.getContestRecord(41001))!;
-    assert(committedC.prize !== undefined, "Caso C: PrizeRecord gravado somente após ação explícita");
-    assert(committedC.prize?.amountCents === 0, "Caso C: Prêmio R$ 0,00 registrado com fidelidade");
-    assert(committedC.prize?.source === "MANUAL", "Caso C: Origem é estritamente MANUAL");
-    assert(
-      events.some((e) => e.reason === "PRIZE_RECORDED" && e.contestNumber === 41001),
-      "Caso C: Evento PRIZE_RECORDED emitido após ação explícita"
-    );
+    // Digitação real de valor: "45,00"
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      nativeSetter.call(inputDomB, "45,00");
+      inputDomB.dispatchEvent(new window.Event("input", { bubbles: true }));
+    });
+    assert(inputDomB.value === "45,00", "Input contém valor digitado '45,00'");
+
+    const btnSubmitB = container.querySelector("#btn-confirm-record-prize") as HTMLButtonElement;
+    await act(async () => {
+      btnSubmitB.click();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    assert(recordedCentsB === 4500, "Callback onRecordPrize invocado com exatamente 4500 centavos");
+    const committedB = (await repo.getContestRecord(41002))!;
+    assert(committedB.prize !== undefined, "Caso B: PrizeRecord gravado no banco após confirmação");
+    assert(committedB.prize?.amountCents === 4500, "Caso B: 4500 centavos persistidos com fidelidade");
+    assert(committedB.prize?.source === "MANUAL", "Caso B: Origem é estritamente MANUAL");
+
+    await act(async () => {
+      root.unmount();
+    });
   }
 
   // ---------------------------------------------------------------------------

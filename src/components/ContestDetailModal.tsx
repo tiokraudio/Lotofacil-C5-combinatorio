@@ -23,40 +23,6 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
   const [copiedHash, setCopiedHash] = useState(false);
   const [verificationResult, setVerificationResult] = useState<StoredContestVerification | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-
-  if (!isOpen || !record) return null;
-
-  const handleCopyHash = async () => {
-    if (!record.integrityHash) return;
-    try {
-      await navigator.clipboard.writeText(record.integrityHash);
-      setCopiedHash(true);
-      setTimeout(() => setCopiedHash(false), 2000);
-    } catch {
-      // Ignorar fallback
-    }
-  };
-
-  const handleRunVerify = async () => {
-    if (!onVerify) return;
-    setIsVerifying(true);
-    try {
-      const result = await onVerify(record.contestNumber);
-      setVerificationResult(result);
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const isScored = record.status === "SCORED";
-  const isFrozen = record.status === "FROZEN";
-
-  const statusLabels = {
-    DRAFT: "RASCUNHO",
-    FROZEN: "CONGELADO",
-    SCORED: "CONFERIDO",
-  };
-
   const modalRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -96,6 +62,39 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
+
+  if (!isOpen || !record) return null;
+
+  const handleCopyHash = async () => {
+    if (!record.integrityHash) return;
+    try {
+      await navigator.clipboard.writeText(record.integrityHash);
+      setCopiedHash(true);
+      setTimeout(() => setCopiedHash(false), 2000);
+    } catch {
+      // Ignorar fallback
+    }
+  };
+
+  const handleRunVerify = async () => {
+    if (!onVerify) return;
+    setIsVerifying(true);
+    try {
+      const result = await onVerify(record.contestNumber);
+      setVerificationResult(result);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const isScored = record.status === "SCORED";
+  const isFrozen = record.status === "FROZEN";
+
+  const statusLabels = {
+    DRAFT: "RASCUNHO",
+    FROZEN: "CONGELADO",
+    SCORED: "CONFERIDO",
+  };
 
   const statusBadge = {
     DRAFT: "bg-amber-950/60 border-amber-500/40 text-amber-300",
