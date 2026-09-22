@@ -1022,7 +1022,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                         <div
                           id="badge-prize-recorded"
                           className="px-3 py-2 rounded-xl bg-emerald-950/60 border border-emerald-500/60 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm"
-                          title={`Prêmio oficial registrado em ${formatLocalDate(activeRecord.prize.recordedAt)}`}
+                          title={`Prêmio registrado manualmente em ${formatLocalDate(activeRecord.prize.recordedAt)}`}
                         >
                           <Award className="w-3.5 h-3.5 text-emerald-400" />
                           <span>PRÊMIO: {formatBRLFromCents(activeRecord.prize.amountCents)}</span>

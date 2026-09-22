@@ -1199,6 +1199,17 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
       "Badge exibe valor do prêmio registrado (PRÊMIO: R$ 35,00)"
     );
 
+    // 3. Verificação do atributo title: compatível com registro manual e SEM a palavra 'oficial'
+    const badgeTitle = badgeRecorded?.getAttribute("title") || "";
+    assert(
+      badgeTitle.toLowerCase().includes("manualmente") || badgeTitle.includes("MANUAL"),
+      "Badge title contém indicação compatível com registro manual"
+    );
+    assert(
+      !badgeTitle.toLowerCase().includes("oficial"),
+      "Badge title NÃO contém a palavra 'oficial' (case-insensitive)"
+    );
+
     await act(async () => {
       root.unmount();
     });
