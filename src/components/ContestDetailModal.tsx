@@ -6,6 +6,7 @@ import { formatLocalDate } from "../storage/service.ts";
 import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
 import { GamesDisplay } from "./GamesDisplay.tsx";
 import { Ball } from "./Ball.tsx";
+import { OfficialPrizeReconciliationPanel } from "./OfficialPrizeReconciliationPanel.tsx";
 
 interface ContestDetailModalProps {
   isOpen: boolean;
@@ -327,6 +328,15 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
                 </div>
               )}
             </div>
+          )}
+
+          {/* V1.9: Referência Oficial e Reconciliação (se SCORED) */}
+          {isScored && (
+            <OfficialPrizeReconciliationPanel
+              contestNumber={record.contestNumber}
+              score={record.score}
+              prize={record.prize}
+            />
           )}
 
           {/* Os 5 Jogos Originais */}

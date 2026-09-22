@@ -27,6 +27,7 @@ import { repository, formatLocalDate } from "../storage/service.ts";
 import { GamesDisplay } from "./GamesDisplay.tsx";
 import { ResultInputGrid } from "./ResultInputGrid.tsx";
 import { OfficialResultSection } from "./OfficialResultSection.tsx";
+import { OfficialPrizeReconciliationPanel } from "./OfficialPrizeReconciliationPanel.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { HashViewerModal } from "./HashViewerModal.tsx";
 import { Ball } from "./Ball.tsx";
@@ -1259,6 +1260,17 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                 contestNumber={activeRecord.contestNumber}
                 isLoading={isLoading}
                 onSubmitResult={handleScoreResult}
+              />
+            </div>
+          )}
+
+          {/* V1.9: Referência Oficial de Premiação e Reconciliação Financeira (se SCORED) */}
+          {activeRecord.status === "SCORED" && (
+            <div className="mt-8">
+              <OfficialPrizeReconciliationPanel
+                contestNumber={activeRecord.contestNumber}
+                score={activeRecord.score}
+                prize={activeRecord.prize}
               />
             </div>
           )}

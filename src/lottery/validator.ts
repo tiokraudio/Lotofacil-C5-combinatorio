@@ -2,6 +2,9 @@ import {
   OfficialContestResult,
   LotteryFetchError,
   LotteryErrorCode,
+  OfficialPrizeReference,
+  OfficialPrizeTier,
+  PrizeHits,
 } from "./types.ts";
 
 export interface ValidationSuccess {
@@ -16,6 +19,182 @@ export interface ValidationFailure {
 }
 
 export type ValidationResult = ValidationSuccess | ValidationFailure;
+
+const VALID_HITS = new Set<number>([11, 12, 13, 14, 15]);
+
+/**
+ * Validador estrito e puro para OfficialPrizeReference.
+ * Garante que a referência financeira seja completa e íntegra (todas as 5 faixas válidas),
+ * ou retorne undefined se houver qualquer divergência ou inconsistência.
+ */
+export function validateAndNormalizeOfficialPrizeReference(
+  raw: unknown,
+  expectedContestNumber?: number,
+  expectedFetchedAt?: string
+): OfficialPrizeReference {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new LotteryFetchError(
+      "prizeReference deve ser um objeto válido.",
+      "INVALID_PAYLOAD"
+    );
+  }
+
+  const obj = raw as Record<string, unknown>;
+
+  // 1. contestNumber: inteiro positivo
+  const contestNumber = obj.contestNumber;
+  if (
+    typeof contestNumber !== "number" ||
+    !Number.isSafeInteger(contestNumber) ||
+    contestNumber <= 0
+  ) {
+    throw new LotteryFetchError(
+      "Número do concurso em prizeReference inválido.",
+      "INVALID_PAYLOAD"
+    );
+  }
+
+  if (
+    expectedContestNumber !== undefined &&
+    contestNumber !== expectedContestNumber
+  ) {
+    throw new LotteryFetchError(
+      `Concurso em prizeReference (${contestNumber}) difere do concurso esperado (${expectedContestNumber}).`,
+      "INVALID_PAYLOAD",
+      undefined,
+      contestNumber
+    );
+  }
+
+  // 2. source: estritamente "CAIXA"
+  if (obj.source !== "CAIXA") {
+    throw new LotteryFetchError(
+      `Fonte em prizeReference deve ser 'CAIXA', recebido '${String(obj.source)}'.`,
+      "INVALID_PAYLOAD",
+      undefined,
+      contestNumber
+    );
+  }
+
+  // 3. fetchedAt: ISO-8601 válido
+  const fetchedAt = obj.fetchedAt;
+  if (
+    typeof fetchedAt !== "string" ||
+    !fetchedAt.trim() ||
+    isNaN(Date.parse(fetchedAt))
+  ) {
+    throw new LotteryFetchError(
+      "Data de captura (fetchedAt) em prizeReference inválida.",
+      "INVALID_PAYLOAD",
+      undefined,
+      contestNumber
+    );
+  }
+
+  // 4. tiers: exatamente 5 faixas
+  if (!Array.isArray(obj.tiers) || obj.tiers.length !== 5) {
+    throw new LotteryFetchError(
+      `prizeReference deve conter exatamente 5 faixas de premiação (11 a 15), recebido ${Array.isArray(obj.tiers) ? obj.tiers.length : typeof obj.tiers}.`,
+      "INVALID_PAYLOAD",
+      undefined,
+      contestNumber
+    );
+  }
+
+  const seenHits = new Set<PrizeHits>();
+  const normalizedTiers: OfficialPrizeTier[] = [];
+
+  for (const item of obj.tiers) {
+    if (item === null || typeof item !== "object" || Array.isArray(item)) {
+      throw new LotteryFetchError(
+        "Faixa de premiação deve ser um objeto válido.",
+        "INVALID_PAYLOAD",
+        undefined,
+        contestNumber
+      );
+    }
+
+    const tierObj = item as Record<string, unknown>;
+    const hits = tierObj.hits;
+
+    if (
+      typeof hits !== "number" ||
+      !Number.isSafeInteger(hits) ||
+      !VALID_HITS.has(hits)
+    ) {
+      throw new LotteryFetchError(
+        `Faixa de premiação com acertos inválidos: ${String(hits)}. Deve ser 11, 12, 13, 14 ou 15.`,
+        "INVALID_PAYLOAD",
+        undefined,
+        contestNumber
+      );
+    }
+
+    const typedHits = hits as PrizeHits;
+    if (seenHits.has(typedHits)) {
+      throw new LotteryFetchError(
+        `Faixa de premiação duplicada: ${typedHits} acertos.`,
+        "INVALID_PAYLOAD",
+        undefined,
+        contestNumber
+      );
+    }
+    seenHits.add(typedHits);
+
+    const winners = tierObj.winners;
+    if (
+      typeof winners !== "number" ||
+      !Number.isSafeInteger(winners) ||
+      winners < 0
+    ) {
+      throw new LotteryFetchError(
+        `Número de ganhadores inválido na faixa de ${typedHits} acertos.`,
+        "INVALID_PAYLOAD",
+        undefined,
+        contestNumber
+      );
+    }
+
+    const prizePerWinnerCents = tierObj.prizePerWinnerCents;
+    if (
+      typeof prizePerWinnerCents !== "number" ||
+      !Number.isSafeInteger(prizePerWinnerCents) ||
+      prizePerWinnerCents < 0
+    ) {
+      throw new LotteryFetchError(
+        `Valor do prêmio por ganhador em centavos inválido na faixa de ${typedHits} acertos.`,
+        "INVALID_PAYLOAD",
+        undefined,
+        contestNumber
+      );
+    }
+
+    normalizedTiers.push({
+      hits: typedHits,
+      winners,
+      prizePerWinnerCents,
+    });
+  }
+
+  if (seenHits.size !== 5) {
+    throw new LotteryFetchError(
+      "prizeReference deve cobrir todas as 5 faixas [11..15].",
+      "INVALID_PAYLOAD",
+      undefined,
+      contestNumber
+    );
+  }
+
+  // Ordena canonicamente de 15 a 11 acertos (decrescente)
+  normalizedTiers.sort((a, b) => b.hits - a.hits);
+
+  return {
+    contestNumber,
+    source: "CAIXA",
+    fetchedAt,
+    tiers: normalizedTiers,
+  };
+}
 
 /**
  * Validador e normalizador estrito de respostas da Lotofácil.
@@ -234,6 +413,25 @@ export function validateAndNormalizeOfficialResult(
       ? obj.isAccumulated
       : undefined;
 
+  let prizeReference: OfficialPrizeReference | undefined = undefined;
+  if ("prizeReference" in obj && obj.prizeReference !== undefined) {
+    try {
+      prizeReference = validateAndNormalizeOfficialPrizeReference(
+        obj.prizeReference,
+        contestNumber,
+        fetchedAt
+      );
+    } catch (err: any) {
+      return {
+        valid: false,
+        error:
+          err?.message ??
+          "Referência oficial de premiação (rateio) possui formato inválido.",
+        code: err?.code ?? "INVALID_PAYLOAD",
+      };
+    }
+  }
+
   return {
     valid: true,
     data: {
@@ -245,6 +443,7 @@ export function validateAndNormalizeOfficialResult(
       nextContestNumber,
       nextContestDate,
       isAccumulated,
+      prizeReference,
     },
   };
 }

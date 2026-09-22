@@ -3,6 +3,21 @@
  * Total isolamento entre rede externa e domínio do motor C5.
  */
 
+export type PrizeHits = 11 | 12 | 13 | 14 | 15;
+
+export interface OfficialPrizeTier {
+  hits: PrizeHits;
+  winners: number;
+  prizePerWinnerCents: number;
+}
+
+export interface OfficialPrizeReference {
+  contestNumber: number;
+  source: "CAIXA";
+  fetchedAt: string;
+  tiers: readonly OfficialPrizeTier[];
+}
+
 /**
  * Modelo normalizado e auditável do resultado oficial da Lotofácil.
  */
@@ -21,6 +36,8 @@ export interface OfficialContestResult {
   nextContestNumber?: number;
   nextContestDate?: string;
   isAccumulated?: boolean;
+  /** Referência oficial de premiação (CAIXA), exclusivamente volátil/read-only. */
+  prizeReference?: OfficialPrizeReference;
 }
 
 /**
@@ -42,6 +59,17 @@ export interface LotteryResultProvider {
    * @param signal Sinal opcional para abort/cancelamento de requisições.
    */
   getContest(contestNumber: number, signal?: AbortSignal): Promise<OfficialContestResult>;
+
+  /**
+   * Força uma atualização explícita ignorando o cache local da sessão.
+   * Em caso de falha, preserva integralmente o cache anterior.
+   * @param contestNumber Número do concurso a ser atualizado.
+   * @param signal Sinal opcional para abort/cancelamento.
+   */
+  refreshContest?(
+    contestNumber: number,
+    signal?: AbortSignal
+  ): Promise<OfficialContestResult>;
 }
 
 /**

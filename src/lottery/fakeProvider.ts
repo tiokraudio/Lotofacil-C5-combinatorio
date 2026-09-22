@@ -7,7 +7,7 @@ import {
 import { assertValidOfficialResult } from "./validator.ts";
 
 export interface FakeProviderCall {
-  method: "getLatestContest" | "getContest";
+  method: "getLatestContest" | "getContest" | "refreshContest";
   contestNumber?: number;
   timestamp: number;
 }
@@ -145,6 +145,56 @@ export class FakeLotteryResultProvider implements LotteryResultProvider {
     }
 
     // Valida com o concurso solicitado
+    return assertValidOfficialResult(res, contestNumber, this.providerName);
+  }
+
+  async refreshContest(
+    contestNumber: number,
+    signal?: AbortSignal
+  ): Promise<OfficialContestResult> {
+    this.calls.push({
+      method: "refreshContest",
+      contestNumber,
+      timestamp: Date.now(),
+    });
+
+    if (signal?.aborted) {
+      throw new LotteryFetchError(
+        "A consulta foi cancelada.",
+        "ABORTED",
+        undefined,
+        contestNumber
+      );
+    }
+
+    const simErr = this.simulatedErrors.get(contestNumber);
+    if (simErr) {
+      if (simErr.delayMs) {
+        await new Promise((r) => setTimeout(r, simErr.delayMs));
+      }
+      throw new LotteryFetchError(
+        simErr.message,
+        simErr.code,
+        simErr.status,
+        contestNumber
+      );
+    }
+
+    const raw = this.rawPayloads.get(contestNumber);
+    if (raw !== undefined) {
+      return assertValidOfficialResult(raw, contestNumber, this.providerName);
+    }
+
+    const res = this.contestMap.get(contestNumber);
+    if (!res) {
+      throw new LotteryFetchError(
+        `Resultado do concurso ${contestNumber} ainda não disponível na fonte consultada.`,
+        "NOT_FOUND",
+        404,
+        contestNumber
+      );
+    }
+
     return assertValidOfficialResult(res, contestNumber, this.providerName);
   }
 }

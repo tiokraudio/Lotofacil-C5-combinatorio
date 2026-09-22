@@ -246,14 +246,14 @@ export interface ContestRecord {
   score?: C5Score;
 
   /**
-   * Registro oficial e imutável de fechamento financeiro / premiação obtida no concurso.
+   * Registro manual e imutável do valor efetivamente recebido/informado pelo usuário.
    * Somente pode existir em SCORED com betPlacedAt previamente confirmado.
    */
   prize?: PrizeRecord;
 }
 
 /**
- * Registro oficial de fechamento financeiro / premiação de um concurso apurado.
+ * Registro manual e imutável do valor efetivamente recebido/informado pelo usuário.
  */
 export interface PrizeRecord {
   /**

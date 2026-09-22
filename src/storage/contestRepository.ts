@@ -534,7 +534,7 @@ export class ContestRepository {
   }
 
   /**
-   * Registra o fechamento financeiro / premiação oficial obtida em um concurso SCORED.
+   * Registra o fechamento financeiro / premiação (registro manual) obtida em um concurso SCORED.
    *
    * Requisitos estritos:
    * 1. amountCents deve ser um número inteiro seguro maior ou igual a zero;

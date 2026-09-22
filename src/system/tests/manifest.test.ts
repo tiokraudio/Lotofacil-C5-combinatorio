@@ -28,14 +28,14 @@ export function runManifestTests(): { passed: number; failed: number } {
   console.log("=== INICIANDO TESTES DO MANIFESTO E ARQUITETURA (MANIFEST.TEST) ===");
 
   // 1. Verificações de versão
-  assert(APP_VERSION === "1.8.0", "1.1. APP_VERSION congelada exatamente em '1.8.0'");
+  assert(APP_VERSION === "1.9.0", "1.1. APP_VERSION congelada exatamente em '1.9.0'");
   assert(
     C5_ALGORITHM_VERSION === "C5-1.0.0",
     "1.2. C5_ALGORITHM_VERSION congelada exatamente em 'C5-1.0.0'"
   );
   assert(
-    APPLICATION_MANIFEST.appVersion === "1.8.0",
-    "1.3. Manifesto reflete appVersion 1.8.0"
+    APPLICATION_MANIFEST.appVersion === "1.9.0",
+    "1.3. Manifesto reflete appVersion 1.9.0"
   );
   assert(
     APPLICATION_MANIFEST.algorithmVersion === "C5-1.0.0",

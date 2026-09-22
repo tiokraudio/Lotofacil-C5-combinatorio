@@ -548,7 +548,7 @@ export class GeneratorOperationalController {
   }
 
   /**
-   * Registra o fechamento financeiro / premiação oficial obtida no concurso ativo (SCORED com aposta confirmada).
+   * Registra o fechamento financeiro / premiação (registro manual) obtida no concurso ativo (SCORED com aposta confirmada).
    */
   async recordPrize(amountCents: number): Promise<ContestRecord> {
     if (!this.state.activeRecord) {
