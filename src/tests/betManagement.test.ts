@@ -84,6 +84,10 @@ class SpiedCaixaProvider implements LotteryResultProvider {
       fetchedAt: new Date().toISOString(),
     };
   }
+
+  async refreshContest(n: number, signal?: AbortSignal): Promise<OfficialContestResult> {
+    return this.getContest(n, signal);
+  }
 }
 
 export async function runBetManagementTests(): Promise<{ passed: number; failed: number }> {

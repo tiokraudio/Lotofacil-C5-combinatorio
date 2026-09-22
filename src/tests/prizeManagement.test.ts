@@ -111,6 +111,10 @@ class CountingLotteryProvider implements LotteryResultProvider {
     this.callCount++;
     return this.getContest(3100);
   }
+
+  async refreshContest(contestNumber: number, signal?: AbortSignal): Promise<OfficialContestResult> {
+    return this.getContest(contestNumber);
+  }
 }
 
 function createIsolatedRepo(dbName: string, options?: { bus?: InMemoryLocalSyncBus; idbFactory?: IDBFactory }) {

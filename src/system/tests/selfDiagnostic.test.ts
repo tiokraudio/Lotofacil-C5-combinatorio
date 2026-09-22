@@ -45,6 +45,10 @@ class MockLotteryProvider implements LotteryResultProvider {
   async getContest(contestNumber: number): Promise<OfficialContestResult> {
     return this.getLatestContest();
   }
+
+  async refreshContest(contestNumber: number): Promise<OfficialContestResult> {
+    return this.getContest(contestNumber);
+  }
 }
 
 export async function runSelfDiagnosticTests(): Promise<{ passed: number; failed: number }> {

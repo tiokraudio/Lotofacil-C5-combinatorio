@@ -242,6 +242,16 @@ export async function runOperationalRobustnessTests() {
         fetchedAt: new Date().toISOString(),
       };
     },
+    refreshContest: async (num: number) => {
+      providerCalls++;
+      return {
+        contestNumber: num,
+        drawDate: "2026-09-18",
+        numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        source: "CAIXA",
+        fetchedAt: new Date().toISOString(),
+      };
+    },
   };
 
   const idbBootNoNet = new IDBFactory();
@@ -767,6 +777,19 @@ export async function runOperationalRobustnessTests() {
       };
     },
     getContest: async (num: number) => {
+      caixaTracker.attempts++;
+      if (!caixaOnline) {
+        throw new Error("Failed to fetch: network offline");
+      }
+      return {
+        contestNumber: num,
+        drawDate: "2026-09-19",
+        numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        source: "CAIXA",
+        fetchedAt: new Date().toISOString(),
+      };
+    },
+    refreshContest: async (num: number, signal?: AbortSignal) => {
       caixaTracker.attempts++;
       if (!caixaOnline) {
         throw new Error("Failed to fetch: network offline");

@@ -95,6 +95,10 @@ class MockLotteryProvider implements LotteryResultProvider {
     }
     return resp;
   }
+
+  async refreshContest(contestNumber: number, signal?: AbortSignal): Promise<OfficialContestResult> {
+    return this.getContest(contestNumber, signal);
+  }
 }
 
 async function runContestLifecycleTests() {

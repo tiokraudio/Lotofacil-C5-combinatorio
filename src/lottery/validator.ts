@@ -421,14 +421,11 @@ export function validateAndNormalizeOfficialResult(
         contestNumber,
         fetchedAt
       );
-    } catch (err: any) {
-      return {
-        valid: false,
-        error:
-          err?.message ??
-          "Referência oficial de premiação (rateio) possui formato inválido.",
-        code: err?.code ?? "INVALID_PAYLOAD",
-      };
+    } catch {
+      // Isolamento V1.9: Falha na referência financeira (rateio inválido, incompleto ou duplicado)
+      // descarta a prizeReference (tornando-a undefined), mas NÃO invalida o resultado oficial
+      // principal com as 15 dezenas válidas.
+      prizeReference = undefined;
     }
   }
 

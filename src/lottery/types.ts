@@ -66,7 +66,7 @@ export interface LotteryResultProvider {
    * @param contestNumber Número do concurso a ser atualizado.
    * @param signal Sinal opcional para abort/cancelamento.
    */
-  refreshContest?(
+  refreshContest(
     contestNumber: number,
     signal?: AbortSignal
   ): Promise<OfficialContestResult>;

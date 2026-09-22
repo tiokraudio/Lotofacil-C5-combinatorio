@@ -91,6 +91,11 @@ class MockCaixaProvider implements LotteryResultProvider {
       fetchedAt: new Date().toISOString(),
     };
   }
+
+  async refreshContest(contestNumber: number, signal?: AbortSignal): Promise<OfficialContestResult> {
+    this.calls.push({ method: "refreshContest", contestNumber });
+    return this.getContest(contestNumber, signal);
+  }
 }
 
 export async function runMultiTabSyncTests(): Promise<{ passed: number; failed: number }> {

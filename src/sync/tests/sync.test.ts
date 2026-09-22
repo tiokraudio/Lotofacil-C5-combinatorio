@@ -56,6 +56,10 @@ class FakeLotteryResultProvider implements LotteryResultProvider {
     this.getContestCalls++;
     throw new Error(`getContest(${contestNumber}) não deve ser chamado no sync!`);
   }
+
+  async refreshContest(contestNumber: number, signal?: AbortSignal): Promise<OfficialContestResult> {
+    return this.getContest(contestNumber, signal);
+  }
 }
 
 const sampleResult: OfficialContestResult = {

@@ -44,9 +44,7 @@ export const OfficialPrizeReconciliationPanel: React.FC<
 
     try {
       const result = isRefresh
-        ? activeProvider.refreshContest
-          ? await activeProvider.refreshContest(contestNumber)
-          : await activeProvider.getContest(contestNumber)
+        ? await activeProvider.refreshContest(contestNumber)
         : await activeProvider.getContest(contestNumber);
 
       if (result.prizeReference) {
