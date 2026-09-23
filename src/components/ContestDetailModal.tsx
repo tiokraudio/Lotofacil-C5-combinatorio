@@ -7,6 +7,7 @@ import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts"
 import { GamesDisplay } from "./GamesDisplay.tsx";
 import { Ball } from "./Ball.tsx";
 import { OfficialPrizeReconciliationPanel } from "./OfficialPrizeReconciliationPanel.tsx";
+import { OfficialResultAuditPanel } from "./OfficialResultAuditPanel.tsx";
 import { isEligibleForFinancialReconciliation } from "../sync/index.ts";
 
 interface ContestDetailModalProps {
@@ -329,6 +330,13 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
                 </div>
               )}
             </div>
+          )}
+
+          {/* V1.11: Auditoria Oficial Pós-Score CAIXA (se SCORED) */}
+          {record.status === "SCORED" && (
+            <OfficialResultAuditPanel
+              record={record}
+            />
           )}
 
           {/* V1.10: Referência Oficial e Reconciliação (se elegível: SCORED + betPlacedAt + score) */}

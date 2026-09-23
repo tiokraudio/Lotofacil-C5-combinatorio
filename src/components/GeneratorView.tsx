@@ -28,6 +28,7 @@ import { GamesDisplay } from "./GamesDisplay.tsx";
 import { ResultInputGrid } from "./ResultInputGrid.tsx";
 import { OfficialResultSection } from "./OfficialResultSection.tsx";
 import { OfficialPrizeReconciliationPanel } from "./OfficialPrizeReconciliationPanel.tsx";
+import { OfficialResultAuditPanel } from "./OfficialResultAuditPanel.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { HashViewerModal } from "./HashViewerModal.tsx";
 import { Ball } from "./Ball.tsx";
@@ -1260,6 +1261,15 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                 contestNumber={activeRecord.contestNumber}
                 isLoading={isLoading}
                 onSubmitResult={handleScoreResult}
+              />
+            </div>
+          )}
+
+          {/* V1.11: Auditoria Oficial Pós-Score CAIXA (se SCORED) */}
+          {activeRecord.status === "SCORED" && (
+            <div className="mt-8">
+              <OfficialResultAuditPanel
+                record={activeRecord}
               />
             </div>
           )}

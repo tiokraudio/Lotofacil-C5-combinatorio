@@ -16,6 +16,7 @@
 
 import type { ContestRecord } from "../c5/types.ts";
 import type { OfficialContestResult } from "../lottery/types.ts";
+import { deriveOfficialResultAudit } from "./officialResultAudit.ts";
 
 /**
  * Estados operacionais inequívocos do ciclo de vida de um concurso.
@@ -233,21 +234,16 @@ export function reconcileOfficialResult(
   localRecord: ContestRecord | null | undefined,
   externalSnapshot: OfficialContestResult | OfficialResultPreview | unknown | null | undefined
 ): ReconciliationStatus {
-  if (!localRecord) {
+  if (!localRecord || localRecord.status === "DRAFT") {
     return "NOT_APPLICABLE";
   }
 
-  if (localRecord.status === "DRAFT") {
-    return "NOT_APPLICABLE";
-  }
-
-  if (!externalSnapshot) {
+  if (localRecord.status === "FROZEN") {
     return "WAITING_EXTERNAL";
   }
 
-  // Validação da estrutura externa
-  if (typeof externalSnapshot !== "object" || externalSnapshot === null) {
-    return "INVALID_EXTERNAL";
+  if (!externalSnapshot || typeof externalSnapshot !== "object") {
+    return "WAITING_EXTERNAL";
   }
 
   const ext = externalSnapshot as Record<string, unknown>;
@@ -268,44 +264,24 @@ export function reconcileOfficialResult(
     return "INVALID_EXTERNAL";
   }
 
-  // Se o snapshot pertence a outro concurso, não reconcilia o concurso local atual
   if (rawContestNum !== localRecord.contestNumber) {
     return "WAITING_EXTERNAL";
   }
 
-  // Para registros FROZEN, o resultado oficial ainda não foi apurado localmente
-  if (localRecord.status === "FROZEN") {
-    return "WAITING_EXTERNAL";
-  }
+  // Delega estritamente à função canônica de auditoria V1.11
+  const auditSnapshot: OfficialContestResult = {
+    contestNumber: rawContestNum,
+    drawDate: typeof ext.drawDate === "string" ? ext.drawDate : "",
+    numbers: extSortedNumbers,
+    source: typeof ext.source === "string" ? ext.source : "CAIXA",
+    fetchedAt: typeof ext.fetchedAt === "string" ? ext.fetchedAt : "",
+  };
 
-  // Para registros SCORED: comparação estrita de dezenas
-  if (localRecord.status === "SCORED") {
-    const localResult = localRecord.officialResult || localRecord.score?.result;
-    if (!localResult || !Array.isArray(localResult)) {
-      return "MISMATCH";
-    }
-
-    let localSortedNumbers: number[];
-    try {
-      localSortedNumbers = validateOfficialResult(localResult);
-    } catch {
-      return "MISMATCH";
-    }
-
-    if (localSortedNumbers.length !== 15 || extSortedNumbers.length !== 15) {
-      return "MISMATCH";
-    }
-
-    for (let i = 0; i < 15; i++) {
-      if (localSortedNumbers[i] !== extSortedNumbers[i]) {
-        return "MISMATCH";
-      }
-    }
-
-    return "MATCH";
-  }
-
-  return "NOT_APPLICABLE";
+  const audit = deriveOfficialResultAudit(localRecord, auditSnapshot);
+  if (audit.status === "MATCH") return "MATCH";
+  if (audit.status === "MISMATCH") return "MISMATCH";
+  if (audit.status === "NOT_APPLICABLE") return "MISMATCH";
+  return "WAITING_EXTERNAL";
 }
 
 /**
