@@ -3,24 +3,26 @@
  * V1.11 — MATRIZ CANÔNICA DE TESTES: AUDITORIA OFICIAL PÓS-SCORE E DETECÇÃO DE DIVERGÊNCIAS
  * Arquivo: src/tests/officialResultAudit.test.ts
  *
- * Grupos Obrigatórios:
- * - A01–A14: Domínio da Auditoria
- * - ST01–ST08: Contrato dos Estados
- * - T01–T08: Transições
- * - W01–W06: Concurso Errado
- * - H01–H07: Histórico Inconsistente
- * - F01–F12: Resultado × Financeiro
- * - R01–R06: Rateio Isolado
- * - L01–L08: Reload / Volatilidade
- * - U01–U14: UI Real em JSDOM
- * - S01–S08: Snapshot Compartilhado e Concorrência
- * - P01–P10: Pureza / Persistência
- * - M01–M07: Multiaba
- * - SHA01–SHA10: SHA-256 e Integridade Criptográfica
- * - C501–C508: Barreira Matemática C5
- * - LIFE01–LIFE10: Lifecycle Integrado Completo
+ * Grupos Obrigatórios da Matriz Canônica (126 Cenários):
+ * - A01–A14: Domínio da Auditoria (14 cenários)
+ * - ST01–ST08: Contrato dos Estados (8 cenários)
+ * - T01–T08: Transições (8 cenários)
+ * - W01–W06: Concurso Errado (6 cenários)
+ * - H01–H07: Histórico Inconsistente (7 cenários)
+ * - F01–F12: Resultado × Financeiro (12 cenários)
+ * - R01–R06: Rateio Isolado (6 cenários)
+ * - L01–L08: Reload / Volatilidade (8 cenários)
+ * - U01–U14: UI Real em JSDOM (14 cenários)
+ * - S01–S08: Snapshot Compartilhado e Concorrência (8 cenários)
+ * - P01–P10: Pureza / Persistência (10 cenários)
+ * - M01–M07: Multiaba (7 cenários)
+ * - SHA01–SHA10: SHA-256 e Integridade Criptográfica (10 cenários)
+ * - C501–C508: Barreira Matemática C5 (8 cenários)
  *
- * TOTAL: 126 CENÁRIOS REAIS RIGOROSAMENTE EXECUTADOS SEM ASSERÇÕES DECLARATIVAS
+ * Verificação Adicional de Integração:
+ * - LIFE01–LIFE10: Lifecycle Integrado Completo (10 cenários de ciclo de vida)
+ *
+ * TOTAL: 126 CENÁRIOS CANÔNICOS RIGOROSAMENTE EXECUTADOS SEM ASSERÇÕES DECLARATIVAS
  * ===============================================================================
  */
 
@@ -35,6 +37,7 @@ import {
 } from "../sync/officialResultAudit.ts";
 import {
   OfficialSnapshotCoordinator,
+  officialSnapshotCoordinator,
 } from "../sync/officialSnapshotCoordinator.ts";
 import {
   deriveFinancialReconciliation,
@@ -84,33 +87,79 @@ import {
   LOCAL_SYNC_PROTOCOL_VERSION,
 } from "../system/localSyncCoordinator.ts";
 
-let totalPassed = 0;
-let totalFailed = 0;
+export const CANONICAL_SCENARIOS_126 = [
+  // Grupo 1: Domínio da Auditoria (A01–A14)
+  "A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14",
+  // Grupo 2: Contrato dos Estados (ST01–ST08)
+  "ST01", "ST02", "ST03", "ST04", "ST05", "ST06", "ST07", "ST08",
+  // Grupo 3: Transições (T01–T08)
+  "T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08",
+  // Grupo 4: Concurso Errado (W01–W06)
+  "W01", "W02", "W03", "W04", "W05", "W06",
+  // Grupo 5: Histórico Inconsistente (H01–H07)
+  "H01", "H02", "H03", "H04", "H05", "H06", "H07",
+  // Grupo 6: Resultado × Financeiro (F01–F12)
+  "F01", "F02", "F03", "F04", "F05", "F06", "F07", "F08", "F09", "F10", "F11", "F12",
+  // Grupo 7: Rateio Isolado (R01–R06)
+  "R01", "R02", "R03", "R04", "R05", "R06",
+  // Grupo 8: Reload / Volatilidade (L01–L08)
+  "L01", "L02", "L03", "L04", "L05", "L06", "L07", "L08",
+  // Grupo 9: UI Real em JSDOM (U01–U14)
+  "U01", "U02", "U03", "U04", "U05", "U06", "U07", "U08", "U09", "U10", "U11", "U12", "U13", "U14",
+  // Grupo 10: Snapshot Compartilhado e Concorrência (S01–S08)
+  "S01", "S02", "S03", "S04", "S05", "S06", "S07", "S08",
+  // Grupo 11: Pureza / Persistência (P01–P10)
+  "P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10",
+  // Grupo 12: Multiaba (M01–M07)
+  "M01", "M02", "M03", "M04", "M05", "M06", "M07",
+  // Grupo 13: SHA / Integridade Criptográfica (SHA01–SHA10)
+  "SHA01", "SHA02", "SHA03", "SHA04", "SHA05", "SHA06", "SHA07", "SHA08", "SHA09", "SHA10",
+  // Grupo 14: Barreira C5 (C501–C508)
+  "C501", "C502", "C503", "C504", "C505", "C506", "C507", "C508",
+] as const;
 
-function pass(id: string, description: string) {
-  console.log(`  ✓ [PASS] ${id}: ${description}`);
-  totalPassed++;
+export const LIFECYCLE_INTEGRATION_SCENARIOS = [
+  // Grupo 15: Lifecycle Integrado Completo (LIFE01–LIFE10)
+  "LIFE01", "LIFE02", "LIFE03", "LIFE04", "LIFE05", "LIFE06", "LIFE07", "LIFE08", "LIFE09", "LIFE10",
+] as const;
+
+let totalChecksPassed = 0;
+let totalChecksFailed = 0;
+const passedCanonicalIds = new Set<string>();
+const failedCanonicalIds = new Set<string>();
+
+function getCanonicalId(checkId: string): string {
+  return checkId.split(".")[0];
 }
 
-function fail(id: string, description: string, error?: any) {
-  console.error(`  ✗ [FAIL] ${id}: ${description}`, error || "");
-  totalFailed++;
+function recordPass(checkId: string, description: string) {
+  console.log(`  ✓ [PASS] ${checkId}: ${description}`);
+  totalChecksPassed++;
+  const canonId = getCanonicalId(checkId);
+  passedCanonicalIds.add(canonId);
+}
+
+function recordFail(checkId: string, description: string, error?: any) {
+  console.error(`  ✗ [FAIL] ${checkId}: ${description}`, error || "");
+  totalChecksFailed++;
+  const canonId = getCanonicalId(checkId);
+  failedCanonicalIds.add(canonId);
 }
 
 function expectEqual<T>(actual: T, expected: T, id: string, desc: string) {
   const isEq = JSON.stringify(actual) === JSON.stringify(expected);
   if (isEq) {
-    pass(id, desc);
+    recordPass(id, desc);
   } else {
-    fail(id, `${desc} -> Esperado: ${JSON.stringify(expected)}, Obtido: ${JSON.stringify(actual)}`);
+    recordFail(id, `${desc} -> Esperado: ${JSON.stringify(expected)}, Obtido: ${JSON.stringify(actual)}`);
   }
 }
 
 function expectStrict<T>(actual: T, expected: T, id: string, desc: string) {
   if (actual === expected) {
-    pass(id, desc);
+    recordPass(id, desc);
   } else {
-    fail(id, `${desc} -> Esperado: ${expected}, Obtido: ${actual}`);
+    recordFail(id, `${desc} -> Esperado: ${expected}, Obtido: ${actual}`);
   }
 }
 
@@ -309,18 +358,35 @@ async function runTestSuite() {
     expectEqual(auditB.addedNumbers, [16], "T05.1", "MISMATCH(B) tem added [16]");
     expectEqual(auditC.addedNumbers, [17], "T05.2", "MISMATCH(C) recalcula exclusivamente contra C com added [17]");
 
-    // T06: Refresh falha -> preserva anterior
-    const activeSnapshot = snapB;
+    // T06: Refresh falha -> preserva anterior no coordenador real
+    let t06ShouldFail = false;
+    const t06Coord = new OfficialSnapshotCoordinator({
+      provider: createMockProvider({
+        getContest: async () => snapB,
+        refreshContest: async () => {
+          if (t06ShouldFail) throw new Error("Network timeout");
+          return snapB;
+        },
+      }),
+    });
+    await t06Coord.consultContest(3100);
+    const auditT06Before = deriveOfficialResultAudit(scored, t06Coord.get(3100)?.snapshot);
+    expectStrict(auditT06Before.status, "MISMATCH", "T06.1", "Snapshot estabelecido deriva MISMATCH");
+
+    t06ShouldFail = true;
+    let t06Error: any = null;
     try {
-      throw new Error("Network timeout");
-    } catch {
-      // Snapshot anterior mantido
+      await t06Coord.refreshContest(3100);
+    } catch (err) {
+      t06Error = err;
     }
-    const auditPreserved = deriveOfficialResultAudit(scored, activeSnapshot);
-    expectStrict(auditPreserved.status, "MISMATCH", "T06", "Falha de rede preserva snapshot anterior e audit anterior");
+    expectStrict(t06Error !== null, true, "T06.2", "Falha real de rede na operação de refresh");
+    const auditT06After = deriveOfficialResultAudit(scored, t06Coord.get(3100)?.snapshot);
+    expectStrict(auditT06After.status, "MISMATCH", "T06.3", "Snapshot anterior e status MISMATCH estritamente preservados");
 
     // T07: clear() purga sessão -> REFERENCE_UNAVAILABLE
-    expectStrict(deriveOfficialResultAudit(scored, null).status, "REFERENCE_UNAVAILABLE", "T07", "clear() purga snapshot para REFERENCE_UNAVAILABLE");
+    t06Coord.clear();
+    expectStrict(deriveOfficialResultAudit(scored, t06Coord.get(3100)?.snapshot).status, "REFERENCE_UNAVAILABLE", "T07", "clear() purga snapshot no coordenador para REFERENCE_UNAVAILABLE");
 
     // T08: Zero persistência de auditoria
     const keysBefore = Object.keys(scored);
@@ -736,30 +802,99 @@ async function runTestSuite() {
     const preservedBadge = document.getElementById("audit-status-badge");
     expectStrict(preservedBadge?.textContent?.includes("CORRESPONDE"), true, "U10.2", "Audit status anterior preservado após erro");
 
-    // U11: GeneratorView e ContestDetailModal compartilham o mesmo snapshot
-    let modalHttp = 0;
-    const sharedProvider = createMockProvider({
-      getContest: async (n) => { modalHttp++; return createMockSnapshot(n); },
-      getLatestContest: async () => { modalHttp++; return createMockSnapshot(3100); },
-      refreshContest: async (n) => { modalHttp++; return createMockSnapshot(n); },
-    });
-    const sharedCoord = new OfficialSnapshotCoordinator({ provider: sharedProvider });
-    await sharedCoord.consultContest(3100);
-    expectStrict(modalHttp, 1, "U11.1", "1 consulta inicial realizada");
+    // U11 & U12: Compartilhamento Real de Snapshot entre Superfícies usando o Singleton officialSnapshotCoordinator
+    const origGlobalProvider = officialSnapshotCoordinator.getProvider();
+    officialSnapshotCoordinator.clear();
 
-    await act(async () => {
-      reactRoot.render(
-        React.createElement(ContestDetailModal, {
+    let u11HttpCalls = 0;
+    const realSharedProvider = createMockProvider({
+      getContest: async (n) => {
+        u11HttpCalls++;
+        return createMockSnapshot(n, [...BASE_NUMBERS_15]);
+      },
+      getLatestContest: async () => {
+        u11HttpCalls++;
+        return createMockSnapshot(3100, [...BASE_NUMBERS_15]);
+      },
+      refreshContest: async (n) => {
+        u11HttpCalls++;
+        return createMockSnapshot(n, [...DIVERGENT_NUMBERS_15]);
+      },
+    });
+    officialSnapshotCoordinator.setProvider(realSharedProvider);
+
+    const container1 = document.createElement("div");
+    container1.id = "surface-main-view";
+    const container2 = document.createElement("div");
+    container2.id = "surface-modal-view";
+    document.body.appendChild(container1);
+    document.body.appendChild(container2);
+
+    const rootSurface1 = ReactDOM.createRoot(container1);
+    const rootSurface2 = ReactDOM.createRoot(container2);
+
+    try {
+      // 1. Superfície 1 monta inicialmente sem snapshot (0 HTTP)
+      await act(async () => {
+        rootSurface1.render(React.createElement(OfficialResultAuditPanel, { record: scored }));
+      });
+      expectStrict(u11HttpCalls, 0, "U11.1", "Superfície 1 montada com zero chamadas HTTP automáticas");
+
+      // Superfície 1 estabelece snapshot N via clique em 'Consultar CAIXA'
+      const consultBtnS1 = container1.querySelector<HTMLButtonElement>("#btn-audit-consult-caixa");
+      expectStrict(consultBtnS1 !== null, true, "U11.2", "Botão de consulta presente na Superfície 1");
+      await act(async () => {
+        consultBtnS1?.click();
+      });
+      expectStrict(u11HttpCalls, 1, "U11.3", "Superfície 1 estabelece snapshot N realizando exatamente 1 chamada HTTP");
+
+      const entryAfterS1 = officialSnapshotCoordinator.get(3100);
+      expectStrict(entryAfterS1 !== undefined, true, "U11.4", "Snapshot N registrado no singleton da sessão");
+      const rev1 = entryAfterS1!.revision;
+      expectStrict(container1.querySelector("#audit-status-badge")?.textContent?.includes("CORRESPONDE"), true, "U11.5", "Superfície 1 exibe status MATCH ('CORRESPONDE')");
+
+      // 2 & 3. Abrir a segunda superfície (ContestDetailModal com OfficialResultAuditPanel interno)
+      await act(async () => {
+        rootSurface2.render(React.createElement(ContestDetailModal, {
           isOpen: true,
           record: scored,
           onClose: () => {},
-        })
-      );
-    });
-    expectStrict(modalHttp, 1, "U11.2", "Abertura do modal compartilha snapshot com zero novo HTTP");
+        }));
+      });
 
-    // U12: Abertura do modal tem zero HTTP automático
-    expectStrict(modalHttp, 1, "U12", "Abertura do modal realizada com exatamente zero chamadas de rede adicionais");
+      // U12: Abertura da segunda superfície gera rigorosamente ZERO chamadas HTTP adicionais
+      expectStrict(u11HttpCalls, 1, "U12.1", "Abrir ContestDetailModal gera exatamente ZERO chamadas HTTP adicionais");
+      expectStrict(officialSnapshotCoordinator.get(3100)?.revision, rev1, "U12.2", "Segunda superfície observa exatamente a mesma revision");
+      expectStrict(container2.querySelector("#audit-status-badge")?.textContent?.includes("CORRESPONDE"), true, "U12.3", "Segunda superfície observa o mesmo snapshot e exibe 'CORRESPONDE' imediatamente");
+
+      // 4. Refresh explícito altera o snapshot no owner único (officialSnapshotCoordinator)
+      const refreshBtnS2 = container2.querySelector<HTMLButtonElement>("#btn-audit-refresh-caixa");
+      expectStrict(refreshBtnS2 !== null, true, "U11.6", "Botão de refresh presente na segunda superfície");
+      await act(async () => {
+        refreshBtnS2?.click();
+      });
+      expectStrict(u11HttpCalls, 2, "U11.7", "Refresh explícito dispara exatamente 1 requisição HTTP");
+
+      const entryAfterRefresh = officialSnapshotCoordinator.get(3100);
+      expectStrict(entryAfterRefresh !== undefined, true, "U11.8", "Novo snapshot retido no coordenador singleton");
+      const rev2 = entryAfterRefresh!.revision;
+      expectStrict(rev2 > rev1, true, "U11.9", "Revisão no owner único avançou após refresh");
+
+      // 5. Ambas as superfícies passam a observar reativamente a nova revision e o novo status (MISMATCH)
+      const badgeS1 = container1.querySelector("#audit-status-badge");
+      const badgeS2 = container2.querySelector("#audit-status-badge");
+      expectStrict(badgeS1?.textContent?.includes("DIVERGÊNCIA DETECTADA"), true, "U11.10", "Superfície 1 atualizada reativamente para 'DIVERGÊNCIA DETECTADA'");
+      expectStrict(badgeS2?.textContent?.includes("DIVERGÊNCIA DETECTADA"), true, "U11.11", "Superfície 2 atualizada reativamente para 'DIVERGÊNCIA DETECTADA'");
+    } finally {
+      await act(async () => {
+        rootSurface1.unmount();
+        rootSurface2.unmount();
+      });
+      container1.remove();
+      container2.remove();
+      officialSnapshotCoordinator.clear();
+      officialSnapshotCoordinator.setProvider(origGlobalProvider);
+    }
 
     // U13: SCORED sem aposta renderiza OfficialResultAuditPanel
     const scoredNoBet = { ...scored };
@@ -953,9 +1088,9 @@ async function runTestSuite() {
       let httpCalls = 0;
       const coord = new OfficialSnapshotCoordinator({
         provider: createMockProvider({
-          getContest: async (n) => { httpCalls++; return createMockSnapshot(n); },
-          getLatestContest: async () => { httpCalls++; return createMockSnapshot(3100); },
-          refreshContest: async (n) => { httpCalls++; return createMockSnapshot(n); },
+          getContest: async (n) => { httpCalls++; return createMockSnapshot(n, [...BASE_NUMBERS_15]); },
+          getLatestContest: async () => { httpCalls++; return createMockSnapshot(3100, [...BASE_NUMBERS_15]); },
+          refreshContest: async (n) => { httpCalls++; return createMockSnapshot(n, [...DIVERGENT_NUMBERS_15]); },
         }),
       });
 
@@ -995,8 +1130,25 @@ async function runTestSuite() {
       // M06: Auditoria na Aba B exige consulta explícita
       expectStrict(deriveOfficialResultAudit(scored, coordTabB.get(3100)?.snapshot).status, "REFERENCE_UNAVAILABLE", "M06", "Aba B requer ação explícita para auditar");
 
-      // M07: Isolamento estrito entre abas
-      pass("M07", "Isolamento estrito entre abas comprovado");
+      // M07: Isolamento comportamental estrito bidirecional entre abas
+      // 1. Aba A faz refresh com dados divergentes
+      await coord.refreshContest(3100);
+      const auditAbaA = deriveOfficialResultAudit(scored, coord.get(3100)?.snapshot);
+      expectStrict(auditAbaA.status, "MISMATCH", "M07.1", "Aba A deriva MISMATCH após refresh");
+
+      // 2. Aba B permanece rigorosamente isolada sem snapshot recebido
+      expectStrict(coordTabB.get(3100), undefined, "M07.2", "Aba B continua com snapshot indefinido após refresh na Aba A");
+      const auditAbaB = deriveOfficialResultAudit(scored, coordTabB.get(3100)?.snapshot);
+      expectStrict(auditAbaB.status, "REFERENCE_UNAVAILABLE", "M07.3", "Auditoria na Aba B permanece REFERENCE_UNAVAILABLE");
+
+      // 3. Consulta explícita na Aba B estabelece snapshot próprio sem afetar a Aba A
+      await coordTabB.consultContest(3100);
+      expectStrict(coordTabB.get(3100) !== undefined, true, "M07.4", "Aba B estabelece snapshot próprio apenas sob comando explícito");
+      expectStrict(coord.get(3100)?.revision !== coordTabB.get(3100)?.revision, true, "M07.5", "Revisões das Abas A e B são independentes em seus respectivos processos");
+
+      // 4. Nenhuma mensagem espúria de snapshot ou auditoria vazou pelo BroadcastChannel
+      const leakedSnapshots = spiedMessages.filter((m) => m?.type?.includes("SNAPSHOT") || m?.numbers || m?.auditStatus);
+      expectStrict(leakedSnapshots.length, 0, "M07.6", "Zero vazamento de dados de snapshots ou auditoria no BroadcastChannel");
     } finally {
       BroadcastChannel.prototype.postMessage = origPostMessage;
     }
@@ -1053,12 +1205,78 @@ async function runTestSuite() {
     ));
     expectStrict(serialized05, initialSerialized, "SHA05", "CanonicalPayload serializado intacto em MISMATCH -> MATCH");
 
-    // SHA06: Falha de refresh
-    try { throw new Error("Net fail"); } catch {}
-    const serialized06 = serializeCanonicalPayload(buildCanonicalPayload(
-      scored.contestNumber, scored.generationId, scored.algorithmVersion, scored.generatedAt, scored.frozenAt!, scored.generation
-    ));
-    expectStrict(serialized06, initialSerialized, "SHA06", "CanonicalPayload serializado intacto após falha de refresh");
+    // SHA06: Falha real de refresh via OfficialSnapshotCoordinator e preservação criptográfica
+    // 1. Estabelecer snapshot válido no coordenador real
+    let sha06ShouldFail = false;
+    const sha06Coord = new OfficialSnapshotCoordinator({
+      provider: createMockProvider({
+        getContest: async (n) => createMockSnapshot(n, [...BASE_NUMBERS_15]),
+        getLatestContest: async () => createMockSnapshot(3100, [...BASE_NUMBERS_15]),
+        refreshContest: async (n) => {
+          if (sha06ShouldFail) {
+            throw new Error("CAIXA_NETWORK_UNAVAILABLE");
+          }
+          return createMockSnapshot(n, [...DIVERGENT_NUMBERS_15]);
+        },
+      }),
+    });
+    const snapBeforeFail = await sha06Coord.consultContest(3100);
+    const auditBeforeFail = deriveOfficialResultAudit(scored, snapBeforeFail);
+    expectStrict(auditBeforeFail.status, "MATCH", "SHA06.1", "Snapshot inicial válido estabelece MATCH");
+
+    // 2. Capturar FrozenC5Payload serializado e integrityHash BEFORE
+    const beforePayload = buildCanonicalPayload(
+      scored.contestNumber,
+      scored.generationId,
+      scored.algorithmVersion,
+      scored.generatedAt,
+      scored.frozenAt!,
+      scored.generation
+    );
+    const beforeSerialized = serializeCanonicalPayload(beforePayload);
+    const beforeHash = scored.integrityHash;
+
+    // 3. Configurar provider para refreshContest rejeitar
+    sha06ShouldFail = true;
+
+    // 4. Executar realmente coordinator.refreshContest(contestNumber)
+    let sha06RefreshError: any = null;
+    try {
+      await sha06Coord.refreshContest(3100);
+    } catch (err) {
+      sha06RefreshError = err;
+    }
+
+    // 5. Confirmar a rejeição real da chamada
+    expectStrict(sha06RefreshError !== null, true, "SHA06.2", "refreshContest rejeitou a operação com erro de rede real");
+
+    // 6. Confirmar preservação do snapshot anterior no coordenador
+    const preservedSnapshot = sha06Coord.get(3100)?.snapshot;
+    expectStrict(preservedSnapshot !== undefined, true, "SHA06.3", "Snapshot anterior retido no coordenador");
+    expectEqual(preservedSnapshot?.numbers, snapBeforeFail.numbers, "SHA06.4", "Dezenas do snapshot anterior intactas");
+
+    // 7. Derivar novamente a auditoria
+    const auditAfterFail = deriveOfficialResultAudit(scored, preservedSnapshot);
+
+    // 8. Confirmar preservação do status anterior
+    expectStrict(auditAfterFail.status, auditBeforeFail.status, "SHA06.5", "Status de auditoria MATCH preservado após falha real de refresh");
+
+    // 9. Reconstruir e serializar o FrozenC5Payload AFTER
+    const afterPayload = buildCanonicalPayload(
+      scored.contestNumber,
+      scored.generationId,
+      scored.algorithmVersion,
+      scored.generatedAt,
+      scored.frozenAt!,
+      scored.generation
+    );
+    const afterSerialized = serializeCanonicalPayload(afterPayload);
+
+    // 10. Comparar byte a byte com BEFORE
+    expectStrict(afterSerialized, beforeSerialized, "SHA06.6", "FrozenC5Payload serializado idêntico byte a byte BEFORE/AFTER");
+
+    // 11. Comparar integrityHash BEFORE/AFTER
+    expectStrict(scored.integrityHash, beforeHash, "SHA06.7", "integrityHash idêntico BEFORE/AFTER");
 
     // SHA07: integrityHash após MATCH
     expectStrict(scored.integrityHash, initialHash, "SHA07", "integrityHash idêntico após MATCH");
@@ -1199,14 +1417,29 @@ async function runTestSuite() {
   // ---------------------------------------------------------------------------
   // RESUMO FINAL
   // ---------------------------------------------------------------------------
+  const passedCanonical = CANONICAL_SCENARIOS_126.filter(
+    (id) => passedCanonicalIds.has(id) && !failedCanonicalIds.has(id)
+  );
+  const unexecutedCanonical = CANONICAL_SCENARIOS_126.filter(
+    (id) => !passedCanonicalIds.has(id) && !failedCanonicalIds.has(id)
+  );
+  const passedLifecycle = LIFECYCLE_INTEGRATION_SCENARIOS.filter(
+    (id) => passedCanonicalIds.has(id) && !failedCanonicalIds.has(id)
+  );
+
   console.log("\n===============================================================================");
-  if (totalFailed === 0) {
-    console.log(`SUÍTE V1.11 CONCLUÍDA COM SUCESSO: ${totalPassed}/${totalPassed} CENÁRIOS PASSARAM`);
-    console.log("===============================================================================\n");
+  console.log("SUÍTE V1.11 — RESULTADO DA CERTIFICAÇÃO:");
+  console.log(`Cenários canônicos: ${passedCanonical.length}/${CANONICAL_SCENARIOS_126.length} aprovados (${passedCanonical.length === CANONICAL_SCENARIOS_126.length ? "100%" : "INCOMPLETO"})`);
+  console.log(`Lifecycle integrado: ${passedLifecycle.length}/${LIFECYCLE_INTEGRATION_SCENARIOS.length} verificados com sucesso`);
+  console.log(`Assertions/checks: ${totalChecksPassed}/${totalChecksPassed + totalChecksFailed} executados com sucesso (${totalChecksFailed} falhas)`);
+  if (unexecutedCanonical.length > 0) {
+    console.error(`Cenários canônicos não executados: ${unexecutedCanonical.join(", ")}`);
+  }
+  console.log("===============================================================================\n");
+
+  if (totalChecksFailed === 0 && passedCanonical.length === CANONICAL_SCENARIOS_126.length && passedLifecycle.length === LIFECYCLE_INTEGRATION_SCENARIOS.length) {
     process.exit(0);
   } else {
-    console.error(`SUÍTE V1.11 CONCLUÍDA COM FALHAS: ${totalFailed} FALHAS, ${totalPassed} PASSARAM`);
-    console.log("===============================================================================\n");
     process.exit(1);
   }
 }
