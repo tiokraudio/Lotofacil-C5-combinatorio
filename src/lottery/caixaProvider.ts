@@ -280,13 +280,6 @@ export class CaixaLotteryProvider implements LotteryResultProvider {
   private readonly timeoutMs: number;
   private readonly fetchFn: typeof fetch;
 
-  // Cache volátil apenas em memória durante a sessão
-  private readonly sessionCache = new Map<number, OfficialContestResult>();
-
-  // Controle de concorrência: latest-started refresh wins no cache
-  private nextRefreshSeq = 0;
-  private readonly latestStartedRefreshSeq = new Map<number, number>();
-
   constructor(options?: CaixaProviderOptions) {
     this.baseUrl = options?.baseUrl ?? DEFAULT_BASE_URL;
     this.timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -294,10 +287,11 @@ export class CaixaLotteryProvider implements LotteryResultProvider {
   }
 
   /**
-   * Limpa o cache volátil em memória.
+   * Operação sem estado mantida por compatibilidade de interface.
+   * O gerenciamento de snapshots pertence exclusivamente ao OfficialSnapshotCoordinator.
    */
   clearCache(): void {
-    this.sessionCache.clear();
+    // no-op: caching e concorrência são gerenciados pelo OfficialSnapshotCoordinator
   }
 
   /**
@@ -306,19 +300,15 @@ export class CaixaLotteryProvider implements LotteryResultProvider {
   async getLatestContest(signal?: AbortSignal): Promise<OfficialContestResult> {
     const data = await this.fetchJson(this.baseUrl, undefined, signal);
     const adapted = adaptCaixaRawPayload(data);
-    const normalized = assertValidOfficialResult(
+    return assertValidOfficialResult(
       adapted,
       undefined,
       this.providerName
     );
-
-    // Cacheia por número de concurso
-    this.sessionCache.set(normalized.contestNumber, normalized);
-    return normalized;
   }
 
   /**
-   * Consulta o resultado oficial de um concurso específico.
+   * Consulta o resultado oficial de um concurso específico via rede.
    */
   async getContest(
     contestNumber: number,
@@ -333,28 +323,18 @@ export class CaixaLotteryProvider implements LotteryResultProvider {
       );
     }
 
-    // Se já estiver no cache da sessão, retorna sem nova requisição (HIT)
-    if (this.sessionCache.has(contestNumber)) {
-      return this.sessionCache.get(contestNumber)!;
-    }
-
     const url = `${this.baseUrl}/${contestNumber}`;
     const data = await this.fetchJson(url, contestNumber, signal);
     const adapted = adaptCaixaRawPayload(data);
-    const normalized = assertValidOfficialResult(
+    return assertValidOfficialResult(
       adapted,
       contestNumber,
       this.providerName
     );
-
-    this.sessionCache.set(contestNumber, normalized);
-    return normalized;
   }
 
   /**
-   * Força uma atualização explícita ignorando o cache da sessão.
-   * Em caso de falha de rede ou payload inválido, rejeita e preserva o cache anterior.
-   * Concorrência: Latest-started refresh wins no cache.
+   * Executa nova consulta externa real para o concurso.
    */
   async refreshContest(
     contestNumber: number,
@@ -369,25 +349,14 @@ export class CaixaLotteryProvider implements LotteryResultProvider {
       );
     }
 
-    const currentReqSeq = ++this.nextRefreshSeq;
-    this.latestStartedRefreshSeq.set(contestNumber, currentReqSeq);
-
     const url = `${this.baseUrl}/${contestNumber}`;
     const data = await this.fetchJson(url, contestNumber, signal);
     const adapted = adaptCaixaRawPayload(data);
-    const normalized = assertValidOfficialResult(
+    return assertValidOfficialResult(
       adapted,
       contestNumber,
       this.providerName
     );
-
-    // Latest-started refresh wins no cache
-    const latestSeq = this.latestStartedRefreshSeq.get(contestNumber);
-    if (latestSeq === currentReqSeq) {
-      this.sessionCache.set(contestNumber, normalized);
-    }
-
-    return normalized;
   }
 
   /**

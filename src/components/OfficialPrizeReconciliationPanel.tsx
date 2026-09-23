@@ -6,6 +6,7 @@ import type {
   LotteryResultProvider,
 } from "../lottery/types.ts";
 import {
+  OfficialSnapshotCoordinator,
   officialSnapshotCoordinator,
 } from "../sync/officialSnapshotCoordinator.ts";
 import {
@@ -22,6 +23,7 @@ interface OfficialPrizeReconciliationPanelProps {
   betPlacedAt?: string;
   status?: string;
   record?: ContestRecord;
+  coordinator?: OfficialSnapshotCoordinator;
   lotteryProvider?: LotteryResultProvider;
   initialReference?: OfficialPrizeReference;
   onReferenceLoaded?: (reference: OfficialPrizeReference) => void;
@@ -36,6 +38,7 @@ export const OfficialPrizeReconciliationPanel: React.FC<
   betPlacedAt,
   status,
   record,
+  coordinator,
   lotteryProvider,
   initialReference,
   onReferenceLoaded,
@@ -49,42 +52,36 @@ export const OfficialPrizeReconciliationPanel: React.FC<
     return null;
   }
 
-  // Configura provider se fornecido explicitamente
-  if (lotteryProvider && officialSnapshotCoordinator.getProvider() !== lotteryProvider) {
-    officialSnapshotCoordinator.setProvider(lotteryProvider);
+  // Ownership seguro de provider: se lotteryProvider fornecido diferente do global e sem coordinator, cria coordenador local scoped
+  const localCoordinatorRef = useRef<OfficialSnapshotCoordinator | null>(null);
+  if (
+    lotteryProvider &&
+    lotteryProvider !== officialSnapshotCoordinator.getProvider() &&
+    !coordinator &&
+    !localCoordinatorRef.current
+  ) {
+    localCoordinatorRef.current = new OfficialSnapshotCoordinator({ provider: lotteryProvider });
   }
+
+  const activeCoordinator = coordinator ?? localCoordinatorRef.current ?? officialSnapshotCoordinator;
 
   // Snapshot vigente coordenado da sessão (Zero ownership local duplicado)
   const [, setRevisionTick] = useState(0);
-  const hasSeededRef = useRef(false);
-
-  // Se houver initialReference na montagem, estabelece o snapshot inicial no coordenador de sessão
-  if (!hasSeededRef.current) {
-    hasSeededRef.current = true;
-    if (initialReference) {
-      officialSnapshotCoordinator.setInitialSnapshot({
-        contestNumber,
-        drawDate: "",
-        numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        source: "CAIXA",
-        fetchedAt: initialReference.fetchedAt,
-        prizeReference: initialReference,
-      });
-    }
-  }
 
   useEffect(() => {
     // Inscreve-se nas atualizações do coordenador para este concurso
-    const unsub = officialSnapshotCoordinator.subscribe((cNum) => {
+    const unsub = activeCoordinator.subscribe((cNum) => {
       if (cNum === contestNumber) {
         setRevisionTick((t) => t + 1);
       }
     });
 
     return unsub;
-  }, [contestNumber]);
+  }, [activeCoordinator, contestNumber]);
 
-  const snapshotEntry = officialSnapshotCoordinator.get(contestNumber);
+  const snapshotEntry = activeCoordinator.get(contestNumber);
+  // Snapshot canônico oficial tem prevalência estrita. Se não houver, initialReference é aceito
+  // apenas como valor visual legado sem commitar dezenas falsas ou fabricar OfficialContestResult.
   const reference =
     snapshotEntry !== undefined
       ? snapshotEntry.snapshot.prizeReference
@@ -98,13 +95,9 @@ export const OfficialPrizeReconciliationPanel: React.FC<
     setErrorMessage(null);
 
     try {
-      if (lotteryProvider) {
-        officialSnapshotCoordinator.setProvider(lotteryProvider);
-      }
-
       const result = isRefresh
-        ? await officialSnapshotCoordinator.refreshContest(contestNumber)
-        : await officialSnapshotCoordinator.consultContest(contestNumber);
+        ? await activeCoordinator.refreshContest(contestNumber)
+        : await activeCoordinator.consultContest(contestNumber);
 
       if (result.prizeReference) {
         onReferenceLoaded?.(result.prizeReference);

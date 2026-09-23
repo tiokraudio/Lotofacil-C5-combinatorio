@@ -62,6 +62,13 @@ export class OfficialSnapshotCoordinator implements LotteryResultProvider {
   }
 
   /**
+   * Retorna o contador de revisão monotônica global da sessão.
+   */
+  getRevision(): number {
+    return this.revision;
+  }
+
+  /**
    * Registra um listener para notificações de atualização/invalidação de snapshots.
    */
   subscribe(listener: OfficialSnapshotListener): () => void {
@@ -175,13 +182,6 @@ export class OfficialSnapshotCoordinator implements LotteryResultProvider {
     for (const cNum of affectedContests) {
       this.notifyListeners(cNum, undefined);
     }
-  }
-
-  /**
-   * Permite inicializar ou sobrescrever manualmente um snapshot (ex: testes ou initialReference).
-   */
-  setInitialSnapshot(snapshot: OfficialContestResult): void {
-    this.commit(snapshot.contestNumber, snapshot);
   }
 
   private commit(contestNumber: number, snapshot: OfficialContestResult): void {

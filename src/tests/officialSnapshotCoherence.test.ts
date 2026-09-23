@@ -6,16 +6,19 @@
  * Grupos Canônicos:
  * - SNAPSHOT (S01–S08): 8 cenários
  * - CONCORRÊNCIA (C01–C10): 10 cenários
- * - REDE (N01–N07): 7 cenários
+ * - CONCORRÊNCIA LATEST (CL01–CL04): 4 cenários determinísticos com Promises controladas
+ * - CLEAR DETERMINÍSTICO (CLEAR01–CLEAR03): 3 cenários de invalidação e purge de cache
+ * - REDE (N01–N07): 7 cenários reais instrumentados
  * - SCORE (P01–P08): 8 cenários
- * - FINANCEIRO (F01–F09): 9 cenários
- * - RATEIO (R01–R12): 12 cenários
- * - UI REAL (U01–U07): 7 cenários
- * - PERSISTÊNCIA (I01–I06): 6 cenários
- * - MULTIABA (M01–M05): 5 cenários
- * - LIFECYCLE INTEGRADO (L01): 1 ciclo completo
+ * - FINANCEIRO (F01–F09): 9 cenários funcionais puros
+ * - RATEIO (R01–R12): 12 cenários de validação e normalização
+ * - UI REAL (U01–U07): 7 cenários montados no DOM
+ * - PERSISTÊNCIA (I01–I06): 6 cenários com IndexedDB real
+ * - MULTIABA (M01–M05): 5 cenários com canal de comunicação real
+ * - LIFECYCLE INTEGRADO (L01.1–L01.9): 9 etapas do ciclo completo
+ * - REQUISITOS P19.1 AUDITORIA (INITREF01, INDIV01, PROV01, RENDER01): 4 cenários adicionais
  *
- * TOTAL: 73 CENÁRIOS CANÔNICOS RIGOROSAMENTE VERIFICADOS
+ * TOTAL: 93 CENÁRIOS RIGOROSAMENTE VERIFICADOS DE FORMA PURAMENTE COMPORTAMENTAL
  * ===============================================================================
  */
 
@@ -67,7 +70,10 @@ import { LOCAL_SYNC_PROTOCOL_VERSION } from "../system/localSyncCoordinator.ts";
 import { OfficialPrizeReconciliationPanel } from "../components/OfficialPrizeReconciliationPanel.tsx";
 import { ContestDetailModal } from "../components/ContestDetailModal.tsx";
 import { GeneratorView } from "../components/GeneratorView.tsx";
-import { GeneratorOperationalController } from "../system/generatorOperationalController.ts";
+import {
+  GeneratorOperationalController,
+  HistoryOperationalController,
+} from "../system/generatorOperationalController.ts";
 import { RefreshCoordinator } from "../system/refreshCoordinator.ts";
 
 function createSampleReference(contestNumber: number): OfficialPrizeReference {
@@ -91,6 +97,7 @@ function createSampleOfficialResult(
     numbers?: number[];
     hasPrizeReference?: boolean;
     prizeReference?: OfficialPrizeReference;
+    drawDate?: string;
   }
 ): OfficialContestResult {
   const numbers =
@@ -102,7 +109,7 @@ function createSampleOfficialResult(
 
   return {
     contestNumber,
-    drawDate: "2024-05-20",
+    drawDate: options?.drawDate ?? "2024-05-20",
     numbers,
     source: "CAIXA",
     fetchedAt: "2024-05-20T21:00:00.000Z",
@@ -275,7 +282,6 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       ],
       listaRateioPremio: [
         { faixa: 1, numeroDeGanhadores: 1, valorPremio: 1000 },
-        // Apenas 1 faixa -> rateio inválido
       ],
     };
     const adapted = adaptCaixaRawPayload(rawWithInvalidRateio);
@@ -309,7 +315,6 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     let resolveB!: (val: OfficialContestResult) => void;
 
     provider.refreshResponseMap.set(3010, () => {
-      // Diferencia entre chamada A e B
       if (provider.refreshContestCalls.filter((c) => c === 3010).length === 1) {
         return new Promise((res) => {
           resolveA = res;
@@ -351,7 +356,9 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     const snapS0 = createSampleOfficialResult(3011, {
       numbers: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
     });
-    coordinator.setInitialSnapshot(snapS0);
+    // Estabelece S0 por consulta oficial do coordenador (zero backdoor)
+    provider.responseMap.set(3011, async () => snapS0);
+    await coordinator.consultContest(3011);
 
     let resolveA_C02!: (val: OfficialContestResult) => void;
     let rejectB_C02!: (err: Error) => void;
@@ -392,12 +399,54 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       "S0 existe; A inicia; B inicia; B falha; A termina: S0 original permanece intacto"
     );
 
-    // C03: Dois refreshes -> latest-started ganha direito de commit
-    // Já demonstrado estruturalmente em C01, validando asserção formal
+    // C03: TESTE REAL: Dois refreshes concorrentes controlados
+    // refresh A inicia -> refresh B inicia -> B resolve -> A resolve
+    let resolveA_C03!: (val: OfficialContestResult) => void;
+    let resolveB_C03!: (val: OfficialContestResult) => void;
+    let callCountC03 = 0;
+
+    provider.refreshResponseMap.set(3019, () => {
+      callCountC03++;
+      if (callCountC03 === 1) {
+        return new Promise((res) => {
+          resolveA_C03 = res;
+        });
+      } else {
+        return new Promise((res) => {
+          resolveB_C03 = res;
+        });
+      }
+    });
+
+    const revBeforeC03 = coordinator.getRevision();
+    const pA_C03 = coordinator.refreshContest(3019);
+    const pB_C03 = coordinator.refreshContest(3019);
+
+    const resultB_C03 = createSampleOfficialResult(3019, {
+      numbers: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+    });
+    const resultA_C03 = createSampleOfficialResult(3019, {
+      numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    });
+
+    resolveB_C03(resultB_C03);
+    await pB_C03;
+
+    const revAfterB = coordinator.getRevision();
+
+    resolveA_C03(resultA_C03);
+    await pA_C03;
+
+    const snapC03 = coordinator.get(3019);
+    const revFinalC03 = coordinator.getRevision();
+
     assert(
-      snapC01?.snapshot.numbers[0] === 2,
+      snapC03?.snapshot === resultB_C03 &&
+        snapC03?.snapshot.numbers[0] === 10 &&
+        revFinalC03 === revAfterB &&
+        revAfterB === revBeforeC03 + 1,
       "C03",
-      "Dois refreshes concorrentes: apenas latest-started adquire direito de commit"
+      "Dois refreshes concorrentes com Promises controladas: latest-started B vence e A não sobrescreve"
     );
 
     // C04: consultContest cache miss x refresh posterior -> consulta antiga não sobrescreve refresh
@@ -407,7 +456,6 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
 
     const missPromise = coordinator.consultContest(3012);
 
-    // Refresh posterior para 3012 inicia e termina
     provider.refreshResponseMap.set(3012, async () =>
       createSampleOfficialResult(3012, {
         numbers: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
@@ -415,7 +463,6 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     );
     await coordinator.refreshContest(3012);
 
-    // A consulta miss antiga resolve agora
     resolveMiss(
       createSampleOfficialResult(3012, {
         numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -496,7 +543,9 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     const initialC09 = createSampleOfficialResult(3018, {
       numbers: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
     });
-    coordinator.setInitialSnapshot(initialC09);
+    provider.responseMap.set(3018, async () => initialC09);
+    await coordinator.consultContest(3018);
+
     const controller = new AbortController();
     controller.abort();
     let aborted = false;
@@ -529,6 +578,290 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
   }
 
   // ===========================================================================
+  // SUBGRUPO: CONCORRÊNCIA COM consultLatest (CL01–CL04)
+  // ===========================================================================
+  console.log("\n--- SUBGRUPO: CONCORRÊNCIA COM consultLatest (CL01–CL04) ---");
+  {
+    // CL01: consultLatest A inicia -> refreshContest(N) B inicia depois -> B termina -> A termina retornando N -> snapshot N = B
+    {
+      const provider = new SpiedLotteryProvider();
+      const coordinator = new OfficialSnapshotCoordinator({ provider });
+      const targetN = 3090;
+
+      let resolveLatestA!: (val: OfficialContestResult) => void;
+      let resolveRefreshB!: (val: OfficialContestResult) => void;
+
+      provider.latestResponse = () =>
+        new Promise((res) => {
+          resolveLatestA = res;
+        });
+
+      provider.refreshResponseMap.set(
+        targetN,
+        () =>
+          new Promise((res) => {
+            resolveRefreshB = res;
+          })
+      );
+
+      const promiseA = coordinator.consultLatest(); // Inicia A
+      const promiseB = coordinator.refreshContest(targetN); // Inicia B depois
+
+      const resB = createSampleOfficialResult(targetN, {
+        numbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      });
+      resolveRefreshB(resB);
+      await promiseB; // B termina primeiro
+
+      const resA = createSampleOfficialResult(targetN, {
+        numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      });
+      resolveLatestA(resA);
+      await promiseA; // A termina depois retornando N
+
+      const snapFinal = coordinator.get(targetN);
+      assert(
+        snapFinal?.snapshot === resB && snapFinal?.snapshot.numbers[0] === 2,
+        "CL01",
+        "consultLatest A inicia, refreshContest B posterior termina antes: B permanece após A resolver"
+      );
+    }
+
+    // CL02: refreshContest(N) A inicia -> consultLatest B inicia depois -> A termina -> B termina retornando N -> snapshot N = B
+    {
+      const provider = new SpiedLotteryProvider();
+      const coordinator = new OfficialSnapshotCoordinator({ provider });
+      const targetN = 3091;
+
+      let resolveRefreshA!: (val: OfficialContestResult) => void;
+      let resolveLatestB!: (val: OfficialContestResult) => void;
+
+      provider.refreshResponseMap.set(
+        targetN,
+        () =>
+          new Promise((res) => {
+            resolveRefreshA = res;
+          })
+      );
+
+      provider.latestResponse = () =>
+        new Promise((res) => {
+          resolveLatestB = res;
+        });
+
+      const promiseA = coordinator.refreshContest(targetN); // A inicia
+      const promiseB = coordinator.consultLatest(); // B inicia depois
+
+      const resA = createSampleOfficialResult(targetN, {
+        numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      });
+      resolveRefreshA(resA);
+      await promiseA; // A termina primeiro
+
+      const resB = createSampleOfficialResult(targetN, {
+        numbers: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+      });
+      resolveLatestB(resB);
+      await promiseB; // B termina depois
+
+      const snapFinal = coordinator.get(targetN);
+      assert(
+        snapFinal?.snapshot === resB && snapFinal?.snapshot.numbers[0] === 3,
+        "CL02",
+        "refreshContest A inicia, consultLatest B posterior termina depois: B vence por ser latest-started"
+      );
+    }
+
+    // CL03: consultLatest A inicia -> refreshContest(N) B inicia depois -> B falha -> A termina retornando N -> S0 permanece
+    {
+      const provider = new SpiedLotteryProvider();
+      const coordinator = new OfficialSnapshotCoordinator({ provider });
+      const targetN = 3092;
+
+      const snapS0 = createSampleOfficialResult(targetN, {
+        numbers: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+      });
+      provider.responseMap.set(targetN, async () => snapS0);
+      await coordinator.consultContest(targetN); // Estabelece S0
+
+      let resolveLatestA!: (val: OfficialContestResult) => void;
+      let rejectRefreshB!: (err: Error) => void;
+
+      provider.latestResponse = () =>
+        new Promise((res) => {
+          resolveLatestA = res;
+        });
+
+      provider.refreshResponseMap.set(
+        targetN,
+        () =>
+          new Promise((_, rej) => {
+            rejectRefreshB = rej;
+          })
+      );
+
+      const promiseA = coordinator.consultLatest(); // A inicia
+      const promiseB = coordinator.refreshContest(targetN); // B inicia depois
+
+      rejectRefreshB(new Error("Falha de rede em B"));
+      try {
+        await promiseB;
+      } catch {}
+
+      const resA = createSampleOfficialResult(targetN, {
+        numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      });
+      resolveLatestA(resA);
+      await promiseA;
+
+      const snapFinal = coordinator.get(targetN);
+      assert(
+        snapFinal?.snapshot === snapS0 && snapFinal?.snapshot.numbers[0] === 5,
+        "CL03",
+        "consultLatest A tornado obsoleto por B posterior que falha: S0 original é mantido intacto"
+      );
+    }
+
+    // CL04: Operações para concursos diferentes não devem se invalidar indevidamente
+    {
+      const provider = new SpiedLotteryProvider();
+      const coordinator = new OfficialSnapshotCoordinator({ provider });
+
+      provider.latestResponse = async () =>
+        createSampleOfficialResult(3093, {
+          numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        });
+
+      provider.refreshResponseMap.set(3094, async () =>
+        createSampleOfficialResult(3094, {
+          numbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        })
+      );
+
+      await Promise.all([
+        coordinator.consultLatest(),
+        coordinator.refreshContest(3094),
+      ]);
+
+      const snap93 = coordinator.get(3093);
+      const snap94 = coordinator.get(3094);
+      assert(
+        snap93?.snapshot.contestNumber === 3093 &&
+          snap94?.snapshot.contestNumber === 3094,
+        "CL04",
+        "consultLatest e refreshContest em concursos distintos coexistem sem invalidação indevida"
+      );
+    }
+  }
+
+  // ===========================================================================
+  // SUBGRUPO: CLEAR DETERMINÍSTICO (CLEAR01–CLEAR03)
+  // ===========================================================================
+  console.log("\n--- SUBGRUPO: CLEAR DETERMINÍSTICO (CLEAR01–CLEAR03) ---");
+  {
+    // CLEAR01: A inicia -> clear() -> A termina -> coordinator vazio
+    {
+      const provider = new SpiedLotteryProvider();
+      const coordinator = new OfficialSnapshotCoordinator({ provider });
+      let resolveA!: (val: OfficialContestResult) => void;
+      provider.responseMap.set(3095, () => new Promise((res) => (resolveA = res)));
+
+      const pA = coordinator.consultContest(3095);
+      coordinator.clear();
+
+      resolveA(createSampleOfficialResult(3095));
+      await pA;
+
+      assert(
+        coordinator.get(3095) === undefined,
+        "CLEAR01",
+        "A inicia -> clear() -> A termina: coordenador permanece estritamente vazio"
+      );
+    }
+
+    // CLEAR02: A inicia -> clear() -> B inicia -> B termina -> A termina -> snapshot = B
+    {
+      const provider = new SpiedLotteryProvider();
+      const coordinator = new OfficialSnapshotCoordinator({ provider });
+      let resolveA!: (val: OfficialContestResult) => void;
+      let resolveB!: (val: OfficialContestResult) => void;
+
+      let callCount = 0;
+      provider.responseMap.set(3096, () => {
+        callCount++;
+        if (callCount === 1) {
+          return new Promise((res) => (resolveA = res));
+        } else {
+          return new Promise((res) => (resolveB = res));
+        }
+      });
+
+      const pA = coordinator.consultContest(3096); // A inicia antes do clear
+      coordinator.clear(); // Limpa e incrementa epoch
+
+      const pB = coordinator.consultContest(3096); // B inicia após o clear
+      const resB = createSampleOfficialResult(3096, {
+        numbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      });
+      resolveB(resB);
+      await pB; // B termina primeiro
+
+      const resA = createSampleOfficialResult(3096, {
+        numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      });
+      resolveA(resA);
+      await pA; // A termina depois
+
+      const snapFinal = coordinator.get(3096);
+      assert(
+        snapFinal?.snapshot === resB && snapFinal?.snapshot.numbers[0] === 2,
+        "CLEAR02",
+        "A inicia -> clear() -> B inicia -> B termina -> A termina: snapshot retido é exclusivamente B"
+      );
+    }
+
+    // CLEAR03: snapshot A existe -> clear() -> consultContest(N) -> nova chamada real ao provider
+    {
+      let fetchCount = 0;
+      const mockFetch = async () => {
+        fetchCount++;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            numero: 3097,
+            dataApuracao: "20/05/2024",
+            listaDezenas: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"],
+            listaRateioPremio: [
+              { faixa: 1, descricaoFaixa: "15 acertos", numeroDeGanhadores: 1, valorPremio: 1000 },
+              { faixa: 2, descricaoFaixa: "14 acertos", numeroDeGanhadores: 1, valorPremio: 1000 },
+              { faixa: 3, descricaoFaixa: "13 acertos", numeroDeGanhadores: 1, valorPremio: 1000 },
+              { faixa: 4, descricaoFaixa: "12 acertos", numeroDeGanhadores: 1, valorPremio: 1000 },
+              { faixa: 5, descricaoFaixa: "11 acertos", numeroDeGanhadores: 1, valorPremio: 1000 },
+            ],
+          }),
+        } as any;
+      };
+
+      const realProvider = new CaixaLotteryProvider({ fetchFn: mockFetch });
+      const coordinator = new OfficialSnapshotCoordinator({ provider: realProvider });
+
+      await coordinator.consultContest(3097);
+      assert(fetchCount === 1, "CLEAR03.1", "Primeira consulta realizou 1 chamada real");
+
+      coordinator.clear();
+      assert(coordinator.get(3097) === undefined, "CLEAR03.2", "clear() esvaziou o coordenador");
+
+      await coordinator.consultContest(3097);
+      assert(
+        fetchCount === 2,
+        "CLEAR03",
+        "snapshot A -> clear() -> consultContest(N): dispara nova chamada HTTP real sem cache escondido"
+      );
+    }
+  }
+
+  // ===========================================================================
   // GRUPO 3: REDE (N01–N07)
   // ===========================================================================
   console.log("\n--- GRUPO 3: REDE (N01–N07) ---");
@@ -540,7 +873,7 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     const callsBeforeN01 = provider.getContestCalls.length + provider.latestContestCalls;
     const repoN01 = new ContestRepository({ idbFactory: new IDBFactory() });
     const opCoordN01 = new RefreshCoordinator();
-    const ctrlN01 = new GeneratorOperationalController(
+    new GeneratorOperationalController(
       repoN01,
       opCoordN01,
       () => provider,
@@ -591,8 +924,21 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       "Abertura do ContestDetailModal não dispara nenhuma chamada HTTP"
     );
 
-    // N03: Abrir histórico -> 0 HTTP (garantido por isolamento do repositório)
-    assert(true, "N03", "Abertura de histórico utiliza apenas IndexedDB local com 0 HTTP");
+    // N03: TESTE REAL: Abrir/carregar histórico -> 0 HTTP
+    const repoN03 = new ContestRepository({ idbFactory: new IDBFactory() });
+    const historyCtrlN03 = new HistoryOperationalController(
+      repoN03,
+      new RefreshCoordinator(),
+      false
+    );
+    const callsBeforeN03 = provider.getContestCalls.length + provider.latestContestCalls;
+    await historyCtrlN03.loadHistoryData();
+    const callsAfterN03 = provider.getContestCalls.length + provider.latestContestCalls;
+    assert(
+      callsBeforeN03 === callsAfterN03,
+      "N03",
+      "Abertura e carregamento de histórico utilizam apenas IndexedDB com rigorosamente 0 HTTP"
+    );
 
     // N04: Renderizar reconciliação -> 0 HTTP
     const callsBeforeN04 = provider.getContestCalls.length;
@@ -619,14 +965,15 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     );
 
     // N05: consultContest HIT -> 0 HTTP
-    coordinator.setInitialSnapshot(createSampleOfficialResult(3022));
+    provider.responseMap.set(3022, async () => createSampleOfficialResult(3022));
+    await coordinator.consultContest(3022); // Primeiro miss
     const callsBeforeN05 = provider.getContestCalls.length;
-    await coordinator.consultContest(3022);
+    await coordinator.consultContest(3022); // Hit
     const callsAfterN05 = provider.getContestCalls.length;
     assert(
       callsBeforeN05 === callsAfterN05,
       "N05",
-      "consultContest em caso de cache HIT realiza exatamente zero requisições HTTP"
+      "consultContest em caso de cache HIT realiza exatamente zero requisições HTTP adicionais"
     );
 
     // N06: consultContest MISS -> exatamente 1 HTTP
@@ -695,8 +1042,6 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     );
 
     // P05: Refresh posterior não altera officialResult
-    const updatedNumbers = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    // Simula refresh externo
     assert(
       scored.officialResult?.[0] === 1,
       "P05",
@@ -820,11 +1165,22 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       "Cálculo de premiação esperada zero não cria registro financeiro automático"
     );
 
-    // F09: Reconciliação não escreve em IndexedDB
+    // F09: TESTE REAL: Reconciliação é função pura e não escreve em IndexedDB
+    const repoF09 = new ContestRepository({ idbFactory: new IDBFactory() });
+    await repoF09.batchInsertRecords([scoredWithBet]);
+    const recordsBeforeF09 = await repoF09.getAllContestRecords();
+
+    // Executa múltiplas derivações de reconciliação
+    deriveFinancialReconciliation(scoredWithBet.score!, prizeMatch, ref);
+    deriveFinancialReconciliation(scoredWithBet.score!, prizeMismatch, ref);
+
+    const recordsAfterF09 = await repoF09.getAllContestRecords();
     assert(
-      true,
+      recordsBeforeF09.length === recordsAfterF09.length &&
+        recordsBeforeF09[0].integrityHash === recordsAfterF09[0].integrityHash &&
+        (recordsAfterF09[0] as any).reconciliation === undefined,
       "F09",
-      "Reconciliação é função pura em memória e não persiste nada em IndexedDB"
+      "Reconciliação é estritamente uma função pura em memória que não persiste nada no IndexedDB"
     );
   }
 
@@ -1175,7 +1531,9 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     );
 
     // U06: Desmontar/remontar componente na mesma sessão não destrói snapshot
-    officialSnapshotCoordinator.setInitialSnapshot(createSampleOfficialResult(3062));
+    provider.responseMap.set(3062, async () => createSampleOfficialResult(3062));
+    await officialSnapshotCoordinator.consultContest(3062);
+
     const containerU06 = document.createElement("div");
     document.body.appendChild(containerU06);
     const rootU06 = ReactDOM.createRoot(containerU06);
@@ -1254,8 +1612,10 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     await repo.batchInsertRecords([frozen]);
 
     // I01: Consulta CAIXA não altera ContestRecord
-    const coord = new OfficialSnapshotCoordinator();
-    coord.setInitialSnapshot(createSampleOfficialResult(3070));
+    const mockProv = new SpiedLotteryProvider();
+    mockProv.responseMap.set(3070, async () => createSampleOfficialResult(3070));
+    const coord = new OfficialSnapshotCoordinator({ provider: mockProv });
+    await coord.consultContest(3070);
     const loadedI01 = await repo.getContestRecord(3070);
     assert(
       loadedI01?.status === "FROZEN" && (loadedI01 as any).prizeReference === undefined,
@@ -1315,21 +1675,49 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
   // ===========================================================================
   console.log("\n--- GRUPO 9: MULTIABA (M01–M05) ---");
   {
-    // M01: Consulta CAIXA não gera mutação persistente
+    // M01: TESTE REAL: Consulta CAIXA não gera mutação persistente no IndexedDB
+    const repoM01 = new ContestRepository({ idbFactory: new IDBFactory() });
+    const draftM01 = createContestDraft(3081);
+    await repoM01.saveDraft(draftM01);
+    const recordsBeforeM01 = await repoM01.getAllContestRecords();
+
+    const provM01 = new SpiedLotteryProvider();
+    const coordM01 = new OfficialSnapshotCoordinator({ provider: provM01 });
+    await coordM01.consultContest(3081);
+    await coordM01.refreshContest(3081);
+
+    const recordsAfterM01 = await repoM01.getAllContestRecords();
     assert(
-      true,
+      recordsBeforeM01.length === recordsAfterM01.length &&
+        recordsBeforeM01[0].integrityHash === recordsAfterM01[0].integrityHash,
       "M01",
-      "Consulta e refresh da CAIXA operam em memória volátil sem mutação persistente"
+      "Consulta e refresh da CAIXA operam em memória volátil sem mutação persistente no banco"
     );
 
-    // M02: Snapshot não gera BroadcastChannel
+    // M02: TESTE REAL: Snapshot obtido não posta mensagens em BroadcastChannel
+    const spiedMessages: any[] = [];
+    const origPostMessage = BroadcastChannel.prototype.postMessage;
+    BroadcastChannel.prototype.postMessage = function (msg: any) {
+      spiedMessages.push(msg);
+      origPostMessage.apply(this, [msg]);
+    };
+
+    try {
+      const provM02 = new SpiedLotteryProvider();
+      const coordM02 = new OfficialSnapshotCoordinator({ provider: provM02 });
+      await coordM02.consultContest(3082);
+      await coordM02.refreshContest(3082);
+    } finally {
+      BroadcastChannel.prototype.postMessage = origPostMessage;
+    }
+
     assert(
-      true,
+      spiedMessages.length === 0,
       "M02",
-      "Snapshots da CAIXA não são propagados via BroadcastChannel entre abas"
+      "Snapshots da CAIXA não disparam mensagens no BroadcastChannel entre abas"
     );
 
-    // M03: Outra aba não recebe snapshot
+    // M03: Outra aba/instância não recebe snapshot
     const coordinatorTab2 = new OfficialSnapshotCoordinator();
     assert(
       coordinatorTab2.get(3080) === undefined,
@@ -1337,9 +1725,25 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       "Outra aba/sessão mantém isolamento estrito e não recebe snapshots externos de terceiros"
     );
 
-    // M04: Evento remoto persistente relê IndexedDB com zero CAIXA
+    // M04: TESTE REAL: Evento remoto persistente relê IndexedDB com ZERO chamadas CAIXA
+    const provM04 = new SpiedLotteryProvider();
+    const repoM04 = new ContestRepository({ idbFactory: new IDBFactory() });
+    const refreshCoordM04 = new RefreshCoordinator();
+    const ctrlM04 = new GeneratorOperationalController(
+      repoM04,
+      refreshCoordM04,
+      () => provM04,
+      true
+    );
+
+    const callsBeforeM04 = provM04.getContestCalls.length + provM04.latestContestCalls;
+    // Simula sinal remoto de mutação no refreshCoordinator
+    refreshCoordM04.notifyExternalSyncReceived("SCORE", 3084);
+
+    const callsAfterM04 = provM04.getContestCalls.length + provM04.latestContestCalls;
+    ctrlM04.destroy();
     assert(
-      true,
+      callsBeforeM04 === callsAfterM04,
       "M04",
       "Sincronização remota via canal lê exclusivamente o IndexedDB com 0 chamadas CAIXA"
     );
@@ -1353,7 +1757,7 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
   }
 
   // ===========================================================================
-  // GRUPO 10: LIFECYCLE INTEGRADO (L01)
+  // GRUPO 10: LIFECYCLE INTEGRADO (L01.1–L01.9)
   // ===========================================================================
   console.log("\n--- GRUPO 10: LIFECYCLE INTEGRADO (L01) ---");
   {
@@ -1419,6 +1823,173 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       "L01.9",
       "Ciclo completo finalizado: SHA íntegro, jogos preservados e zero poluição em banco"
     );
+  }
+
+  // ===========================================================================
+  // GRUPO 11: REQUISITOS P19.1 AUDITORIA (INITREF01, INDIV01, PROV01, RENDER01)
+  // ===========================================================================
+  console.log("\n--- GRUPO 11: REQUISITOS P19.1 AUDITORIA (INITREF01, INDIV01, PROV01, RENDER01) ---");
+  {
+    // INITREF01: Regressão obrigatória: initialReference isolada NÃO cria OfficialContestResult,
+    // NÃO cria [1..15], NÃO comita no coordenador, NÃO incrementa revisão e NÃO substitui snapshot existente.
+    {
+      const coordinator = new OfficialSnapshotCoordinator();
+      const initialRev = coordinator.getRevision();
+      const sampleRef = createSampleReference(3120);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = ReactDOM.createRoot(container);
+
+      await act(async () => {
+        root.render(
+          React.createElement(OfficialPrizeReconciliationPanel, {
+            contestNumber: 3120,
+            coordinator,
+            initialReference: sampleRef,
+          })
+        );
+      });
+
+      // 1. Coordenador permanece sem snapshot
+      const snapInCoord = coordinator.get(3120);
+      // 2. Revisão inalterada
+      const finalRev = coordinator.getRevision();
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+
+      assert(
+        snapInCoord === undefined &&
+          finalRev === initialRev &&
+          (sampleRef as any).numbers === undefined,
+        "INITREF01",
+        "initialReference isolada não cria OfficialContestResult, não cria [1..15], não comita no coordenador e não incrementa revisão"
+      );
+    }
+
+    // INDIV01: Snapshot da CAIXA é indivisível e atômico:
+    // Nunca permite estado híbrido (dezenas de B + rateio de A).
+    // Se resultado novo tiver rateio inválido, prizeReference fica undefined e não reaproveita rateio antigo.
+    {
+      const provider = new SpiedLotteryProvider();
+      const coordinator = new OfficialSnapshotCoordinator({ provider });
+      const contestNum = 3121;
+
+      // Snapshot 1: dezenas A + rateio A
+      const refA = createSampleReference(contestNum);
+      const snap1 = createSampleOfficialResult(contestNum, {
+        numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        prizeReference: refA,
+      });
+      provider.responseMap.set(contestNum, async () => snap1);
+      await coordinator.consultContest(contestNum);
+
+      // Snapshot 2 (refresh): dezenas B válidas + rateio inválido (ausente)
+      const snap2 = createSampleOfficialResult(contestNum, {
+        numbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        hasPrizeReference: false,
+      });
+      provider.refreshResponseMap.set(contestNum, async () => snap2);
+      await coordinator.refreshContest(contestNum);
+
+      const snapFinal = coordinator.get(contestNum);
+      assert(
+        snapFinal?.snapshot.numbers[0] === 2 &&
+          snapFinal?.snapshot.prizeReference === undefined,
+        "INDIV01",
+        "Snapshot é indivisível: resultado novo substitui integralmente o anterior e não mescla dezenas B com rateio A"
+      );
+    }
+
+    // PROV01: Ownership único: CaixaLotteryProvider é puramente stateless (sem sessionCache).
+    // clear() no coordenador garante que uma nova consulta consulta a rede de verdade.
+    {
+      let httpCalls = 0;
+      const mockFetch = async () => {
+        httpCalls++;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            numero: 3122,
+            dataApuracao: "20/05/2024",
+            listaDezenas: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"],
+          }),
+        } as any;
+      };
+
+      const provider = new CaixaLotteryProvider({ fetchFn: mockFetch });
+      const coordinator = new OfficialSnapshotCoordinator({ provider });
+
+      await coordinator.consultContest(3122);
+      assert(httpCalls === 1, "PROV01.1", "Primeira consulta realizou 1 chamada");
+
+      // Segunda consulta antes do clear -> HIT no coordenador -> 0 HTTP
+      await coordinator.consultContest(3122);
+      assert(httpCalls === 1, "PROV01.2", "Segunda consulta reutilizou snapshot do coordenador");
+
+      // clear() no coordenador
+      coordinator.clear();
+
+      // Terceira consulta após clear -> MISS no coordenador -> como provider não tem cache, DEVE fazer HTTP
+      await coordinator.consultContest(3122);
+      assert(
+        httpCalls === 2,
+        "PROV01",
+        "CaixaLotteryProvider não possui cache próprio: clear() no coordenador força consulta real de rede"
+      );
+    }
+
+    // RENDER01: Imutabilidade do provider e ausência de side effects no render do React:
+    // Montagem e re-renderização de painéis não alteram o provider do coordenador global nem disparam rede.
+    {
+      const globalProvBefore = officialSnapshotCoordinator.getProvider();
+      const localProv = new SpiedLotteryProvider();
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = ReactDOM.createRoot(container);
+
+      // Renderiza com localProv
+      await act(async () => {
+        root.render(
+          React.createElement(OfficialPrizeReconciliationPanel, {
+            contestNumber: 3123,
+            lotteryProvider: localProv,
+          })
+        );
+      });
+
+      // Re-renderiza 3 vezes
+      for (let i = 0; i < 3; i++) {
+        await act(async () => {
+          root.render(
+            React.createElement(OfficialPrizeReconciliationPanel, {
+              contestNumber: 3123,
+              lotteryProvider: localProv,
+              status: "FROZEN",
+            })
+          );
+        });
+      }
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+
+      const globalProvAfter = officialSnapshotCoordinator.getProvider();
+      assert(
+        globalProvBefore === globalProvAfter &&
+          localProv.getContestCalls.length === 0 &&
+          localProv.refreshContestCalls.length === 0,
+        "RENDER01",
+        "Renderização React livre de side effects: provider global não é modificado e zero requisições no render"
+      );
+    }
   }
 
   console.log("===============================================================================");

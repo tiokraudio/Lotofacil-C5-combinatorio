@@ -72,6 +72,7 @@ import {
 } from "../c5/integrity.ts";
 import { createContestDraft, freezeContestRecord } from "../c5/record.ts";
 import { ContestRepository } from "../storage/contestRepository.ts";
+import { OfficialSnapshotCoordinator } from "../sync/officialSnapshotCoordinator.ts";
 import { OfficialPrizeReconciliationPanel } from "../components/OfficialPrizeReconciliationPanel.tsx";
 import { formatBRLFromCents } from "../utils/money.ts";
 
@@ -734,7 +735,8 @@ async function runTests() {
       } as any;
     };
     const provider = new CaixaLotteryProvider({ fetchFn: mockFetch });
-    const res = await provider.getContest(3100);
+    const coordinator = new OfficialSnapshotCoordinator({ provider });
+    const res = await coordinator.consultContest(3100);
     assert(
       fetchCount === 1 && res.prizeReference !== undefined,
       "CENÁRIO 23: Provider armazena prizeReference no cache de sessão na primeira consulta"
@@ -755,8 +757,9 @@ async function runTests() {
       } as any;
     };
     const provider = new CaixaLotteryProvider({ fetchFn: mockFetch });
-    await provider.getContest(3100);
-    const res2 = await provider.getContest(3100);
+    const coordinator = new OfficialSnapshotCoordinator({ provider });
+    await coordinator.consultContest(3100);
+    const res2 = await coordinator.consultContest(3100);
     assert(
       fetchCount === 1 && res2.prizeReference?.contestNumber === 3100,
       "CENÁRIO 24: Segunda chamada a getContest retorna a referência em cache sem requisição de rede"
@@ -777,8 +780,9 @@ async function runTests() {
       } as any;
     };
     const provider = new CaixaLotteryProvider({ fetchFn: mockFetch });
-    await provider.getContest(3100);
-    const resRefresh = await provider.refreshContest(3100);
+    const coordinator = new OfficialSnapshotCoordinator({ provider });
+    await coordinator.consultContest(3100);
+    const resRefresh = await coordinator.refreshContest(3100);
     assert(
       fetchCount === 2 && resRefresh.prizeReference?.contestNumber === 3100,
       "CENÁRIO 25: refreshContest ignora o cache de sessão, realiza nova requisição e atualiza o cache"
@@ -831,11 +835,12 @@ async function runTests() {
     };
 
     const provider = new CaixaLotteryProvider({ fetchFn: mockFetch });
-    const p1 = provider.refreshContest(3101);
-    const p2 = provider.refreshContest(3101);
+    const coordinator = new OfficialSnapshotCoordinator({ provider });
+    const p1 = coordinator.refreshContest(3101);
+    const p2 = coordinator.refreshContest(3101);
 
     await Promise.all([p1, p2]);
-    const cached = await provider.getContest(3101);
+    const cached = await coordinator.consultContest(3101);
     const winners15 = cached.prizeReference?.tiers.find((t) => t.hits === 15)?.winners;
     assert(
       winners15 === 5,
@@ -860,18 +865,19 @@ async function runTests() {
     };
 
     const provider = new CaixaLotteryProvider({ fetchFn: mockFetch });
-    await provider.getContest(3102);
+    const coordinator = new OfficialSnapshotCoordinator({ provider });
+    await coordinator.consultContest(3102);
 
     shouldFail = true;
     let refreshFailed = false;
     try {
-      await provider.refreshContest(3102);
+      await coordinator.refreshContest(3102);
     } catch {
       refreshFailed = true;
     }
 
     shouldFail = false;
-    const cached = await provider.getContest(3102);
+    const cached = await coordinator.consultContest(3102);
     assert(
       refreshFailed && cached.prizeReference?.contestNumber === 3102,
       "CENÁRIO 27: falha de rede no refreshContest preserva o snapshot anterior no cache de sessão"
@@ -923,16 +929,17 @@ async function runTests() {
     };
 
     const provider = new CaixaLotteryProvider({ fetchFn: mockFetch as any });
+    const coordinator = new OfficialSnapshotCoordinator({ provider });
     
     // Consulta inicial: carrega cache A com prizeReference A
-    const resA = await provider.getContest(3100);
+    const resA = await coordinator.consultContest(3100);
     const hasRefA = resA.prizeReference !== undefined;
 
     // Refresh: dezenas B válidas + rateio inválido/incompleto
-    const resB = await provider.refreshContest(3100);
+    const resB = await coordinator.refreshContest(3100);
 
     // Consulta subsequente para verificar se cache final reteve o snapshot B correto
-    const resCached = await provider.getContest(3100);
+    const resCached = await coordinator.consultContest(3100);
 
     assert(
       hasRefA &&

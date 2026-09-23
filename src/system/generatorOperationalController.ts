@@ -100,12 +100,16 @@ export class GeneratorOperationalController {
     coordinator: RefreshCoordinator = defaultRefreshCoordinator,
     providerGetter: () => LotteryResultProvider = getLotteryProvider,
     autoAttach = true,
-    snapshotCoordinator: OfficialSnapshotCoordinator = defaultSnapshotCoordinator
+    snapshotCoordinator?: OfficialSnapshotCoordinator
   ) {
     this.repository = repository;
     this.coordinator = coordinator;
     this.providerGetter = providerGetter;
-    this.snapshotCoordinator = snapshotCoordinator;
+    this.snapshotCoordinator =
+      snapshotCoordinator ??
+      (providerGetter !== getLotteryProvider
+        ? new OfficialSnapshotCoordinator({ provider: providerGetter() })
+        : defaultSnapshotCoordinator);
 
     if (autoAttach) {
       this.attachCoordinator(this.coordinator);
