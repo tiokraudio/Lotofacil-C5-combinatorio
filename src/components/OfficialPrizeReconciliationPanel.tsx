@@ -1,14 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Award, RefreshCw, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
-import type { C5Score, PrizeRecord } from "../c5/types.ts";
+import type { C5Score, PrizeRecord, ContestRecord } from "../c5/types.ts";
 import type {
   OfficialPrizeReference,
   LotteryResultProvider,
 } from "../lottery/types.ts";
-import { getLotteryProvider } from "../lottery/index.ts";
+import {
+  officialSnapshotCoordinator,
+} from "../sync/officialSnapshotCoordinator.ts";
 import {
   deriveExpectedPrize,
   deriveFinancialReconciliation,
+  isEligibleForFinancialReconciliation,
 } from "../sync/officialPrizeReconciliation.ts";
 import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
 
@@ -16,6 +19,9 @@ interface OfficialPrizeReconciliationPanelProps {
   contestNumber: number;
   score?: C5Score;
   prize?: PrizeRecord;
+  betPlacedAt?: string;
+  status?: string;
+  record?: ContestRecord;
   lotteryProvider?: LotteryResultProvider;
   initialReference?: OfficialPrizeReference;
   onReferenceLoaded?: (reference: OfficialPrizeReference) => void;
@@ -27,14 +33,63 @@ export const OfficialPrizeReconciliationPanel: React.FC<
   contestNumber,
   score,
   prize,
+  betPlacedAt,
+  status,
+  record,
   lotteryProvider,
   initialReference,
   onReferenceLoaded,
 }) => {
-  const activeProvider = lotteryProvider ?? getLotteryProvider();
-  const [reference, setReference] = useState<OfficialPrizeReference | undefined>(
-    initialReference
-  );
+  // Seletor de elegibilidade financeira V1.10 (Seção 23):
+  // SCORED sem betPlacedAt não renderiza reconciliação financeira
+  if (
+    (record && !isEligibleForFinancialReconciliation(record)) ||
+    (status === "SCORED" && betPlacedAt === undefined)
+  ) {
+    return null;
+  }
+
+  // Configura provider se fornecido explicitamente
+  if (lotteryProvider && officialSnapshotCoordinator.getProvider() !== lotteryProvider) {
+    officialSnapshotCoordinator.setProvider(lotteryProvider);
+  }
+
+  // Snapshot vigente coordenado da sessão (Zero ownership local duplicado)
+  const [, setRevisionTick] = useState(0);
+  const hasSeededRef = useRef(false);
+
+  // Se houver initialReference na montagem, estabelece o snapshot inicial no coordenador de sessão
+  if (!hasSeededRef.current) {
+    hasSeededRef.current = true;
+    if (initialReference) {
+      officialSnapshotCoordinator.setInitialSnapshot({
+        contestNumber,
+        drawDate: "",
+        numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        source: "CAIXA",
+        fetchedAt: initialReference.fetchedAt,
+        prizeReference: initialReference,
+      });
+    }
+  }
+
+  useEffect(() => {
+    // Inscreve-se nas atualizações do coordenador para este concurso
+    const unsub = officialSnapshotCoordinator.subscribe((cNum) => {
+      if (cNum === contestNumber) {
+        setRevisionTick((t) => t + 1);
+      }
+    });
+
+    return unsub;
+  }, [contestNumber]);
+
+  const snapshotEntry = officialSnapshotCoordinator.get(contestNumber);
+  const reference =
+    snapshotEntry !== undefined
+      ? snapshotEntry.snapshot.prizeReference
+      : initialReference;
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -43,12 +98,15 @@ export const OfficialPrizeReconciliationPanel: React.FC<
     setErrorMessage(null);
 
     try {
+      if (lotteryProvider) {
+        officialSnapshotCoordinator.setProvider(lotteryProvider);
+      }
+
       const result = isRefresh
-        ? await activeProvider.refreshContest(contestNumber)
-        : await activeProvider.getContest(contestNumber);
+        ? await officialSnapshotCoordinator.refreshContest(contestNumber)
+        : await officialSnapshotCoordinator.consultContest(contestNumber);
 
       if (result.prizeReference) {
-        setReference(result.prizeReference);
         onReferenceLoaded?.(result.prizeReference);
       } else {
         setErrorMessage(

@@ -7,6 +7,7 @@ import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts"
 import { GamesDisplay } from "./GamesDisplay.tsx";
 import { Ball } from "./Ball.tsx";
 import { OfficialPrizeReconciliationPanel } from "./OfficialPrizeReconciliationPanel.tsx";
+import { isEligibleForFinancialReconciliation } from "../sync/index.ts";
 
 interface ContestDetailModalProps {
   isOpen: boolean;
@@ -330,12 +331,15 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
             </div>
           )}
 
-          {/* V1.9: Referência Oficial e Reconciliação (se SCORED) */}
-          {isScored && (
+          {/* V1.10: Referência Oficial e Reconciliação (se elegível: SCORED + betPlacedAt + score) */}
+          {isEligibleForFinancialReconciliation(record) && (
             <OfficialPrizeReconciliationPanel
               contestNumber={record.contestNumber}
               score={record.score}
               prize={record.prize}
+              betPlacedAt={record.betPlacedAt}
+              status={record.status}
+              record={record}
             />
           )}
 

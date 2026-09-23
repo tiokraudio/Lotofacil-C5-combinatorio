@@ -38,6 +38,10 @@ import {
   evaluateIncomingPreviewAction,
 } from "../sync/officialResultPreviewState.ts";
 import {
+  OfficialSnapshotCoordinator,
+  officialSnapshotCoordinator as defaultSnapshotCoordinator,
+} from "../sync/officialSnapshotCoordinator.ts";
+import {
   validateOfficialResult,
   createOfficialResultPreview,
 } from "../sync/operationalState.ts";
@@ -72,6 +76,7 @@ export class GeneratorOperationalController {
   private repository: ContestRepository;
   private coordinator: RefreshCoordinator;
   private providerGetter: () => LotteryResultProvider;
+  private snapshotCoordinator: OfficialSnapshotCoordinator;
   private listeners: Set<OperationalStateListener> = new Set();
   private coordinatorUnsub: (() => void) | null = null;
 
@@ -94,11 +99,13 @@ export class GeneratorOperationalController {
     repository: ContestRepository = defaultRepository,
     coordinator: RefreshCoordinator = defaultRefreshCoordinator,
     providerGetter: () => LotteryResultProvider = getLotteryProvider,
-    autoAttach = true
+    autoAttach = true,
+    snapshotCoordinator: OfficialSnapshotCoordinator = defaultSnapshotCoordinator
   ) {
     this.repository = repository;
     this.coordinator = coordinator;
     this.providerGetter = providerGetter;
+    this.snapshotCoordinator = snapshotCoordinator;
 
     if (autoAttach) {
       this.attachCoordinator(this.coordinator);
@@ -297,7 +304,10 @@ export class GeneratorOperationalController {
 
     try {
       const provider = this.providerGetter();
-      const nextSync = await buildContestSyncState(provider, this.repository);
+      if (this.snapshotCoordinator.getProvider() !== provider) {
+        this.snapshotCoordinator.setProvider(provider);
+      }
+      const nextSync = await buildContestSyncState(this.snapshotCoordinator, this.repository);
 
       if (sequenceId === this.state.syncSequence) {
         this.state.syncState = nextSync;
@@ -356,8 +366,11 @@ export class GeneratorOperationalController {
 
     try {
       const provider = this.providerGetter();
-      // Exatamente 1 chamada ao provider
-      const response = await provider.getContest(contestNumber);
+      if (this.snapshotCoordinator.getProvider() !== provider) {
+        this.snapshotCoordinator.setProvider(provider);
+      }
+      // Consulta coordenada de sessão (cache-first: HIT 0 HTTP, MISS 1 HTTP)
+      const response = await this.snapshotCoordinator.consultContest(contestNumber);
 
       // Verificação rigorosa contra race conditions e eventos remotos intervenientes:
       if (

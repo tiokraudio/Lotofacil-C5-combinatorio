@@ -16,64 +16,63 @@ const DEFAULT_BASE_URL =
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 function parseHitFromRateioItem(item: Record<string, unknown>): number | undefined {
-  // 1. Tenta extrair da descricaoFaixa / faixaDescricao (ex: "15 acertos", "14 acertos")
-  const desc =
-    typeof item.descricaoFaixa === "string"
-      ? item.descricaoFaixa
-      : typeof item.faixaDescricao === "string"
-      ? item.faixaDescricao
-      : undefined;
-
-  if (desc) {
-    if (/\b15\b/.test(desc)) return 15;
-    if (/\b14\b/.test(desc)) return 14;
-    if (/\b13\b/.test(desc)) return 13;
-    if (/\b12\b/.test(desc)) return 12;
-    if (/\b11\b/.test(desc)) return 11;
-  }
-
-  // 2. Tenta extrair de hits / acertos diretos
-  if (typeof item.hits === "number" && Number.isSafeInteger(item.hits)) {
-    return item.hits;
-  }
-  if (typeof item.acertos === "number" && Number.isSafeInteger(item.acertos)) {
-    return item.acertos;
-  }
-
-  // 3. Mapeamento padrão CAIXA Lotofácil por faixa
+  // 1. Identidade canônica determinada estritamente pelo campo estrutural 'faixa' da CAIXA
   const rawFaixa =
-    typeof item.faixa === "number"
+    typeof item.faixa === "number" && Number.isSafeInteger(item.faixa)
       ? item.faixa
       : typeof item.faixa === "string" && /^\d+$/.test(item.faixa.trim())
       ? parseInt(item.faixa.trim(), 10)
       : undefined;
 
   if (rawFaixa !== undefined) {
-    if (rawFaixa === 1 || rawFaixa === 15) return 15;
-    if (rawFaixa === 2 || rawFaixa === 14) return 14;
-    if (rawFaixa === 3 || rawFaixa === 13) return 13;
-    if (rawFaixa === 4 || rawFaixa === 12) return 12;
-    if (rawFaixa === 5 || rawFaixa === 11) return 11;
+    if (rawFaixa === 1) return 15;
+    if (rawFaixa === 2) return 14;
+    if (rawFaixa === 3) return 13;
+    if (rawFaixa === 4) return 12;
+    if (rawFaixa === 5) return 11;
+    // Qualquer outra faixa numérica é desconhecida/inválida
+    return undefined;
   }
 
+  // 2. Se 'faixa' não estiver presente, permite 'hits' direto se for safe integer entre 11 e 15
+  if (
+    typeof item.hits === "number" &&
+    Number.isSafeInteger(item.hits) &&
+    item.hits >= 11 &&
+    item.hits <= 15
+  ) {
+    return item.hits;
+  }
+
+  // Nota: 'descricaoFaixa' não determina hits (não sobrepõe e não define identidade primária)
   return undefined;
 }
 
 function parseWinnersFromRateioItem(item: Record<string, unknown>): number | undefined {
   const rawW =
-    item.numeroDeGanhadores ??
-    item.numeroGanhadores ??
-    item.ganhadores ??
-    item.winners;
+    item.numeroDeGanhadores !== undefined
+      ? item.numeroDeGanhadores
+      : item.numeroGanhadores !== undefined
+      ? item.numeroGanhadores
+      : item.ganhadores !== undefined
+      ? item.ganhadores
+      : item.winners;
 
   if (typeof rawW === "number") {
+    if (!Number.isSafeInteger(rawW) || rawW < 0) {
+      return undefined;
+    }
     return rawW;
   }
 
   if (typeof rawW === "string") {
-    const cleaned = rawW.trim().replace(/\./g, "").replace(/,/g, "");
+    const trimmed = rawW.trim();
+    const cleaned = trimmed.replace(/\./g, "");
     if (/^\d+$/.test(cleaned)) {
-      return parseInt(cleaned, 10);
+      const n = parseInt(cleaned, 10);
+      if (Number.isSafeInteger(n) && n >= 0) {
+        return n;
+      }
     }
   }
 
@@ -83,36 +82,84 @@ function parseWinnersFromRateioItem(item: Record<string, unknown>): number | und
 function parsePrizeCentsFromRateioItem(item: Record<string, unknown>): number | undefined {
   if (
     typeof item.prizePerWinnerCents === "number" &&
-    Number.isSafeInteger(item.prizePerWinnerCents)
+    Number.isSafeInteger(item.prizePerWinnerCents) &&
+    item.prizePerWinnerCents >= 0
   ) {
     return item.prizePerWinnerCents;
   }
 
-  const rawV = item.valorPremio ?? item.valor ?? item.prizePerWinner;
+  const rawV =
+    item.valorPremio !== undefined
+      ? item.valorPremio
+      : item.valor !== undefined
+      ? item.valor
+      : item.prizePerWinner;
 
   if (typeof rawV === "number") {
-    if (!Number.isFinite(rawV)) return undefined;
-    // Converte valor float em reais para centavos inteiros seguros
-    const cents = Math.round(Number(rawV.toFixed(2)) * 100);
-    return Number.isSafeInteger(cents) ? cents : undefined;
+    if (!Number.isFinite(rawV) || rawV < 0) {
+      return undefined;
+    }
+
+    // Verifica se possui mais de 2 casas decimais significativas (rejeita 1.234, 10.999)
+    const cents = rawV * 100;
+    const roundedCents = Math.round(cents);
+    if (Math.abs(cents - roundedCents) > 1e-6) {
+      return undefined;
+    }
+
+    const str = rawV.toString();
+    if (str.includes(".")) {
+      const decPart = str.split(".")[1];
+      if (decPart.length > 2 && !/^0+$/.test(decPart.slice(2))) {
+        return undefined;
+      }
+    }
+
+    if (!Number.isSafeInteger(roundedCents) || roundedCents < 0) {
+      return undefined;
+    }
+
+    return roundedCents;
   }
 
   if (typeof rawV === "string") {
-    try {
-      let s = rawV.trim();
-      if (s.toUpperCase().startsWith("R$")) {
-        s = s.slice(2).trim();
-      }
-      if (s.includes(",")) {
-        s = s.replace(/\./g, "").replace(",", ".");
-      }
-      const val = parseFloat(s);
-      if (!Number.isFinite(val)) return undefined;
-      const cents = Math.round(Number(val.toFixed(2)) * 100);
-      return Number.isSafeInteger(cents) ? cents : undefined;
-    } catch {
-      return undefined;
+    let s = rawV.trim();
+    if (s.toUpperCase().startsWith("R$")) {
+      s = s.slice(2).trim();
     }
+
+    if (!s) return undefined;
+
+    // Formato Brasileiro: e.g. "1.500.000,00", "12,50", "0" (máximo 2 casas após vírgula)
+    const brRegex = /^(?:\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{1,2}))?$/;
+    // Formato Decimal padrão: e.g. "1500000.00", "12.50", "0" (máximo 2 casas após ponto)
+    const dotRegex = /^\d+(?:\.(\d{1,2}))?$/;
+
+    let match = brRegex.exec(s);
+    if (match) {
+      const integerPart = s.split(",")[0].replace(/\./g, "");
+      const decPart = (match[1] ?? "").padEnd(2, "0");
+      const intVal = parseInt(integerPart, 10);
+      const decVal = parseInt(decPart, 10);
+      if (!Number.isSafeInteger(intVal)) return undefined;
+      const cents = intVal * 100 + decVal;
+      return Number.isSafeInteger(cents) && cents >= 0 ? cents : undefined;
+    }
+
+    match = dotRegex.exec(s);
+    if (match) {
+      const parts = s.split(".");
+      const integerPart = parts[0];
+      const decPart = (match[1] ?? "").padEnd(2, "0");
+      const intVal = parseInt(integerPart, 10);
+      const decVal = parseInt(decPart, 10);
+      if (!Number.isSafeInteger(intVal)) return undefined;
+      const cents = intVal * 100 + decVal;
+      return Number.isSafeInteger(cents) && cents >= 0 ? cents : undefined;
+    }
+
+    // Qualquer outro formato com lixo ("10abc", "10,999", "-1") é rejeitado
+    return undefined;
   }
 
   return undefined;

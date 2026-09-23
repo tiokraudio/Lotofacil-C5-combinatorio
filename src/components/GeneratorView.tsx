@@ -32,7 +32,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { HashViewerModal } from "./HashViewerModal.tsx";
 import { Ball } from "./Ball.tsx";
 import { getLotteryProvider } from "../lottery/index.ts";
-import { buildContestSyncState, type ContestSyncState } from "../sync/index.ts";
+import { buildContestSyncState, type ContestSyncState, isEligibleForFinancialReconciliation } from "../sync/index.ts";
 import { SyncStatusPanel } from "./SyncStatusPanel.tsx";
 import { PrimaryActionBar } from "./PrimaryActionBar.tsx";
 import { computePrimaryAction, type PrimaryAction } from "../sync/primaryAction.ts";
@@ -1264,13 +1264,16 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             </div>
           )}
 
-          {/* V1.9: Referência Oficial de Premiação e Reconciliação Financeira (se SCORED) */}
-          {activeRecord.status === "SCORED" && (
+          {/* V1.10: Referência Oficial de Premiação e Reconciliação Financeira (se elegível: SCORED + betPlacedAt + score) */}
+          {isEligibleForFinancialReconciliation(activeRecord) && (
             <div className="mt-8">
               <OfficialPrizeReconciliationPanel
                 contestNumber={activeRecord.contestNumber}
                 score={activeRecord.score}
                 prize={activeRecord.prize}
+                betPlacedAt={activeRecord.betPlacedAt}
+                status={activeRecord.status}
+                record={activeRecord}
               />
             </div>
           )}

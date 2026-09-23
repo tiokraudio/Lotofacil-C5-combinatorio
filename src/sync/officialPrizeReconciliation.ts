@@ -13,7 +13,7 @@
  * 5. MISMATCH significa somente divergência de valores (sem rotular como erro do usuário).
  */
 
-import type { C5Score, PrizeRecord } from "../c5/types.ts";
+import type { C5Score, PrizeRecord, ContestRecord } from "../c5/types.ts";
 import type {
   PrizeHits,
   OfficialPrizeTier,
@@ -21,6 +21,26 @@ import type {
 } from "../lottery/types.ts";
 
 export type { PrizeHits, OfficialPrizeTier, OfficialPrizeReference };
+
+/**
+ * Avalia se o registro de concurso é elegível para o fluxo e exibição de reconciliação financeira.
+ *
+ * REGRA V1.10 (Seção 23):
+ * A UI de reconciliação financeira somente é aplicável quando:
+ * record.status === "SCORED" && record.betPlacedAt !== undefined && record.score !== undefined
+ *
+ * SCORED sem betPlacedAt representa conferência matemática/curiosidade e não fluxo financeiro de aposta real.
+ */
+export function isEligibleForFinancialReconciliation(
+  record: ContestRecord | null | undefined
+): boolean {
+  if (!record) return false;
+  return (
+    record.status === "SCORED" &&
+    record.betPlacedAt !== undefined &&
+    record.score !== undefined
+  );
+}
 
 /**
  * Detalhamento da premiação calculada para uma faixa específica (11 a 15 acertos).
