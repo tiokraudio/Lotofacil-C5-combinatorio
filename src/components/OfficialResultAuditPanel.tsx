@@ -7,10 +7,9 @@
  * atualmente observado na sessão através do OfficialSnapshotCoordinator.
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { CheckCircle2, AlertTriangle, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import type { ContestRecord } from "../c5/types.ts";
-import type { LotteryResultProvider } from "../lottery/types.ts";
 import {
   OfficialSnapshotCoordinator,
   officialSnapshotCoordinator,
@@ -23,32 +22,18 @@ import {
 export interface OfficialResultAuditPanelProps {
   record: ContestRecord | null | undefined;
   coordinator?: OfficialSnapshotCoordinator;
-  lotteryProvider?: LotteryResultProvider;
 }
 
 export const OfficialResultAuditPanel: React.FC<OfficialResultAuditPanelProps> = ({
   record,
   coordinator,
-  lotteryProvider,
 }) => {
   // Elegibilidade: aplicável exclusivamente para concursos SCORED
   if (!record || record.status !== "SCORED") {
     return null;
   }
 
-  // Ownership seguro de provider: se lotteryProvider fornecido diferente do global e sem coordinator, cria coordenador local scoped
-  const localCoordinatorRef = useRef<OfficialSnapshotCoordinator | null>(null);
-  if (
-    lotteryProvider &&
-    lotteryProvider !== officialSnapshotCoordinator.getProvider() &&
-    !coordinator &&
-    !localCoordinatorRef.current
-  ) {
-    localCoordinatorRef.current = new OfficialSnapshotCoordinator({ provider: lotteryProvider });
-  }
-
-  const activeCoordinator =
-    coordinator ?? localCoordinatorRef.current ?? officialSnapshotCoordinator;
+  const activeCoordinator = coordinator ?? officialSnapshotCoordinator;
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

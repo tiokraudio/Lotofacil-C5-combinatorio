@@ -802,10 +802,7 @@ async function runTestSuite() {
     const preservedBadge = document.getElementById("audit-status-badge");
     expectStrict(preservedBadge?.textContent?.includes("CORRESPONDE"), true, "U10.2", "Audit status anterior preservado após erro");
 
-    // U11 & U12: Compartilhamento Real de Snapshot entre Superfícies usando o Singleton officialSnapshotCoordinator
-    const origGlobalProvider = officialSnapshotCoordinator.getProvider();
-    officialSnapshotCoordinator.clear();
-
+    // U11 & U12: Compartilhamento Real de Snapshot entre Superfícies usando Coordenador Único Injetado
     let u11HttpCalls = 0;
     const realSharedProvider = createMockProvider({
       getContest: async (n) => {
@@ -821,7 +818,7 @@ async function runTestSuite() {
         return createMockSnapshot(n, [...DIVERGENT_NUMBERS_15]);
       },
     });
-    officialSnapshotCoordinator.setProvider(realSharedProvider);
+    const sharedTestCoordinator = new OfficialSnapshotCoordinator({ provider: realSharedProvider });
 
     const container1 = document.createElement("div");
     container1.id = "surface-main-view";
@@ -836,7 +833,7 @@ async function runTestSuite() {
     try {
       // 1. Superfície 1 monta inicialmente sem snapshot (0 HTTP)
       await act(async () => {
-        rootSurface1.render(React.createElement(OfficialResultAuditPanel, { record: scored }));
+        rootSurface1.render(React.createElement(OfficialResultAuditPanel, { record: scored, coordinator: sharedTestCoordinator }));
       });
       expectStrict(u11HttpCalls, 0, "U11.1", "Superfície 1 montada com zero chamadas HTTP automáticas");
 
@@ -848,7 +845,7 @@ async function runTestSuite() {
       });
       expectStrict(u11HttpCalls, 1, "U11.3", "Superfície 1 estabelece snapshot N realizando exatamente 1 chamada HTTP");
 
-      const entryAfterS1 = officialSnapshotCoordinator.get(3100);
+      const entryAfterS1 = sharedTestCoordinator.get(3100);
       expectStrict(entryAfterS1 !== undefined, true, "U11.4", "Snapshot N registrado no singleton da sessão");
       const rev1 = entryAfterS1!.revision;
       expectStrict(container1.querySelector("#audit-status-badge")?.textContent?.includes("CORRESPONDE"), true, "U11.5", "Superfície 1 exibe status MATCH ('CORRESPONDE')");
@@ -858,16 +855,17 @@ async function runTestSuite() {
         rootSurface2.render(React.createElement(ContestDetailModal, {
           isOpen: true,
           record: scored,
+          coordinator: sharedTestCoordinator,
           onClose: () => {},
         }));
       });
 
       // U12: Abertura da segunda superfície gera rigorosamente ZERO chamadas HTTP adicionais
       expectStrict(u11HttpCalls, 1, "U12.1", "Abrir ContestDetailModal gera exatamente ZERO chamadas HTTP adicionais");
-      expectStrict(officialSnapshotCoordinator.get(3100)?.revision, rev1, "U12.2", "Segunda superfície observa exatamente a mesma revision");
+      expectStrict(sharedTestCoordinator.get(3100)?.revision, rev1, "U12.2", "Segunda superfície observa exatamente a mesma revision");
       expectStrict(container2.querySelector("#audit-status-badge")?.textContent?.includes("CORRESPONDE"), true, "U12.3", "Segunda superfície observa o mesmo snapshot e exibe 'CORRESPONDE' imediatamente");
 
-      // 4. Refresh explícito altera o snapshot no owner único (officialSnapshotCoordinator)
+      // 4. Refresh explícito altera o snapshot no owner único (sharedTestCoordinator)
       const refreshBtnS2 = container2.querySelector<HTMLButtonElement>("#btn-audit-refresh-caixa");
       expectStrict(refreshBtnS2 !== null, true, "U11.6", "Botão de refresh presente na segunda superfície");
       await act(async () => {
@@ -875,7 +873,7 @@ async function runTestSuite() {
       });
       expectStrict(u11HttpCalls, 2, "U11.7", "Refresh explícito dispara exatamente 1 requisição HTTP");
 
-      const entryAfterRefresh = officialSnapshotCoordinator.get(3100);
+      const entryAfterRefresh = sharedTestCoordinator.get(3100);
       expectStrict(entryAfterRefresh !== undefined, true, "U11.8", "Novo snapshot retido no coordenador singleton");
       const rev2 = entryAfterRefresh!.revision;
       expectStrict(rev2 > rev1, true, "U11.9", "Revisão no owner único avançou após refresh");
@@ -892,8 +890,6 @@ async function runTestSuite() {
       });
       container1.remove();
       container2.remove();
-      officialSnapshotCoordinator.clear();
-      officialSnapshotCoordinator.setProvider(origGlobalProvider);
     }
 
     // U13: SCORED sem aposta renderiza OfficialResultAuditPanel

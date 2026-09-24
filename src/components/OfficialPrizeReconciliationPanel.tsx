@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Award, RefreshCw, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
 import type { C5Score, PrizeRecord, ContestRecord } from "../c5/types.ts";
 import type {
   OfficialPrizeReference,
-  LotteryResultProvider,
 } from "../lottery/types.ts";
 import {
   OfficialSnapshotCoordinator,
@@ -16,7 +15,7 @@ import {
 } from "../sync/officialPrizeReconciliation.ts";
 import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
 
-interface OfficialPrizeReconciliationPanelProps {
+export interface OfficialPrizeReconciliationPanelProps {
   contestNumber: number;
   score?: C5Score;
   prize?: PrizeRecord;
@@ -24,7 +23,6 @@ interface OfficialPrizeReconciliationPanelProps {
   status?: string;
   record?: ContestRecord;
   coordinator?: OfficialSnapshotCoordinator;
-  lotteryProvider?: LotteryResultProvider;
   initialReference?: OfficialPrizeReference;
   onReferenceLoaded?: (reference: OfficialPrizeReference) => void;
 }
@@ -39,7 +37,6 @@ export const OfficialPrizeReconciliationPanel: React.FC<
   status,
   record,
   coordinator,
-  lotteryProvider,
   initialReference,
   onReferenceLoaded,
 }) => {
@@ -52,18 +49,7 @@ export const OfficialPrizeReconciliationPanel: React.FC<
     return null;
   }
 
-  // Ownership seguro de provider: se lotteryProvider fornecido diferente do global e sem coordinator, cria coordenador local scoped
-  const localCoordinatorRef = useRef<OfficialSnapshotCoordinator | null>(null);
-  if (
-    lotteryProvider &&
-    lotteryProvider !== officialSnapshotCoordinator.getProvider() &&
-    !coordinator &&
-    !localCoordinatorRef.current
-  ) {
-    localCoordinatorRef.current = new OfficialSnapshotCoordinator({ provider: lotteryProvider });
-  }
-
-  const activeCoordinator = coordinator ?? localCoordinatorRef.current ?? officialSnapshotCoordinator;
+  const activeCoordinator = coordinator ?? officialSnapshotCoordinator;
 
   // Snapshot vigente coordenado da sessão (Zero ownership local duplicado)
   const [, setRevisionTick] = useState(0);

@@ -1226,12 +1226,13 @@ async function runTests() {
     };
 
     const ref = createSampleReference(3100);
+    const mockCoordinator = new OfficialSnapshotCoordinator({ provider: mockProvider });
     await act(async () => {
       root.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3100,
           initialReference: ref,
-          lotteryProvider: mockProvider,
+          coordinator: mockCoordinator,
         })
       );
     });
@@ -1300,12 +1301,13 @@ async function runTests() {
     };
 
     const initialRef = createSampleReference(3100);
+    const spiedCoordinator = new OfficialSnapshotCoordinator({ provider: spiedProvider });
     await act(async () => {
       root.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3100,
           initialReference: initialRef,
-          lotteryProvider: spiedProvider,
+          coordinator: spiedCoordinator,
         })
       );
     });
@@ -1349,12 +1351,13 @@ async function runTests() {
     };
 
     const initialRef = createSampleReference(3100);
+    const failingCoordinator = new OfficialSnapshotCoordinator({ provider: failingProvider });
     await act(async () => {
       root.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3100,
           initialReference: initialRef,
-          lotteryProvider: failingProvider,
+          coordinator: failingCoordinator,
         })
       );
     });

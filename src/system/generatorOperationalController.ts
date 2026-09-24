@@ -307,10 +307,6 @@ export class GeneratorOperationalController {
     this.notifyListeners();
 
     try {
-      const provider = this.providerGetter();
-      if (this.snapshotCoordinator.getProvider() !== provider) {
-        this.snapshotCoordinator.setProvider(provider);
-      }
       const nextSync = await buildContestSyncState(this.snapshotCoordinator, this.repository);
 
       if (sequenceId === this.state.syncSequence) {
@@ -369,10 +365,6 @@ export class GeneratorOperationalController {
     this.notifyListeners();
 
     try {
-      const provider = this.providerGetter();
-      if (this.snapshotCoordinator.getProvider() !== provider) {
-        this.snapshotCoordinator.setProvider(provider);
-      }
       // Consulta coordenada de sessão (cache-first: HIT 0 HTTP, MISS 1 HTTP)
       const response = await this.snapshotCoordinator.consultContest(contestNumber);
 

@@ -9,12 +9,14 @@ import { Ball } from "./Ball.tsx";
 import { OfficialPrizeReconciliationPanel } from "./OfficialPrizeReconciliationPanel.tsx";
 import { OfficialResultAuditPanel } from "./OfficialResultAuditPanel.tsx";
 import { isEligibleForFinancialReconciliation } from "../sync/index.ts";
+import type { OfficialSnapshotCoordinator } from "../sync/officialSnapshotCoordinator.ts";
 
-interface ContestDetailModalProps {
+export interface ContestDetailModalProps {
   isOpen: boolean;
   record: ContestRecord | null;
   onClose: () => void;
   onVerify?: (contestNumber: number) => Promise<StoredContestVerification>;
+  coordinator?: OfficialSnapshotCoordinator;
 }
 
 export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
@@ -22,6 +24,7 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
   record,
   onClose,
   onVerify,
+  coordinator,
 }) => {
   const [copiedHash, setCopiedHash] = useState(false);
   const [verificationResult, setVerificationResult] = useState<StoredContestVerification | null>(null);
@@ -336,6 +339,7 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
           {record.status === "SCORED" && (
             <OfficialResultAuditPanel
               record={record}
+              coordinator={coordinator}
             />
           )}
 
@@ -348,6 +352,7 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
               betPlacedAt={record.betPlacedAt}
               status={record.status}
               record={record}
+              coordinator={coordinator}
             />
           )}
 

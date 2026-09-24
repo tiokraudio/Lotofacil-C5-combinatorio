@@ -30,7 +30,7 @@ export type OfficialSnapshotListener = (
 
 export class OfficialSnapshotCoordinator implements LotteryResultProvider {
   readonly providerName = "OfficialSnapshotCoordinator";
-  private provider: LotteryResultProvider;
+  private readonly provider: LotteryResultProvider;
 
   // Repositório volátil exclusivo em memória (zero persistência)
   private readonly snapshots = new Map<number, OfficialSnapshotEntry>();
@@ -44,14 +44,6 @@ export class OfficialSnapshotCoordinator implements LotteryResultProvider {
 
   constructor(options?: { provider?: LotteryResultProvider }) {
     this.provider = options?.provider ?? getLotteryProvider();
-  }
-
-  setProvider(provider: LotteryResultProvider): void {
-    this.provider = provider;
-  }
-
-  getProvider(): LotteryResultProvider {
-    return this.provider;
   }
 
   /**

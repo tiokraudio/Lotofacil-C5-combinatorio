@@ -949,7 +949,7 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       rootN04.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3021,
-          lotteryProvider: provider,
+          coordinator,
         })
       );
     });
@@ -1367,15 +1367,14 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
   // ===========================================================================
   console.log("\n--- GRUPO 7: UI REAL (U01–U07) ---");
   {
-    officialSnapshotCoordinator.clear();
     const provider = new SpiedLotteryProvider();
-    officialSnapshotCoordinator.setProvider(provider);
+    const testCoordinator = new OfficialSnapshotCoordinator({ provider });
 
     // U01: GeneratorView consulta N; outra superfície de N reutiliza snapshot sem novo HTTP
     const snap3060 = createSampleOfficialResult(3060);
     provider.responseMap.set(3060, async () => snap3060);
 
-    await officialSnapshotCoordinator.consultContest(3060);
+    await testCoordinator.consultContest(3060);
     const callsAfterFirst = provider.getContestCalls.length;
 
     // Outra superfície renderiza para 3060
@@ -1386,7 +1385,7 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       rootU01.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3060,
-          lotteryProvider: provider,
+          coordinator: testCoordinator,
         })
       );
     });
@@ -1416,7 +1415,7 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       rootU02.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3060,
-          lotteryProvider: provider,
+          coordinator: testCoordinator,
         })
       );
     });
@@ -1453,7 +1452,7 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       rootU03.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3060,
-          lotteryProvider: provider,
+          coordinator: testCoordinator,
         })
       );
     });
@@ -1488,12 +1487,13 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       async getContest(_n) { throw new Error("err"); },
       async refreshContest(_n) { throw new Error("Falha temporária de rede"); },
     };
+    const failingCoordinator = new OfficialSnapshotCoordinator({ provider: failingProv });
     await act(async () => {
       rootU04.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3061,
           initialReference: sampleRef,
-          lotteryProvider: failingProv,
+          coordinator: failingCoordinator,
         })
       );
     });
@@ -1525,14 +1525,14 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
 
     // U05: Nenhum componente mantém referência financeira stale independente
     assert(
-      officialSnapshotCoordinator.get(3060)?.snapshot.prizeReference === undefined,
+      testCoordinator.get(3060)?.snapshot.prizeReference === undefined,
       "U05",
       "Nenhum componente retém estado desacoplado após atualização do coordenador"
     );
 
     // U06: Desmontar/remontar componente na mesma sessão não destrói snapshot
     provider.responseMap.set(3062, async () => createSampleOfficialResult(3062));
-    await officialSnapshotCoordinator.consultContest(3062);
+    await testCoordinator.consultContest(3062);
 
     const containerU06 = document.createElement("div");
     document.body.appendChild(containerU06);
@@ -1541,6 +1541,7 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       rootU06.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3062,
+          coordinator: testCoordinator,
         })
       );
     });
@@ -1553,6 +1554,7 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       rootU06_2.render(
         React.createElement(OfficialPrizeReconciliationPanel, {
           contestNumber: 3062,
+          coordinator: testCoordinator,
         })
       );
     });
@@ -1944,21 +1946,21 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
     }
 
     // RENDER01: Imutabilidade do provider e ausência de side effects no render do React:
-    // Montagem e re-renderização de painéis não alteram o provider do coordenador global nem disparam rede.
+    // Montagem e re-renderização de painéis não alteram o provider do coordenador nem disparam rede.
     {
-      const globalProvBefore = officialSnapshotCoordinator.getProvider();
       const localProv = new SpiedLotteryProvider();
+      const localCoord = new OfficialSnapshotCoordinator({ provider: localProv });
 
       const container = document.createElement("div");
       document.body.appendChild(container);
       const root = ReactDOM.createRoot(container);
 
-      // Renderiza com localProv
+      // Renderiza com localCoord
       await act(async () => {
         root.render(
           React.createElement(OfficialPrizeReconciliationPanel, {
             contestNumber: 3123,
-            lotteryProvider: localProv,
+            coordinator: localCoord,
           })
         );
       });
@@ -1969,7 +1971,7 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
           root.render(
             React.createElement(OfficialPrizeReconciliationPanel, {
               contestNumber: 3123,
-              lotteryProvider: localProv,
+              coordinator: localCoord,
               status: "FROZEN",
             })
           );
@@ -1981,13 +1983,11 @@ export async function runV110TestSuite(): Promise<{ passed: number; total: numbe
       });
       container.remove();
 
-      const globalProvAfter = officialSnapshotCoordinator.getProvider();
       assert(
-        globalProvBefore === globalProvAfter &&
-          localProv.getContestCalls.length === 0 &&
+        localProv.getContestCalls.length === 0 &&
           localProv.refreshContestCalls.length === 0,
         "RENDER01",
-        "Renderização React livre de side effects: provider global não é modificado e zero requisições no render"
+        "Renderização React livre de side effects: zero requisições no render"
       );
     }
   }
