@@ -23,6 +23,7 @@ import {
   officialSnapshotCoordinator,
   type OfficialSnapshotEntry,
 } from "../sync/officialSnapshotCoordinator.ts";
+import { getLotteryProvider } from "../lottery/index.ts";
 import type {
   LotteryResultProvider,
   OfficialContestResult,
@@ -33,7 +34,7 @@ import { OfficialPrizeReconciliationPanel } from "../components/OfficialPrizeRec
 import { GeneratorView } from "../components/GeneratorView.tsx";
 import { ContestDetailModal } from "../components/ContestDetailModal.tsx";
 import { GeneratorOperationalController } from "../system/generatorOperationalController.ts";
-import { ContestRepository } from "../storage/contestRepository.ts";
+import { ContestRepository, repository } from "../storage/contestRepository.ts";
 import { RefreshCoordinator } from "../system/refreshCoordinator.ts";
 import { IDBFactory } from "fake-indexeddb";
 import { createContestDraft, freezeContestRecord, scoreFrozenContest } from "../c5/record.ts";
@@ -820,26 +821,79 @@ async function runCanonicalV112Suite(): Promise<void> {
   console.log("\n--- 5. LIFE01–LIFE06 — INTEGRAÇÃO REAL E LIFECYCLE ---");
   {
     // LIFE01 — mount produz zero HTTP/provider call
-    const lifeProv = new SpiedProvider("LifeProv");
+    // Instrumenta os 3 níveis da infraestrutura real utilizada por GeneratorView:
+    // 1. Limite externo de rede HTTP (fetch)
+    // 2. Provedor real de loteria (getLotteryProvider())
+    // 3. Coordenador canônico consumido pela view (officialSnapshotCoordinator)
+    let realHttpFetchCalls = 0;
+    const originalFetch01 = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      realHttpFetchCalls++;
+      return originalFetch01(input, init);
+    }) as typeof fetch;
+
+    const activeProv01 = getLotteryProvider();
+    let providerCalls01 = 0;
+    const origGetContest01 = activeProv01.getContest;
+    const origRefreshContest01 = activeProv01.refreshContest;
+    const origGetLatest01 = activeProv01.getLatestContest;
+    activeProv01.getContest = async (...args) => {
+      providerCalls01++;
+      return origGetContest01.apply(activeProv01, args);
+    };
+    activeProv01.refreshContest = async (...args) => {
+      providerCalls01++;
+      return origRefreshContest01.apply(activeProv01, args);
+    };
+    activeProv01.getLatestContest = async (...args) => {
+      providerCalls01++;
+      return origGetLatest01.apply(activeProv01, args);
+    };
+
+    // Instrumenta o singleton officialSnapshotCoordinator consumido diretamente pelo GeneratorOperationalController de GeneratorView
+    let coordinatorCalls01 = 0;
+    const origConsult01 = officialSnapshotCoordinator.consultContest;
+    const origRefresh01 = officialSnapshotCoordinator.refreshContest;
+    const origLatest01 = officialSnapshotCoordinator.consultLatest;
+    officialSnapshotCoordinator.consultContest = async (...args) => {
+      coordinatorCalls01++;
+      return origConsult01.apply(officialSnapshotCoordinator, args);
+    };
+    officialSnapshotCoordinator.refreshContest = async (...args) => {
+      coordinatorCalls01++;
+      return origRefresh01.apply(officialSnapshotCoordinator, args);
+    };
+    officialSnapshotCoordinator.consultLatest = async (...args) => {
+      coordinatorCalls01++;
+      return origLatest01.apply(officialSnapshotCoordinator, args);
+    };
+
     const container01 = document.createElement("div");
     document.body.appendChild(container01);
     const root01 = ReactDOM.createRoot(container01);
 
-    const callsBeforeMount = lifeProv.getContestCalls.length + lifeProv.latestContestCalls;
     await act(async () => {
       root01.render(React.createElement(GeneratorView));
     });
-    const callsAfterMount = lifeProv.getContestCalls.length + lifeProv.latestContestCalls;
 
     await act(async () => {
       root01.unmount();
     });
     container01.remove();
 
+    // Restaura instrumentos reais
+    globalThis.fetch = originalFetch01;
+    activeProv01.getContest = origGetContest01;
+    activeProv01.refreshContest = origRefreshContest01;
+    activeProv01.getLatestContest = origGetLatest01;
+    officialSnapshotCoordinator.consultContest = origConsult01;
+    officialSnapshotCoordinator.refreshContest = origRefresh01;
+    officialSnapshotCoordinator.consultLatest = origLatest01;
+
     assertCanonical(
-      callsBeforeMount === callsAfterMount,
+      realHttpFetchCalls === 0 && providerCalls01 === 0 && coordinatorCalls01 === 0,
       "LIFE01",
-      "Montagem inicial de GeneratorView produz exatamente ZERO requisições à fonte oficial"
+      "Montagem inicial de GeneratorView produz exatamente ZERO requisições à rede e ao coordinator"
     );
 
     // LIFE02 — consulta explícita estabelece snapshot
@@ -857,19 +911,45 @@ async function runCanonicalV112Suite(): Promise<void> {
     );
 
     // LIFE03 — GeneratorView observa o snapshot canônico
+    // 1. Salva concurso SCORED 6003 no repositório de produção utilizado por GeneratorView
     const draft03 = createContestDraft(6003);
-    const frozen03 = await freezeContestRecord(draft03);
-    const snapResult03: OfficialContestResult = {
-      contestNumber: 6003,
-      drawDate: "2024-05-30",
-      numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-      source: "CAIXA",
-      fetchedAt: new Date().toISOString(),
-    };
-    // Estabelece snapshot no singleton
-    const origGetContest = officialSnapshotCoordinator.consultContest;
-    (officialSnapshotCoordinator as any).snapshots.set(6003, { snapshot: snapResult03, revision: 1 });
+    await repository.saveDraft(draft03);
+    await repository.freezeStoredContest(6003);
+    await repository.scoreStoredContest(6003, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
+    // 2. Instrumenta o endpoint de rede da CAIXA para responder com resultado oficial válido
+    const origFetch03 = globalThis.fetch;
+    let fetch6003Calls = 0;
+    globalThis.fetch = async (input: any, init?: any) => {
+      const url = typeof input === "string" ? input : input?.url || "";
+      if (url.includes("6003")) {
+        fetch6003Calls++;
+        const payload = {
+          numero: 6003,
+          dataApuracao: "30/05/2024",
+          dezenasSorteadasOrdemSorteio: [
+            "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"
+          ],
+          listaDezenas: [
+            "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"
+          ],
+          listaRateioPremio: [
+            { faixa: 1, numeroDeGanhadores: 2, valorPremio: 1500000 },
+            { faixa: 2, numeroDeGanhadores: 100, valorPremio: 1500 },
+            { faixa: 3, numeroDeGanhadores: 1000, valorPremio: 30 },
+            { faixa: 4, numeroDeGanhadores: 10000, valorPremio: 12 },
+            { faixa: 5, numeroDeGanhadores: 100000, valorPremio: 6 }
+          ]
+        };
+        return new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return origFetch03(input, init);
+    };
+
+    // 3. Monta a GeneratorView real
     const container03 = document.createElement("div");
     document.body.appendChild(container03);
     const root03 = ReactDOM.createRoot(container03);
@@ -878,35 +958,101 @@ async function runCanonicalV112Suite(): Promise<void> {
       root03.render(React.createElement(GeneratorView));
     });
 
-    const entryObserved = officialSnapshotCoordinator.get(6003);
-    assertCanonical(
-      entryObserved?.snapshot.contestNumber === 6003 &&
-        entryObserved.snapshot.drawDate === "2024-05-30",
-      "LIFE03",
-      "GeneratorView observa o snapshot canônico da sessão sem discrepâncias"
-    );
+    // 4. Carrega o concurso 6003 na interface
+    const input03 = container03.querySelector("#contest-number-input") as HTMLInputElement;
+    const generateBtn03 = container03.querySelector("#btn-generate-contest") as HTMLButtonElement;
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      nativeSetter.call(input03, "6003");
+      input03.dispatchEvent(new window.Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      generateBtn03.click();
+      await new Promise((r) => setTimeout(r, 60));
+    });
+
+    // 5. Verifica que o painel de auditoria foi montado no DOM com status inicial
+    const consultBtn03 = container03.querySelector("#btn-audit-consult-caixa") as HTMLButtonElement;
+    assertCheck(consultBtn03 !== null, "LIFE03.btn", "Botão de consulta oficial presente no DOM da GeneratorView");
+
+    // 6. Dispara consulta via ação explícita real da UI que utiliza officialSnapshotCoordinator
+    await act(async () => {
+      consultBtn03.click();
+      await new Promise((r) => setTimeout(r, 60));
+    });
+
+    // 7. Observa a atualização da superfície real da GeneratorView
+    const auditBadge03 = container03.querySelector("#audit-status-badge");
+    const currentResultEl03 = container03.querySelector("#audit-current-result");
+    const canonSnapshot03 = officialSnapshotCoordinator.get(6003);
+
+    const isMatchVisible = auditBadge03?.textContent?.includes("CORRESPONDE") === true;
+    const isResultRendered = currentResultEl03?.textContent?.includes("01") === true;
+    const belongsToCanonicalOwner =
+      canonSnapshot03 !== undefined &&
+      canonSnapshot03.snapshot.contestNumber === 6003 &&
+      canonSnapshot03.snapshot.numbers.length === 15;
 
     await act(async () => {
       root03.unmount();
     });
     container03.remove();
+    globalThis.fetch = origFetch03;
+    officialSnapshotCoordinator.clear();
+
+    assertCanonical(
+      fetch6003Calls === 1 && isMatchVisible && isResultRendered && belongsToCanonicalOwner,
+      "LIFE03",
+      "GeneratorView observa o snapshot canônico da sessão exibindo status e resultado no DOM real"
+    );
 
     // LIFE04 — ContestDetailModal observa a mesma revision/snapshot sem HTTP adicional
+    // 1. Provedor instrumentado conectado ao sharedCoordinator
+    const modalProv = new SpiedProvider("ModalProv", (n) => ({
+      contestNumber: n,
+      drawDate: "2024-05-30",
+      numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      source: "CAIXA",
+      fetchedAt: new Date().toISOString(),
+    }));
+    const sharedCoordinator = new OfficialSnapshotCoordinator({ provider: modalProv });
+
+    // 2. Estabelece previamente o snapshot pelo coordinator utilizado pelo modal
+    await sharedCoordinator.consultContest(6004);
+    const callsBeforeModal = modalProv.getContestCalls.length;
+    const revBeforeModal = sharedCoordinator.getRevision();
+    const establishedSnapshot = sharedCoordinator.get(6004)?.snapshot;
+
+    // 3. Cria um ContestRecord realmente SCORED
+    const draft04 = createContestDraft(6004);
+    const frozen04 = await freezeContestRecord(draft04);
+    const scoredRecord04 = await scoreFrozenContest(
+      frozen04,
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    );
+
+    // 4. Monta ContestDetailModal
     const container04 = document.createElement("div");
     document.body.appendChild(container04);
     const root04 = ReactDOM.createRoot(container04);
 
-    const modalCallsBefore = lifeProv.getContestCalls.length;
     await act(async () => {
       root04.render(
         React.createElement(ContestDetailModal, {
           isOpen: true,
-          record: frozen03,
+          record: scoredRecord04,
+          coordinator: sharedCoordinator,
           onClose: () => {},
         })
       );
     });
-    const modalCallsAfter = lifeProv.getContestCalls.length;
+
+    // 5. Verificações simultâneas de observabilidade
+    const auditPanel04 = container04.querySelector("#panel-official-result-audit");
+    const badgeEl04 = container04.querySelector("#audit-status-badge");
+    const callsAfterModal = modalProv.getContestCalls.length;
+    const revAfterModal = sharedCoordinator.getRevision();
+    const currentSnapModal = sharedCoordinator.get(6004)?.snapshot;
 
     await act(async () => {
       root04.unmount();
@@ -914,14 +1060,14 @@ async function runCanonicalV112Suite(): Promise<void> {
     container04.remove();
 
     assertCanonical(
-      modalCallsBefore === modalCallsAfter &&
-        officialSnapshotCoordinator.get(6003)?.revision === 1,
+      auditPanel04 !== null &&
+        badgeEl04?.textContent?.includes("CORRESPONDE") === true &&
+        revBeforeModal === revAfterModal &&
+        callsBeforeModal === callsAfterModal &&
+        currentSnapModal === establishedSnapshot,
       "LIFE04",
-      "ContestDetailModal observa a mesma revisão e snapshot sem disparar requisição adicional"
+      "ContestDetailModal observa o snapshot previamente estabelecido com renderização de auditoria e zero HTTP"
     );
-
-    // Limpa estado injetado
-    (officialSnapshotCoordinator as any).snapshots.delete(6003);
 
     // LIFE05 — refresh explícito em uma superfície atualiza a outra reativamente
     const reactiveProv = new SpiedProvider("ReactiveProv", (n) => ({
@@ -980,8 +1126,11 @@ async function runCanonicalV112Suite(): Promise<void> {
       refreshBtn.click();
     });
 
+    const auditPanel05 = container05.querySelector("#panel-official-result-audit");
+    const auditBadge05 = container05.querySelector("#audit-status-badge");
     const t15El = container05.querySelector("#tier-hits-15");
     const updatedVisible = t15El?.textContent?.includes("99 ganhador(es)") === true;
+    const auditVisible = auditPanel05 !== null && auditBadge05?.textContent?.includes("CORRESPONDE") === true;
 
     await act(async () => {
       root05.unmount();
@@ -989,7 +1138,10 @@ async function runCanonicalV112Suite(): Promise<void> {
     container05.remove();
 
     assertCanonical(
-      updatedVisible && reactiveProv.refreshContestCalls.length === 1,
+      updatedVisible &&
+        auditVisible &&
+        reactiveProv.refreshContestCalls.length === 1 &&
+        reactiveProv.getContestCalls.length === 1,
       "LIFE05",
       "Refresh acionado em uma superfície atualiza reativamente os consumidores do mesmo owner"
     );
