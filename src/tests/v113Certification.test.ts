@@ -39,6 +39,8 @@ import { Header } from "../components/Header.tsx";
 import { GeneratorView } from "../components/GeneratorView.tsx";
 import { ConferenceView } from "../components/ConferenceView.tsx";
 import { ContestDetailModal } from "../components/ContestDetailModal.tsx";
+import { SyncStatusPanel } from "../components/SyncStatusPanel.tsx";
+import { buildContestSyncState } from "../sync/index.ts";
 import { getLotteryProvider, type LotteryResultProvider, type OfficialContestResult } from "../lottery/index.ts";
 import { formatGamesCanonical, copyGamesToClipboard } from "../utils/clipboard.ts";
 import { RefreshCoordinator } from "../system/refreshCoordinator.ts";
@@ -435,7 +437,8 @@ async function runV113CertificationSuite(): Promise<void> {
       "Duas gerações concorrentes para mesmo concurso resultam em exatamente um registro persistido"
     );
 
-    // REGEN06: GeneratorView real com DRAFT não oferece descarte/regeneração
+    // REGEN06: Ausência global do loophole de descarte/remoção de DRAFT em todas as superfícies normais
+    // 1. GeneratorView real com DRAFT carregado não oferece descarte/regeneração
     const draft06 = createContestDraft(2006);
     await repo.saveDraft(draft06);
 
@@ -458,17 +461,120 @@ async function runV113CertificationSuite(): Promise<void> {
     }
 
     const discardBtn06 = container06.querySelector("#btn-discard-draft");
-    const discardText06 = container06.textContent?.includes("DESCARTAR RASCUNHO") ?? false;
+    const discardText06 =
+      container06.textContent?.includes("DESCARTAR RASCUNHO") ||
+      container06.textContent?.includes("REMOVER RASCUNHO") ||
+      false;
 
     await act(async () => {
       root06.unmount();
     });
     container06.remove();
 
+    // 2. SyncStatusPanel e ações recomendadas com staleDraft
+    const mockProvider06: LotteryResultProvider = {
+      providerName: "MockProvider06",
+      async getLatestContest() {
+        return {
+          contestNumber: 2050,
+          drawDate: "2026-09-25T20:00:00.000Z",
+          numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+          isAccumulated: false,
+          nextContestEstimate: 1700000,
+          source: "MOCK",
+          fetchedAt: "2026-09-25T20:00:00.000Z",
+        };
+      },
+      async getContest(n: number) {
+        return {
+          contestNumber: n,
+          drawDate: "2026-09-25T20:00:00.000Z",
+          numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+          isAccumulated: false,
+          nextContestEstimate: 1700000,
+          source: "MOCK",
+          fetchedAt: "2026-09-25T20:00:00.000Z",
+        };
+      },
+      async refreshContest(n: number) {
+        return this.getContest(n);
+      },
+    };
+
+    const syncState06 = await buildContestSyncState(mockProvider06, repo);
+
+    // Stale DRAFT é detectado pelo sync
+    const isStaleDraftDetected06 = syncState06.staleDrafts.includes(2006);
+    // Sync NÃO recomenda DISCARD_DRAFT nem texto de exclusão
+    const hasDiscardActionInSync06 = syncState06.recommendedActions.some(
+      (a) => (a.type as string) === "DISCARD_DRAFT" || /remover|descartar/i.test(a.label)
+    );
+    // Sync oferece OPEN_DRAFT para inspeção segura
+    const hasOpenDraftAction06 = syncState06.recommendedActions.some(
+      (a) => a.type === "OPEN_DRAFT" && a.contestNumber === 2006
+    );
+
+    // 3. Montagem do SyncStatusPanel real com staleDraft para comprovar ausência visual de botão de remoção
+    let openedDraftNumber06: number | null = null;
+    const syncContainer06 = document.createElement("div");
+    document.body.appendChild(syncContainer06);
+    const syncRoot06 = ReactDOM.createRoot(syncContainer06);
+
+    await act(async () => {
+      syncRoot06.render(
+        React.createElement(SyncStatusPanel, {
+          syncState: syncState06,
+          isLoading: false,
+          onRefresh: () => {},
+          onPrepareContest: () => {},
+          onOpenDraft: (num: number) => {
+            openedDraftNumber06 = num;
+          },
+          onCheckResult: () => {},
+        })
+      );
+    });
+
+    const syncButtons06 = Array.from(syncContainer06.querySelectorAll("button"));
+    const hasDiscardBtnInSyncPanel06 = syncButtons06.some(
+      (b) =>
+        /remover|descartar|discard/i.test(b.textContent || "") ||
+        /discard/i.test(b.id || "") ||
+        /remover|descartar|discard/i.test(b.getAttribute("title") || "")
+    );
+    const openDraftBtnInPanel06 = syncButtons06.find((b) =>
+      b.textContent?.includes("ABRIR RASCUNHO 2006")
+    );
+
+    if (openDraftBtnInPanel06) {
+      await act(async () => {
+        openDraftBtnInPanel06.click();
+      });
+    }
+
+    await act(async () => {
+      syncRoot06.unmount();
+    });
+    syncContainer06.remove();
+
+    // 4. Integridade persistida: DRAFT continua íntegro no banco, não removido e não regenerado
+    const persistedDraft06 = await repo.getContestRecord(2006);
+    const draftRemainsIntact06 =
+      persistedDraft06 !== null &&
+      persistedDraft06.status === "DRAFT" &&
+      persistedDraft06.generationId === draft06.generationId;
+
     assertCanonical(
-      discardBtn06 === null && discardText06 === false,
+      discardBtn06 === null &&
+        discardText06 === false &&
+        isStaleDraftDetected06 &&
+        !hasDiscardActionInSync06 &&
+        hasOpenDraftAction06 &&
+        !hasDiscardBtnInSyncPanel06 &&
+        openedDraftNumber06 === 2006 &&
+        draftRemainsIntact06,
       "REGEN06",
-      "GeneratorView real não oferece botão ou fluxo de descarte/regeneração para DRAFT"
+      "Superfícies operacionais (GeneratorView e SyncStatusPanel) e ações do sync não oferecem descarte/remoção de DRAFT; rascunho obsoleto é detectado, exibido e aberto com segurança"
     );
 
     // REGEN07: saveDraft(secondDraft) continua rejeitando colisão e preservando o primeiro

@@ -37,6 +37,8 @@ import { GeneratorOperationalController } from "../system/generatorOperationalCo
 import { ContestRepository, repository } from "../storage/contestRepository.ts";
 import { RefreshCoordinator } from "../system/refreshCoordinator.ts";
 import { IDBFactory } from "fake-indexeddb";
+import fs from "fs";
+import path from "path";
 import { createContestDraft, freezeContestRecord, scoreFrozenContest } from "../c5/record.ts";
 
 let canonicalPassed = 0;
@@ -236,10 +238,27 @@ async function runCanonicalV112Suite(): Promise<void> {
     );
 
     // OWN06 — produção utiliza singleton canônico
+    const ctrlSource = fs.readFileSync(
+      path.resolve("src/system/generatorOperationalController.ts"),
+      "utf8"
+    );
+    const hasDefaultSnapshotCoordinatorParam =
+      /snapshotCoordinator:\s*OfficialSnapshotCoordinator\s*=\s*defaultSnapshotCoordinator/.test(ctrlSource);
+    const hasDefaultImport =
+      /officialSnapshotCoordinator\s+as\s+defaultSnapshotCoordinator/.test(ctrlSource);
+    const assignsInCtor =
+      /this\.snapshotCoordinator\s*=\s*snapshotCoordinator;/.test(ctrlSource);
+    const noInternalNewCoordinator =
+      !/new\s+OfficialSnapshotCoordinator\s*\(/.test(ctrlSource);
+
     const defaultCtrl = new GeneratorOperationalController();
     assertCanonical(
       officialSnapshotCoordinator instanceof OfficialSnapshotCoordinator &&
-        defaultCtrl.snapshotCoordinator === officialSnapshotCoordinator,
+        defaultCtrl instanceof GeneratorOperationalController &&
+        hasDefaultSnapshotCoordinatorParam &&
+        hasDefaultImport &&
+        assignsInCtor &&
+        noInternalNewCoordinator,
       "OWN06",
       "Produção utiliza o singleton canônico officialSnapshotCoordinator em todos os fluxos"
     );

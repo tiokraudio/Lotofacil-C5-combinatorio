@@ -231,8 +231,8 @@ export async function runSyncTests(): Promise<{ passed: number; failed: number }
     assert(state.staleDrafts.includes(3345), "Cenário G - 3345 classificado em staleDrafts");
     assert(state.notices.some((n) => n.type === "STALE_DRAFT" && n.contestNumber === 3345), "Cenário G - notice STALE_DRAFT para 3345");
     assert(
-      state.recommendedActions.some((a) => a.type === "DISCARD_DRAFT" && a.contestNumber === 3345),
-      "Cenário G - ação DISCARD_DRAFT recomendada para 3345"
+      !state.recommendedActions.some((a) => (a.type as string) === "DISCARD_DRAFT"),
+      "Cenário G - ação DISCARD_DRAFT eliminada das ações recomendadas"
     );
     assert(
       state.recommendedActions.some((a) => a.type === "OPEN_DRAFT" && a.contestNumber === 3345),

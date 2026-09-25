@@ -9,7 +9,6 @@ import {
   ArrowRight,
   WifiOff,
   Eye,
-  Trash2,
 } from "lucide-react";
 import type { ContestSyncState, SyncRecommendedAction } from "../sync/types.ts";
 
@@ -51,8 +50,6 @@ export const SyncStatusPanel: React.FC<SyncStatusPanelProps> = ({
         break;
       case "OPEN_DRAFT":
         onOpenDraft(action.contestNumber);
-        break;
-      case "DISCARD_DRAFT":
         break;
       case "CHECK_RESULT":
         onCheckResult(action.contestNumber);

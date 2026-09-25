@@ -24,7 +24,6 @@ export type SyncNoticeType =
 export type SyncActionType =
   | "PREPARE_CONTEST" // Preencher número do concurso no gerador (sem gerar jogos)
   | "OPEN_DRAFT"      // Carregar rascunho existente no gerador
-  | "DISCARD_DRAFT"   // Solicitar descarte de rascunho (com confirmação)
   | "CHECK_RESULT"    // Iniciar conferência individual do concurso com resultado disponível
   | "VIEW_CONTEST";   // Visualizar concurso registrado
 

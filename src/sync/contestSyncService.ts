@@ -184,15 +184,6 @@ export async function buildContestSyncState(
       description: `Inspecionar jogos do rascunho ${draftNum}.`,
       urgency: "LOW",
     });
-
-    recommendedActions.push({
-      id: `discard-${draftNum}`,
-      type: "DISCARD_DRAFT",
-      contestNumber: draftNum,
-      label: `REMOVER RASCUNHO ${draftNum}`,
-      description: `Remover o rascunho ${draftNum} do armazenamento local para liberar a numeração.`,
-      urgency: "MEDIUM",
-    });
   }
 
   // H — Concurso local à frente (LOCAL_AHEAD)
