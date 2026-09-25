@@ -15,6 +15,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import type { ContestRecord } from "../c5/types.ts";
+import type { ContestRepository } from "../storage/contestRepository.ts";
 import { createContestDraft } from "../c5/index.ts";
 import { repository, formatLocalDate } from "../storage/service.ts";
 import { GamesDisplay } from "./GamesDisplay.tsx";
@@ -36,7 +37,7 @@ import {
 
 interface GeneratorViewProps {
   onRecordUpdated?: () => void;
-  repository?: any;
+  repository?: ContestRepository;
 }
 
 export const GeneratorView: React.FC<GeneratorViewProps> = ({

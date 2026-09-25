@@ -191,11 +191,12 @@ async function runCanonicalV112Suite(): Promise<void> {
       "Múltiplas consultas subsequentes continuam utilizando o provider P1 imutável"
     );
 
-    // OWN03 — API pública não oferece setProvider
+    // OWN03 — API pública não oferece setProvider nem getProvider
     assertCanonical(
-      (coord as any).setProvider === undefined &&
-        (coord as any).getProvider === undefined &&
-        (officialSnapshotCoordinator as any).setProvider === undefined,
+      !("setProvider" in coord) &&
+        !("getProvider" in coord) &&
+        !("setProvider" in officialSnapshotCoordinator) &&
+        !("getProvider" in officialSnapshotCoordinator),
       "OWN03",
       "API pública não oferece setProvider nem getProvider (imutabilidade estrutural)"
     );
@@ -238,7 +239,7 @@ async function runCanonicalV112Suite(): Promise<void> {
     const defaultCtrl = new GeneratorOperationalController();
     assertCanonical(
       officialSnapshotCoordinator instanceof OfficialSnapshotCoordinator &&
-        (defaultCtrl as any).snapshotCoordinator === officialSnapshotCoordinator,
+        defaultCtrl.snapshotCoordinator === officialSnapshotCoordinator,
       "OWN06",
       "Produção utiliza o singleton canônico officialSnapshotCoordinator em todos os fluxos"
     );
@@ -300,7 +301,7 @@ async function runCanonicalV112Suite(): Promise<void> {
     await repo08.saveDraft(draft08);
     const frozen08 = await repo08.freezeStoredContest(4008);
     ctrl08.setActiveRecord(frozen08);
-    await (ctrl08 as any).refreshLocalState();
+    await ctrl08.refreshLocalState();
 
     // Preview carrega snapshot no coord08
     await ctrl08.fetchOfficialResultPreview(4008);
@@ -808,7 +809,8 @@ async function runCanonicalV112Suite(): Promise<void> {
     // RACE08 — toda proteção funciona sem qualquer troca/mutação de provider
     {
       assertCanonical(
-        (officialSnapshotCoordinator as any).setProvider === undefined,
+        !("setProvider" in officialSnapshotCoordinator) &&
+          !("getProvider" in officialSnapshotCoordinator),
         "RACE08",
         "Toda a proteção de concorrência e monotonicidade opera sob provider estritamente imutável"
       );
@@ -1162,8 +1164,8 @@ async function runCanonicalV112Suite(): Promise<void> {
     const p1 = new SpiedProvider("CompP1");
     const coord = new OfficialSnapshotCoordinator({ provider: p1 });
 
-    assertCheck((coord as any).setProvider === undefined, "IMM01", "setProvider não existe");
-    assertCheck((coord as any).getProvider === undefined, "IMM02", "getProvider não existe");
+    assertCheck(!("setProvider" in coord), "IMM01", "setProvider não existe");
+    assertCheck(!("getProvider" in coord), "IMM02", "getProvider não existe");
     assertCheck(!("replaceProvider" in coord), "IMM03", "replaceProvider não existe");
     assertCheck(!("changeProvider" in coord), "IMM04", "changeProvider não existe");
     assertCheck(!("resetProvider" in coord), "IMM05", "resetProvider não existe");

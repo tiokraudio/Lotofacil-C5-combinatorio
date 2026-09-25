@@ -25,7 +25,7 @@ import path from "path";
 import App from "../App.tsx";
 import { openDatabase, CONTEST_STORE_NAME } from "../storage/db.ts";
 import type { StorageTestHarness } from "../storage/types.ts";
-import { runGoldenTest } from "../c5/tests/golden.test.ts";
+import { runGoldenTest, runNegativeGoldenTest } from "../c5/tests/golden.test.ts";
 import {
   verifyContestIntegrity,
   buildCanonicalPayload,
@@ -1227,12 +1227,14 @@ async function runV113CertificationSuite(): Promise<void> {
   // ===========================================================================
   console.log("\n--- 7. BARRIER01–BARRIER04 — BARREIRAS C5, PERSISTÊNCIA, V1.12 E VERSÕES ---");
   {
-    // BARRIER01: Motor C5 combinatório matematicamente íntegro e validado pelo Golden Standard e processo formal
+    // BARRIER01: Validação determinística de vetores congelados e integridade do Motor C5 (Golden Test)
     const goldenResult = runGoldenTest();
+    const negativeGoldenPassed = runNegativeGoldenTest();
+
     assertCanonical(
-      goldenResult.allPassed === true,
+      goldenResult.allPassed === true && negativeGoldenPassed === true,
       "BARRIER01",
-      "Motor C5 combinatório matematicamente íntegro e validado pelo Golden Standard e processo formal (Golden, Massive e Exhaustive)"
+      "Conformidade determinística com vetores congelados e integridade negativa do Motor C5 (Golden PASS)"
     );
 
     // BARRIER02: Persistência mantida com BACKUP_SCHEMA_VERSION = 3, LOCAL_SYNC_PROTOCOL_VERSION = 1 e ausência de novos campos persistidos
@@ -1266,13 +1268,32 @@ async function runV113CertificationSuite(): Promise<void> {
       "Persistência mantida com BACKUP_SCHEMA_VERSION = 3, LOCAL_SYNC_PROTOCOL_VERSION = 1 e ausência de novos campos persistidos no ContestRecord"
     );
 
-    // BARRIER03: V1.12 intacta (provider imutável, ownership único, zero provider swapping)
+    // BARRIER03: V1.12 intacta (provider imutável, ownership único, zero provider swapping) SEM "as any"
+    const coordSource03 = fs.readFileSync(
+      path.resolve("src/sync/officialSnapshotCoordinator.ts"),
+      "utf8"
+    );
+    const hasSetProviderInSource03 = /setProvider\s*\(/.test(coordSource03);
+    const hasGetProviderInSource03 = /getProvider\s*\(/.test(coordSource03);
+    const isProviderReadonly03 = /readonly\s+provider:\s*LotteryResultProvider/.test(coordSource03);
+    const linesAfterCtor03 = coordSource03.slice(coordSource03.indexOf("constructor")).split("\n").slice(5).join("\n");
+    const hasProviderMutation03 = /this\.provider\s*=/.test(linesAfterCtor03);
+
+    const hasSetProviderRuntime03 = "setProvider" in officialSnapshotCoordinator;
+    const hasGetProviderRuntime03 = "getProvider" in officialSnapshotCoordinator;
+    const isSingletonValid03 = officialSnapshotCoordinator instanceof OfficialSnapshotCoordinator &&
+      typeof officialSnapshotCoordinator.consultContest === "function";
+
     assertCanonical(
-      (officialSnapshotCoordinator as any).setProvider === undefined &&
-      (officialSnapshotCoordinator as any).getProvider === undefined &&
-      typeof officialSnapshotCoordinator.consultContest === "function",
+      !hasSetProviderRuntime03 &&
+        !hasGetProviderRuntime03 &&
+        !hasSetProviderInSource03 &&
+        !hasGetProviderInSource03 &&
+        isProviderReadonly03 &&
+        !hasProviderMutation03 &&
+        isSingletonValid03,
       "BARRIER03",
-      "Arquitetura V1.12 preservada com provider imutável e coordenador canônico único de sessão"
+      "Arquitetura V1.12 preservada com provider imutável, ownership único e ausência estrita de setProvider, getProvider e provider swapping"
     );
 
     // BARRIER04: Versões e RNG: APP_VERSION = 1.13.0, C5_ALGORITHM_VERSION = C5-1.0.0, BACKUP_SCHEMA = 3, PROTOCOL = 1, Math.random = ZERO

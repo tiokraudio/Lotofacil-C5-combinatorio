@@ -76,7 +76,7 @@ export class GeneratorOperationalController {
   private repository: ContestRepository;
   private coordinator: RefreshCoordinator;
   private providerGetter: () => LotteryResultProvider;
-  private snapshotCoordinator: OfficialSnapshotCoordinator;
+  public readonly snapshotCoordinator: OfficialSnapshotCoordinator;
   private listeners: Set<OperationalStateListener> = new Set();
   private coordinatorUnsub: (() => void) | null = null;
 
