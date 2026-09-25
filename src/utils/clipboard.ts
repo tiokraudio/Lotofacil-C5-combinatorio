@@ -14,6 +14,8 @@ export function formatGamesForClipboard(games: number[][]): string {
     .join("\n");
 }
 
+export const formatGamesCanonical = formatGamesForClipboard;
+
 export async function copyGamesToClipboard(games: number[][]): Promise<{
   success: boolean;
   message: string;

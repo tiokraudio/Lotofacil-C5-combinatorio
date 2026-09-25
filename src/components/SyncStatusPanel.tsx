@@ -19,7 +19,6 @@ interface SyncStatusPanelProps {
   onRefresh: () => void;
   onPrepareContest: (contestNumber: number) => void;
   onOpenDraft: (contestNumber: number) => void;
-  onDiscardDraft?: (contestNumber: number) => void;
   onCheckResult: (contestNumber: number) => void;
 }
 
@@ -29,7 +28,6 @@ export const SyncStatusPanel: React.FC<SyncStatusPanelProps> = ({
   onRefresh,
   onPrepareContest,
   onOpenDraft,
-  onDiscardDraft,
   onCheckResult,
 }) => {
   const formatTime = (isoString?: string) => {
@@ -55,9 +53,6 @@ export const SyncStatusPanel: React.FC<SyncStatusPanelProps> = ({
         onOpenDraft(action.contestNumber);
         break;
       case "DISCARD_DRAFT":
-        if (onDiscardDraft) {
-          onDiscardDraft(action.contestNumber);
-        }
         break;
       case "CHECK_RESULT":
         onCheckResult(action.contestNumber);
@@ -276,24 +271,14 @@ export const SyncStatusPanel: React.FC<SyncStatusPanelProps> = ({
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
               {syncState?.staleDrafts.map((d) => (
-                <div key={d} className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => onOpenDraft(d)}
-                    className="px-2 py-0.5 text-xs rounded border border-zinc-600 bg-zinc-700 text-zinc-200 hover:bg-zinc-600 transition"
-                  >
-                    ABRIR {d}
-                  </button>
-                  {onDiscardDraft && (
-                    <button
-                      type="button"
-                      onClick={() => onDiscardDraft(d)}
-                      className="px-2 py-0.5 text-xs rounded border border-rose-800/60 bg-rose-950/40 text-rose-300 hover:bg-rose-900/60 transition"
-                    >
-                      DESCARTAR
-                    </button>
-                  )}
-                </div>
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => onOpenDraft(d)}
+                  className="px-2 py-0.5 text-xs rounded border border-zinc-600 bg-zinc-700 text-zinc-200 hover:bg-zinc-600 transition"
+                >
+                  ABRIR {d}
+                </button>
               ))}
             </div>
           </div>

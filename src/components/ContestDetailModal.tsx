@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { X, ShieldCheck, CheckCircle2, AlertCircle, Copy, Check, Award } from "lucide-react";
 import type { ContestRecord } from "../c5/types.ts";
-import type { StoredContestVerification } from "../storage/types.ts";
 import { formatLocalDate } from "../storage/service.ts";
 import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
+import { copyGamesToClipboard } from "../utils/clipboard.ts";
 import { GamesDisplay } from "./GamesDisplay.tsx";
 import { Ball } from "./Ball.tsx";
 import { OfficialPrizeReconciliationPanel } from "./OfficialPrizeReconciliationPanel.tsx";
@@ -15,7 +15,6 @@ export interface ContestDetailModalProps {
   isOpen: boolean;
   record: ContestRecord | null;
   onClose: () => void;
-  onVerify?: (contestNumber: number) => Promise<StoredContestVerification>;
   coordinator?: OfficialSnapshotCoordinator;
 }
 
@@ -23,12 +22,9 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
   isOpen,
   record,
   onClose,
-  onVerify,
   coordinator,
 }) => {
-  const [copiedHash, setCopiedHash] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<StoredContestVerification | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const modalRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -71,26 +67,11 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
 
   if (!isOpen || !record) return null;
 
-  const handleCopyHash = async () => {
-    if (!record.integrityHash) return;
-    try {
-      await navigator.clipboard.writeText(record.integrityHash);
-      setCopiedHash(true);
-      setTimeout(() => setCopiedHash(false), 2000);
-    } catch {
-      // Ignorar fallback
-    }
-  };
-
-  const handleRunVerify = async () => {
-    if (!onVerify) return;
-    setIsVerifying(true);
-    try {
-      const result = await onVerify(record.contestNumber);
-      setVerificationResult(result);
-    } finally {
-      setIsVerifying(false);
-    }
+  const handleCopyGames = async () => {
+    if (!record?.generation?.games) return;
+    const res = await copyGamesToClipboard(record.generation.games);
+    setCopyFeedback(res.success ? "Copiado!" : "Erro ao copiar");
+    setTimeout(() => setCopyFeedback(null), 2000);
   };
 
   const isScored = record.status === "SCORED";
@@ -129,21 +110,41 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
               <span className={`text-xs px-2.5 py-0.5 rounded-full border font-mono font-semibold ${statusBadge}`}>
                 {statusLabels[record.status]}
               </span>
+              {(isFrozen || isScored) && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 font-mono text-[10px] flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Integridade verificada</span>
+                </span>
+              )}
             </div>
             <p className="text-xs text-zinc-400 mt-1">
               Registro auditável • Arquitetura {record.algorithmVersion}
             </p>
           </div>
 
-          <button
-            type="button"
-            id="close-detail-modal-btn"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
-            aria-label="Fechar modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Botão Copiar Jogos (V1.13) */}
+            <button
+              type="button"
+              id="btn-modal-copy-games"
+              onClick={handleCopyGames}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+              title="Copiar os 5 jogos formatados para a área de transferência"
+            >
+              {copyFeedback ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-zinc-400" />}
+              <span>{copyFeedback ?? "COPIAR JOGOS"}</span>
+            </button>
+
+            <button
+              type="button"
+              id="close-detail-modal-btn"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors cursor-pointer"
+              aria-label="Fechar modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Corpo com Scroll */}
@@ -204,7 +205,7 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
             )}
           </div>
 
-          {/* Fechamento Financeiro (V1.8) */}
+          {/* Fechamento Financeiro */}
           {isScored && record.betPlacedAt && (
             <div
               className={`p-3.5 rounded-xl border text-xs ${
@@ -244,27 +245,17 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
                 </div>
               ) : (
                 <p className="text-[11px] text-amber-300/80 mt-0.5">
-                  Este concurso foi registrado como apostado na lotérica, mas o prêmio obtido ainda não foi registrado pelo Gerador.
+                  Este concurso foi registrado como apostado na lotérica, mas o prêmio obtido ainda não foi registrado.
                 </p>
               )}
             </div>
           )}
 
-          {/* Hash SHA-256 */}
+          {/* Hash SHA-256 (Exibição técnica somente leitura) */}
           {record.integrityHash && (
             <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 text-xs">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-zinc-400 font-medium">Hash Oficial de Congelamento (SHA-256):</span>
-                <button
-                  type="button"
-                  onClick={handleCopyHash}
-                  className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors"
-                >
-                  {copiedHash ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  <span>{copiedHash ? "Copiado" : "Copiar"}</span>
-                </button>
-              </div>
-              <div className="font-mono text-emerald-400 break-all select-all tracking-wide">
+              <span className="text-zinc-400 font-medium block mb-1">Hash Oficial de Congelamento (SHA-256):</span>
+              <div className="font-mono text-emerald-400 break-all select-all tracking-wide text-[11px]">
                 {record.integrityHash}
               </div>
             </div>
@@ -364,69 +355,6 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
             </h3>
             <GamesDisplay record={record} />
           </div>
-
-          {/* Painel de Auditoria Individual */}
-          {onVerify && (isFrozen || isScored) && (
-            <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <h4 className="text-xs font-semibold text-zinc-200 uppercase font-mono">
-                    Auditoria Criptográfica Individual
-                  </h4>
-                </div>
-                <button
-                  type="button"
-                  id="btn-verify-individual"
-                  onClick={handleRunVerify}
-                  disabled={isVerifying}
-                  className="px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  {isVerifying ? (
-                    <div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-zinc-100 rounded-full animate-spin" />
-                  ) : (
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                  )}
-                  <span>VERIFICAR INTEGRIDADE</span>
-                </button>
-              </div>
-
-              {verificationResult && (
-                <div className="space-y-2 mt-3 pt-3 border-t border-zinc-800/80 text-xs">
-                  <div className="flex items-center gap-2">
-                    {verificationResult.valid ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-red-400" />
-                    )}
-                    <span className={`font-semibold ${verificationResult.valid ? "text-emerald-400" : "text-red-400"}`}>
-                      {verificationResult.valid
-                        ? "INTEGRIDADE DO CONCURSO CERTIFICADA COM SUCESSO"
-                        : "VIOLAÇÃO DE INTEGRIDADE DETECTADA"}
-                    </span>
-                  </div>
-
-                  {verificationResult.generationIntegrity && (
-                    <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 space-y-1">
-                      <span className="font-semibold text-zinc-300 block">Integridade da Geração:</span>
-                      <p className="text-zinc-400">
-                        SHA-256: {verificationResult.generationIntegrity.hashMatches ? "Conferido (Intacto)" : "Divergente (Corrompido)"} • Invariantes C₅: {verificationResult.generationIntegrity.generationValid ? "Válidas" : "Inválidas"}
-                      </p>
-                    </div>
-                  )}
-
-                  {verificationResult.scoreIntegrity && (
-                    <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 space-y-1">
-                      <span className="font-semibold text-zinc-300 block">Integridade da Pontuação:</span>
-                      <p className="text-zinc-400">
-                        Conferência de Acertos: {verificationResult.scoreIntegrity.scoreMatches ? "Exata e Autêntica" : "Inconsistente"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Rodapé do Modal */}
@@ -434,7 +362,7 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium rounded-lg border border-zinc-700 transition-colors"
+            className="px-4 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium rounded-lg border border-zinc-700 transition-colors cursor-pointer"
           >
             Fechar
           </button>

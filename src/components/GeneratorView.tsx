@@ -1,46 +1,34 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Lock,
-  Trash2,
   CheckCircle2,
   AlertCircle,
-  HelpCircle,
-  Hash,
   Award,
-  Calendar,
   Layers,
   Sparkles,
-  Search,
   Globe,
-  RefreshCw,
   Copy,
   Printer,
   ChevronDown,
   ChevronUp,
   ShieldCheck,
-  FileText,
   DollarSign,
 } from "lucide-react";
 import type { ContestRecord } from "../c5/types.ts";
 import { createContestDraft } from "../c5/index.ts";
 import { repository, formatLocalDate } from "../storage/service.ts";
 import { GamesDisplay } from "./GamesDisplay.tsx";
-import { ResultInputGrid } from "./ResultInputGrid.tsx";
-import { OfficialResultSection } from "./OfficialResultSection.tsx";
-import { OfficialPrizeReconciliationPanel } from "./OfficialPrizeReconciliationPanel.tsx";
-import { OfficialResultAuditPanel } from "./OfficialResultAuditPanel.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { HashViewerModal } from "./HashViewerModal.tsx";
-import { Ball } from "./Ball.tsx";
+import { PrizeRecordModal } from "./PrizeRecordModal.tsx";
+import { formatBRLFromCents } from "../utils/money.ts";
 import { getLotteryProvider } from "../lottery/index.ts";
-import { buildContestSyncState, type ContestSyncState, isEligibleForFinancialReconciliation } from "../sync/index.ts";
+import type { ContestSyncState } from "../sync/index.ts";
 import { SyncStatusPanel } from "./SyncStatusPanel.tsx";
 import { PrimaryActionBar } from "./PrimaryActionBar.tsx";
 import { computePrimaryAction, type PrimaryAction } from "../sync/primaryAction.ts";
 import { copyGamesToClipboard } from "../utils/clipboard.ts";
 import { PrintSheet } from "./PrintSheet.tsx";
-import { PrizeRecordModal } from "./PrizeRecordModal.tsx";
-import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
 import { actionLockController, type ActionLockState } from "../system/actionLock.ts";
 import { refreshCoordinator } from "../system/refreshCoordinator.ts";
 import { classifyOperationalError } from "../system/operationalErrors.ts";
@@ -70,9 +58,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   const controller = controllerRef.current;
   const [opState, setOpState] = useState<GeneratorOperationalState>(controller.getState());
 
-  // Verificação defensiva de Web Crypto
-  const isCryptoAvailable = typeof window !== "undefined" && Boolean(window.crypto && window.crypto.subtle);
-
   const [localFeedback, setLocalFeedback] = useState<{
     type: "success" | "error" | "warning" | "info";
     title?: string;
@@ -80,11 +65,9 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   } | null>(null);
 
   // Modais de confirmação
-  const [showFreezeConfirm, setShowFreezeConfirm] = useState<boolean>(false);
-  const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
   const [showBetConfirmModal, setShowBetConfirmModal] = useState<boolean>(false);
-  const [showPrizeModal, setShowPrizeModal] = useState<boolean>(false);
   const [showHashModal, setShowHashModal] = useState<boolean>(false);
+  const [showPrizeModal, setShowPrizeModal] = useState<boolean>(false);
 
   const [lockState, setLockState] = useState<ActionLockState>({
     isLocked: actionLockController.isLocked(),
@@ -119,10 +102,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   useEffect(() => {
     const unsub = controller.subscribe((nextState) => {
       setOpState(nextState);
-      if (!nextState.activeRecord) {
-        setShowFreezeConfirm(false);
-        setShowDiscardConfirm(false);
-      }
     });
     // Carregamento puramente local no boot (ZERO chamadas de rede)
     controller.refreshLocalState(false);
@@ -161,7 +140,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     return await controller.refreshExternalSync();
   }, [controller]);
 
-  // Derivação pura e determinística da Ação Principal (Prompt 09 - Seção 2 e 9)
+  // Derivação pura e determinística da Ação Principal
   const primaryAction = computePrimaryAction(syncState, localRecords);
 
   // Execução da Ação Principal
@@ -170,7 +149,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     if (action.actionType === "PREPARE_CONTEST") {
       if (action.contestNumber) {
         setContestInput(String(action.contestNumber));
-        // Posiciona usuário no formulário sem gerar jogos automaticamente
         const formInput = document.getElementById("contest-number-input");
         if (formInput) {
           formInput.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -194,7 +172,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
-  // Copiar Jogos Formatados (Prompt 09 - Seção 13)
+  // Copiar Jogos Formatados
   const handleCopyActiveGames = async () => {
     if (!activeRecord) return;
     const res = await copyGamesToClipboard(activeRecord.generation.games);
@@ -205,7 +183,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     });
   };
 
-  // Impressão Limpa (Prompt 09 - Seções 14, 15, 16)
+  // Impressão Limpa
   const handlePrintActiveGames = () => {
     if (!activeRecord) return;
     window.print();
@@ -232,7 +210,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
-  // Consulta manual do último concurso no topo do formulário (ação explícita do usuário)
+  // Consulta manual do último concurso no topo do formulário
   const handleFetchLatestContest = async () => {
     const nextSync = await refreshExternalSync();
     if (nextSync && nextSync.latestOfficialContest) {
@@ -244,7 +222,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
-  // Ações disparadas a partir do SyncStatusPanel
   const handlePrepareContestFromPanel = (contestNumber: number) => {
     setContestInput(String(contestNumber));
     clearFeedback();
@@ -275,19 +252,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
-  const handleDiscardDraftFromPanel = async (contestNumber: number) => {
-    try {
-      const record = await repository.getContestRecord(contestNumber);
-      if (record && record.status === "DRAFT") {
-        setActiveRecord(record);
-        setContestInput(String(contestNumber));
-        setShowDiscardConfirm(true);
-      }
-    } catch {
-      // fallback
-    }
-  };
-
   const handleCheckResultFromPanel = async (contestNumber: number) => {
     setIsLoading(true);
     clearFeedback();
@@ -299,7 +263,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         setFeedback({
           type: "info",
           title: `Concurso ${contestNumber} Selecionado`,
-          message: `Concurso carregado para conferência de resultado oficial.`,
+          message: `Concurso carregado no gerador.`,
         });
       }
     } catch (err: any) {
@@ -319,7 +283,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
-  // 1. Gerar ou Carregar Concurso
+  // 1. Gerar ou Carregar Concurso (REGEN01-REGEN04: Se já existir, NUNCA gera novamente)
   const handleGenerateOrLoad = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     clearFeedback();
@@ -344,21 +308,21 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
 
     if (!actionLockController.acquire("GENERATE")) {
-      return; // Prevenção de concorrência e duplo clique
+      return;
     }
 
     setIsLoading(true);
     try {
-      // 1.1 Verificar no IndexedDB se o concurso já existe
+      // 1.1 Verificar no IndexedDB se o concurso já existe (DRAFT, FROZEN, SCORED)
       const existing = await repository.getContestRecord(contestNum);
 
       if (existing) {
-        // NÃO gerar outro! Carregar o existente
+        // NÃO gerar outro! Carregar o existente sem consumir RNG e sem alterar dados
         setActiveRecord(existing);
         setFeedback({
           type: "info",
           title: `Concurso ${contestNum} Carregado`,
-          message: `Este concurso já possui registro oficial no histórico com status ${existing.status}. Carregado para conferência.`,
+          message: `Este concurso já possui registro oficial no histórico com status ${existing.status}. Registro carregado.`,
         });
         if (onRecordUpdated) onRecordUpdated();
         await refreshLocalState();
@@ -371,13 +335,12 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         setFeedback({
           type: "success",
           title: `Concurso ${contestNum} Gerado`,
-          message: "5 jogos combinatórios C₅ gerados como RASCUNHO. Confira as apostas antes de congelar.",
+          message: "5 jogos combinatórios C₅ gerados como RASCUNHO. Confirme a aposta para selar oficialmente.",
         });
         if (onRecordUpdated) onRecordUpdated();
         await refreshLocalState();
       }
     } catch (err: any) {
-      // Re-leitura defensiva do banco antes de emitir erro
       try {
         const recheck = await repository.getContestRecord(contestNum);
         if (recheck) {
@@ -390,7 +353,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
           return;
         }
       } catch {
-        // Leitura também falhou
+        // ignore
       }
 
       const classified = classifyOperationalError(err);
@@ -405,169 +368,24 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
-  // 2. Descartar Rascunho
-  const handleConfirmDiscard = async () => {
-    if (!activeRecord || activeRecord.status !== "DRAFT") return;
-    if (storageBlocked) {
-      setFeedback({
-        type: "error",
-        title: "Armazenamento Indisponível",
-        message: "O armazenamento local está indisponível. Operação bloqueada para segurança dos dados.",
-      });
-      return;
-    }
-    if (!actionLockController.acquire("DELETE")) return;
-
+  // 2. Confirmação Atômica de Aposta Realizada (R$ 17,50)
+  // DRAFT -> FROZEN + betPlacedAt + integrityHash (operação atômica V1.13)
+  const handleConfirmBet = async () => {
+    if (!activeRecord) return;
     setIsLoading(true);
     clearFeedback();
 
     try {
-      const num = activeRecord.contestNumber;
-      await repository.deleteDraft(num);
-      setActiveRecord(null);
-      setShowDiscardConfirm(false);
-      setFeedback({
-        type: "info",
-        title: "Rascunho Descartado",
-        message: `O rascunho do concurso ${num} foi excluído do histórico com sucesso.`,
-      });
-      if (onRecordUpdated) onRecordUpdated();
-      await refreshLocalState();
-    } catch (err: any) {
-      // Detecção de concorrência com outra aba ou conferência de remoção
-      try {
-        const updated = await repository.getContestRecord(activeRecord.contestNumber);
-        if (!updated) {
-          setActiveRecord(null);
-          setShowDiscardConfirm(false);
-          setFeedback({
-            type: "info",
-            title: "Rascunho Já Removido",
-            message: "O rascunho foi excluído com sucesso do armazenamento local.",
-          });
-          await refreshLocalState();
-          return;
-        } else if (updated.status !== "DRAFT") {
-          setActiveRecord(updated);
-          setShowDiscardConfirm(false);
-          setFeedback({
-            type: "warning",
-            title: "Sessão Concorrente Detectada",
-            message: `O concurso ${updated.contestNumber} foi congelado em outra sessão. Registro recarregado.`,
-          });
-          await refreshLocalState();
-          return;
-        }
-      } catch {
-        // ignore
-      }
-
-      const classified = classifyOperationalError(err);
-      setFeedback({
-        type: "error",
-        title: "Erro ao Descartar",
-        message: classified.userMessage,
-      });
-    } finally {
-      actionLockController.release("DELETE");
-      setIsLoading(false);
-    }
-  };
-
-  // 3. Congelar Jogos
-  const handleConfirmFreeze = async () => {
-    if (!activeRecord || activeRecord.status !== "DRAFT") return;
-    clearFeedback();
-
-    if (storageBlocked) {
-      setFeedback({
-        type: "error",
-        title: "Armazenamento Indisponível",
-        message: "O armazenamento local está indisponível. Operação bloqueada para segurança dos dados.",
-      });
-      setShowFreezeConfirm(false);
-      return;
-    }
-
-    if (!isCryptoAvailable) {
-      setFeedback({
-        type: "error",
-        title: "Recurso Criptográfico Indisponível",
-        message: "Mecanismo criptográfico seguro (WebCrypto) indisponível neste navegador. Operação bloqueada para sua segurança.",
-      });
-      setShowFreezeConfirm(false);
-      return;
-    }
-
-    if (!actionLockController.acquire("FREEZE")) return;
-
-    setIsLoading(true);
-
-    try {
-      const num = activeRecord.contestNumber;
-      // Congela no IndexedDB
-      await repository.freezeStoredContest(num);
-
-      // Audita integridade pós-congelamento
-      const verification = await repository.verifyStoredContest(num);
-      if (!verification.valid) {
-        throw new Error(
-          `Não foi possível congelar o concurso ${num}. A auditoria de integridade pós-congelamento falhou.`
-        );
-      }
-
-      // Recarrega registro da fonte de verdade
-      const frozenRecord = await repository.getContestRecord(num);
-      setActiveRecord(frozenRecord);
-      setShowFreezeConfirm(false);
+      const confirmed = await controller.confirmBet();
+      setActiveRecord(confirmed);
+      setShowBetConfirmModal(false);
       setFeedback({
         type: "success",
-        title: "Jogos congelados com sucesso",
-        message: `Concurso ${num}. Integridade verificada.`,
+        title: "Aposta Confirmada",
+        message: `Os 5 jogos do concurso ${confirmed.contestNumber} foram congelados e confirmados como aposta oficial realizada (R$ 17,50).`,
       });
       if (onRecordUpdated) onRecordUpdated();
       await refreshLocalState();
-    } catch (err: any) {
-      // Re-leitura defensiva do banco antes de emitir erro (Prompt 14 Seção 42 & 43)
-      try {
-        const updated = await repository.getContestRecord(activeRecord.contestNumber);
-        if (updated && updated.status !== "DRAFT") {
-          setActiveRecord(updated);
-          setShowFreezeConfirm(false);
-          setFeedback({
-            type: updated.status === "FROZEN" ? "success" : "warning",
-            title: updated.status === "FROZEN" ? "Jogos congelados com sucesso" : "Sessão Concorrente Detectada",
-            message: `O concurso ${updated.contestNumber} está registrado como ${updated.status} no armazenamento local.`,
-          });
-          await refreshLocalState();
-          return;
-        }
-      } catch {
-        // ignore
-      }
-
-      const classified = classifyOperationalError(err);
-      setFeedback({
-        type: "error",
-        title: "Falha no Congelamento",
-        message: classified.userMessage,
-      });
-    } finally {
-      actionLockController.release("FREEZE");
-      setIsLoading(false);
-    }
-  };
-
-  // 3.5. Confirmar Aposta Realizada (R$ 17,50)
-  const handleConfirmBet = async () => {
-    if (!activeRecord || activeRecord.status === "DRAFT") return;
-    setIsLoading(true);
-    clearFeedback();
-
-    try {
-      await controller.confirmBet();
-      setShowBetConfirmModal(false);
-      if (onRecordUpdated) onRecordUpdated();
     } catch (err: any) {
       const classified = classifyOperationalError(err);
       setFeedback({
@@ -580,102 +398,9 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     }
   };
 
-  // 3.6. Registrar Fechamento Financeiro / Prêmio (V1.8)
-  const handleRecordPrize = async (amountCents: number) => {
-    if (!activeRecord || activeRecord.status !== "SCORED") return;
-    setIsLoading(true);
-    clearFeedback();
-
-    try {
-      await controller.recordPrize(amountCents);
-      setShowPrizeModal(false);
-      if (onRecordUpdated) onRecordUpdated();
-    } catch (err: any) {
-      const classified = classifyOperationalError(err);
-      setFeedback({
-        type: "error",
-        title: "Erro ao Registrar Prêmio",
-        message: classified.userMessage,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 4. Registrar e Pontuar Resultado Oficial com Auditoria Rigorosa
-  const handleScoreResult = async (officialResult: number[]) => {
-    if (!activeRecord || activeRecord.status !== "FROZEN") return;
-    clearFeedback();
-
-    if (storageBlocked) {
-      setFeedback({
-        type: "error",
-        title: "Armazenamento Indisponível",
-        message: "O armazenamento local está indisponível. Pontuação bloqueada para segurança dos dados.",
-      });
-      return;
-    }
-
-    if (!actionLockController.acquire("SCORE")) return;
-
-    setIsLoading(true);
-
-    try {
-      const num = activeRecord.contestNumber;
-      await repository.scoreStoredContest(num, officialResult);
-
-      // Auditoria obrigatória pós-score
-      const verification = await repository.verifyStoredContest(num);
-      if (!verification.valid) {
-        throw new Error(
-          `[ERRO CRÍTICO DE INTEGRIDADE]: Concurso ${num} falhou na auditoria pós-pontuação: ${verification.errors.join("; ")}`
-        );
-      }
-
-      // Recarrega da fonte de verdade
-      const scoredRecord = await repository.getContestRecord(num);
-      setActiveRecord(scoredRecord);
-      setFeedback({
-        type: "success",
-        title: "Resultado Registrado e Pontuado",
-        message: `O concurso ${num} foi conferido com sucesso. Melhor resultado: ${scoredRecord?.score?.maxHits} acertos. Auditoria criptográfica: VÁLIDA.`,
-      });
-      if (onRecordUpdated) onRecordUpdated();
-      await refreshLocalState();
-    } catch (err: any) {
-      // Re-leitura defensiva do banco antes de emitir erro (Prompt 14 Seção 42 & 43)
-      try {
-        const updated = await repository.getContestRecord(activeRecord.contestNumber);
-        if (updated && updated.status === "SCORED") {
-          setActiveRecord(updated);
-          setFeedback({
-            type: "success",
-            title: "Resultado Registrado e Pontuado",
-            message: `O concurso ${updated.contestNumber} já foi pontuado e persistido no armazenamento local (melhor resultado: ${updated.score?.maxHits} acertos).`,
-          });
-          if (onRecordUpdated) onRecordUpdated();
-          await refreshLocalState();
-          return;
-        }
-      } catch {
-        // ignore
-      }
-
-      const classified = classifyOperationalError(err);
-      setFeedback({
-        type: "error",
-        title: "Falha na Pontuação",
-        message: classified.userMessage,
-      });
-    } finally {
-      actionLockController.release("SCORE");
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Alerta Crítico se IndexedDB estiver bloqueado (Prompt 09 - Seção 30) */}
+      {/* Alerta se IndexedDB estiver bloqueado */}
       {storageBlocked && (
         <div
           id="storage-blocked-banner"
@@ -692,23 +417,23 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         </div>
       )}
 
-      {/* Barra de Ação Principal (Prompt 09 - Seções 2, 3, 4, 5, 6, 7, 8, 9) */}
+      {/* Barra de Ação Principal */}
       <PrimaryActionBar
         primaryAction={primaryAction}
         onExecuteAction={handleExecutePrimaryAction}
         activeContestStatus={activeRecord?.status}
       />
 
-      {/* Dashboard Operacional de Sincronização (Prompt 08) */}
+      {/* Dashboard de Sincronização */}
       <SyncStatusPanel
         syncState={syncState}
         isLoading={isSyncing}
         onRefresh={refreshExternalSync}
         onPrepareContest={handlePrepareContestFromPanel}
         onOpenDraft={handleOpenDraftFromPanel}
-        onDiscardDraft={handleDiscardDraftFromPanel}
         onCheckResult={handleCheckResultFromPanel}
       />
+
       {/* Topo do Gerador */}
       <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
@@ -790,12 +515,12 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                 <Sparkles className="w-4 h-4" />
               )}
               <span>
-                {lockState.currentOperation === "GENERATE" ? "GERANDO..." : "GERAR 5 JOGOS"}
+                {lockState.currentOperation === "GENERATE" ? "PROCESSANDO..." : "GERAR 5 JOGOS"}
               </span>
             </button>
           </div>
 
-          {/* Sugestão de Concurso Baseada na Consulta Oficial */}
+          {/* Sugestão de Concurso */}
           {latestContestInfo && (
             <div
               id="suggested-contest-banner"
@@ -804,7 +529,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
               <div>
                 <span>Último concurso na CAIXA: <strong>{latestContestInfo.lastContest}</strong> ({latestContestInfo.drawDate}).</span>
                 <span className="block sm:inline sm:ml-2 text-zinc-300">
-                  Próximo concurso sugerido: <strong className="text-emerald-400 font-mono text-sm">{latestContestInfo.suggestedNext}</strong>
+                  Próximo sugerido: <strong className="text-emerald-400 font-mono text-sm">{latestContestInfo.suggestedNext}</strong>
                 </span>
               </div>
               <button
@@ -819,7 +544,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
           )}
         </form>
 
-        {/* Feedback visual de ações */}
+        {/* Feedback visual */}
         {feedback && (
           <div
             id="generator-feedback-banner"
@@ -870,7 +595,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                     CONCURSO {activeRecord.contestNumber}
                   </h3>
 
-                  {/* Badges de Estado Padronizados (Prompt 09 - Seção 18) */}
                   {activeRecord.status === "DRAFT" && (
                     <span
                       id="status-badge-draft"
@@ -931,9 +655,9 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                 </div>
               </div>
 
-              {/* Barra de Ações Rápidas (Copiar, Imprimir, Descartar, Congelar) */}
+              {/* Barra de Ações Rápidas (Copiar, Imprimir, Confirmar Aposta) */}
               <div className="flex flex-wrap items-center gap-2.5">
-                {/* Botão Copiar Jogos (Prompt 09 - Seção 13) */}
+                {/* Botão Copiar Jogos */}
                 <button
                   type="button"
                   id="btn-copy-games"
@@ -945,7 +669,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                   <span>COPIAR JOGOS</span>
                 </button>
 
-                {/* Botão Imprimir (Prompt 09 - Seção 14, 15, 16) */}
+                {/* Botão Imprimir */}
                 <button
                   type="button"
                   id="btn-print-games"
@@ -957,45 +681,57 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                   <span>IMPRIMIR</span>
                 </button>
 
-                {/* Ações específicas do Estado DRAFT */}
+                {/* Ação principal em DRAFT: CONFIRMAR APOSTA — R$ 17,50 (Seção 9) */}
                 {activeRecord.status === "DRAFT" && (
-                  <>
-                    <button
-                      type="button"
-                      id="btn-discard-draft"
-                      onClick={() => setShowDiscardConfirm(true)}
-                      disabled={isLoading || lockState.isLocked}
-                      className="px-3.5 py-2 text-xs font-medium text-red-400 hover:text-red-300 bg-red-950/20 hover:bg-red-950/40 border border-red-500/30 rounded-xl transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>DESCARTAR RASCUNHO</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      id="btn-freeze-contest"
-                      onClick={() => setShowFreezeConfirm(true)}
-                      disabled={isLoading || lockState.isLocked}
-                      className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer focus:ring-2 focus:ring-emerald-400"
-                    >
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>CONGELAR JOGOS</span>
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    id="btn-confirm-bet-draft"
+                    onClick={() => setShowBetConfirmModal(true)}
+                    disabled={isLoading || lockState.isLocked}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer focus:ring-2 focus:ring-emerald-400"
+                  >
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>CONFIRMAR APOSTA — R$ 17,50</span>
+                  </button>
                 )}
 
-                {/* Ações para Concurso Congelado ou Conferido: Confirmação de Aposta e Registro de Prêmio */}
+                {/* Ações para Concurso FROZEN ou SCORED */}
                 {(activeRecord.status === "FROZEN" || activeRecord.status === "SCORED") && (
                   <>
                     {activeRecord.betPlacedAt ? (
-                      <div
-                        id="badge-bet-confirmed"
-                        className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
-                        title={`Aposta oficial registrada em ${formatLocalDate(activeRecord.betPlacedAt)}`}
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>APOSTA REGISTRADA (R$ 17,50)</span>
-                      </div>
+                      <>
+                        <div
+                          id="badge-bet-confirmed"
+                          className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
+                          title={`Aposta oficial registrada em ${formatLocalDate(activeRecord.betPlacedAt)}`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>APOSTA REGISTRADA (R$ 17,50)</span>
+                        </div>
+
+                        {activeRecord.status === "SCORED" && (
+                          activeRecord.prize === undefined ? (
+                            <button
+                              type="button"
+                              id="btn-open-record-prize"
+                              onClick={() => setShowPrizeModal(true)}
+                              className="px-3.5 py-2 text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/40 hover:bg-emerald-600/80 border border-emerald-500/50 rounded-xl transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Award className="w-3.5 h-3.5" />
+                              <span>REGISTRAR PRÊMIO</span>
+                            </button>
+                          ) : (
+                            <div
+                              id="badge-prize-recorded"
+                              title="Registrado manualmente via formulário de encerramento financeiro (MANUAL)"
+                              className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
+                            >
+                              <Award className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>PRÊMIO: {formatBRLFromCents(activeRecord.prize.amountCents)}</span>
+                            </div>
+                          )
+                        )}
+                      </>
                     ) : activeRecord.status === "FROZEN" ? (
                       <button
                         type="button"
@@ -1017,32 +753,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                         <span>NÃO APOSTADO</span>
                       </div>
                     )}
-
-                    {/* V1.8: Botão ou Badge de Registro de Prêmio para concursos SCORED com aposta confirmada */}
-                    {activeRecord.status === "SCORED" && activeRecord.betPlacedAt && (
-                      activeRecord.prize !== undefined ? (
-                        <div
-                          id="badge-prize-recorded"
-                          className="px-3 py-2 rounded-xl bg-emerald-950/60 border border-emerald-500/60 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm"
-                          title={`Prêmio registrado manualmente em ${formatLocalDate(activeRecord.prize.recordedAt)}`}
-                        >
-                          <Award className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>PRÊMIO: {formatBRLFromCents(activeRecord.prize.amountCents)}</span>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          id="btn-open-record-prize"
-                          onClick={() => setShowPrizeModal(true)}
-                          disabled={isLoading || lockState.isLocked}
-                          className="px-3.5 py-2 text-xs font-semibold text-emerald-200 hover:text-white bg-emerald-700/80 hover:bg-emerald-600 border border-emerald-500/60 rounded-xl transition-all inline-flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
-                          title="Registrar fechamento financeiro e valor do prêmio recebido neste concurso"
-                        >
-                          <Award className="w-3.5 h-3.5 text-emerald-300" />
-                          <span>REGISTRAR PRÊMIO</span>
-                        </button>
-                      )
-                    )}
                   </>
                 )}
               </div>
@@ -1052,12 +762,12 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             {activeRecord.status === "FROZEN" && (
               <div className="mt-4 p-3 rounded-xl bg-blue-950/20 border border-blue-500/30 text-xs text-blue-200">
                 <p>
-                  🔒 <strong>Registro Imutável:</strong> Os 5 jogos estão oficialmente congelados com hash SHA-256. Alterações, exclusões ou novos sorteios para este concurso estão proibidos pelo sistema.
+                  🔒 <strong>Aposta Registrada e Congelada:</strong> Os 5 jogos estão oficialmente registrados com hash SHA-256. Para conferir com a apuração da CAIXA, acesse a aba <strong>Conferência</strong>.
                 </p>
               </div>
             )}
 
-            {/* Detalhes Técnicos Expansíveis (Prompt 09 - Seção 37) */}
+            {/* Detalhes Técnicos Expansíveis */}
             <div className="mt-4 pt-3 border-t border-zinc-800/80">
               <button
                 type="button"
@@ -1092,7 +802,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                         <button
                           type="button"
                           onClick={() => setShowHashModal(true)}
-                          className="px-2 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-300 hover:text-white"
+                          className="px-2 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-300 hover:text-white cursor-pointer"
                         >
                           Auditar
                         </button>
@@ -1104,138 +814,25 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             </div>
           </div>
 
-          {/* Destaque do Resultado Oficial quando for SCORED */}
-          {activeRecord.status === "SCORED" && activeRecord.officialResult && (
-            <div id="scored-summary-card" className="p-6 rounded-2xl bg-zinc-900 border border-emerald-500/40 shadow-xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+          {/* Destaque Essencial quando for SCORED (FLOW04: sem painéis operacionais de conferência no Gerador) */}
+          {activeRecord.status === "SCORED" && (
+            <div id="generator-scored-card" className="p-5 rounded-2xl bg-zinc-900 border border-emerald-500/40 shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <span className="text-xs font-mono font-bold tracking-widest text-emerald-400 uppercase">
-                    Resultado Oficial Concurso {activeRecord.contestNumber}
+                    Concurso {activeRecord.contestNumber} • Conferido
                   </span>
-                  <h3 className="text-xl font-bold text-zinc-100 mt-0.5">
-                    15 Dezenas Sorteadas pela CAIXA
-                  </h3>
-                </div>
-
-                {activeRecord.score && (
-                  <div className="px-4 py-2 rounded-xl bg-emerald-950/60 border border-emerald-500/60 text-right">
-                    <span className="text-[11px] text-zinc-400 block font-medium">MELHOR RESULTADO:</span>
-                    <span className="text-lg font-mono font-extrabold text-emerald-300">
-                      {activeRecord.score.maxHits} ACERTOS
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* 15 Dezenas em Destaque */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {activeRecord.officialResult.map((num) => (
-                  <Ball key={`scored-official-ball-${num}`} number={num} variant="official" size="md" />
-                ))}
-              </div>
-
-              {/* Resumo de Premiações */}
-              {activeRecord.score && (
-                <div className="mt-5 pt-4 border-t border-zinc-800 flex flex-wrap items-center gap-4 text-xs sm:text-sm">
-                  <span className="text-zinc-400 font-medium">Faixas obtidas neste concurso:</span>
-                  {activeRecord.score.prizeCounts.hits15 > 0 && (
-                    <span className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold inline-flex items-center gap-1.5">
-                      <Award className="w-4 h-4" />
-                      {activeRecord.score.prizeCounts.hits15} aposta(s) com 15 acertos
-                    </span>
-                  )}
-                  {activeRecord.score.prizeCounts.hits14 > 0 && (
-                    <span className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold inline-flex items-center gap-1.5">
-                      <Award className="w-4 h-4" />
-                      {activeRecord.score.prizeCounts.hits14} aposta(s) com 14 acertos
-                    </span>
-                  )}
-                  {activeRecord.score.prizeCounts.hits13 > 0 && (
-                    <span className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold inline-flex items-center gap-1.5">
-                      <Award className="w-4 h-4" />
-                      {activeRecord.score.prizeCounts.hits13} aposta(s) com 13 acertos
-                    </span>
-                  )}
-                  {activeRecord.score.prizeCounts.hits12 > 0 && (
-                    <span className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold inline-flex items-center gap-1.5">
-                      <Award className="w-4 h-4" />
-                      {activeRecord.score.prizeCounts.hits12} aposta(s) com 12 acertos
-                    </span>
-                  )}
-                  {activeRecord.score.prizeCounts.hits11 > 0 && (
-                    <span className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold inline-flex items-center gap-1.5">
-                      <Award className="w-4 h-4" />
-                      {activeRecord.score.prizeCounts.hits11} aposta(s) com 11 acertos
-                    </span>
-                  )}
-                  {!activeRecord.score.has11Plus && (
-                    <span className="text-zinc-400 italic">
-                      Nenhuma aposta alcançou 11 ou mais acertos neste concurso.
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Fechamento Financeiro (V1.8) */}
-              <div className="mt-5 pt-4 border-t border-zinc-800">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block font-semibold">
-                      Fechamento Financeiro
-                    </span>
-                    {activeRecord.betPlacedAt ? (
-                      activeRecord.prize !== undefined ? (
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs">
-                          <span className="text-zinc-300">
-                            Prêmio Recebido:{" "}
-                            <strong className="text-emerald-400 font-mono text-sm">
-                              {formatBRLFromCents(activeRecord.prize.amountCents)}
-                            </strong>
-                          </span>
-                          <span className="text-zinc-400">
-                            Custo das apostas:{" "}
-                            <strong className="font-mono text-zinc-300">R$ 17,50</strong>
-                          </span>
-                          <span className="text-zinc-300">
-                            Resultado Líquido:{" "}
-                            <strong
-                              className={`font-mono text-sm ${
-                                activeRecord.prize.amountCents >= 1750 ? "text-emerald-400" : "text-rose-400"
-                              }`}
-                            >
-                              {formatSignedBRLFromCents(activeRecord.prize.amountCents - 1750)}
-                            </strong>
-                          </span>
-                          <span className="text-[11px] text-zinc-400">
-                            (Registrado em {formatLocalDate(activeRecord.prize.recordedAt)})
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-amber-300 font-medium">
-                            Fechamento financeiro pendente (aposta realizada na lotérica).
-                          </span>
-                        </div>
-                      )
-                    ) : (
-                      <span className="text-xs text-zinc-400 mt-1 block italic">
-                        Concurso conferido sem aposta confirmada na lotérica (não gera impacto financeiro).
+                  <p className="text-sm text-zinc-300 mt-1">
+                    Este concurso já foi apurado e pontuado.
+                    {activeRecord.score && (
+                      <span className="ml-1 font-semibold text-emerald-400">
+                        Melhor resultado: {activeRecord.score.maxHits} acertos.
                       </span>
                     )}
-                  </div>
-
-                  {activeRecord.betPlacedAt && activeRecord.prize === undefined && (
-                    <button
-                      type="button"
-                      id="btn-card-record-prize"
-                      onClick={() => setShowPrizeModal(true)}
-                      disabled={isLoading || lockState.isLocked}
-                      className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all inline-flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
-                    >
-                      <Award className="w-3.5 h-3.5" />
-                      <span>REGISTRAR PRÊMIO</span>
-                    </button>
-                  )}
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Para visualizar o resultado detalhado, auditoria oficial e reconciliação financeira, acesse a aba <strong>Conferência</strong>.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1253,40 +850,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             </div>
             <GamesDisplay record={activeRecord} />
           </div>
-
-          {/* Próxima Ação: Registrar Resultado Oficial (se FROZEN) */}
-          {activeRecord.status === "FROZEN" && (
-            <div className="mt-8">
-              <OfficialResultSection
-                contestNumber={activeRecord.contestNumber}
-                isLoading={isLoading}
-                onSubmitResult={handleScoreResult}
-              />
-            </div>
-          )}
-
-          {/* V1.11: Auditoria Oficial Pós-Score CAIXA (se SCORED) */}
-          {activeRecord.status === "SCORED" && (
-            <div className="mt-8">
-              <OfficialResultAuditPanel
-                record={activeRecord}
-              />
-            </div>
-          )}
-
-          {/* V1.10: Referência Oficial de Premiação e Reconciliação Financeira (se elegível: SCORED + betPlacedAt + score) */}
-          {isEligibleForFinancialReconciliation(activeRecord) && (
-            <div className="mt-8">
-              <OfficialPrizeReconciliationPanel
-                contestNumber={activeRecord.contestNumber}
-                score={activeRecord.score}
-                prize={activeRecord.prize}
-                betPlacedAt={activeRecord.betPlacedAt}
-                status={activeRecord.status}
-                record={activeRecord}
-              />
-            </div>
-          )}
         </div>
       )}
 
@@ -1326,37 +889,11 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         </div>
       </div>
 
-      {/* Modal de Confirmação de Congelamento */}
-      <ConfirmDialog
-        isOpen={showFreezeConfirm}
-        title="Confirmar Congelamento Oficial"
-        description={`Confirmar estes 5 jogos para o concurso ${activeRecord?.contestNumber}?\n\nDepois do congelamento, os jogos não poderão ser alterados ou excluídos pelo sistema.`}
-        confirmLabel={lockState.currentOperation === "FREEZE" ? "CONGELANDO..." : "CONGELAR JOGOS"}
-        cancelLabel="VOLTAR"
-        variant="primary"
-        isLoading={isLoading && lockState.currentOperation === "FREEZE"}
-        onConfirm={handleConfirmFreeze}
-        onCancel={() => setShowFreezeConfirm(false)}
-      />
-
-      {/* Modal de Confirmação de Descarte de Rascunho */}
-      <ConfirmDialog
-        isOpen={showDiscardConfirm}
-        title="Descartar Rascunho"
-        description={`Tem certeza que deseja excluir o rascunho do concurso ${activeRecord?.contestNumber}?\n\nEsta operação removerá o rascunho temporário do histórico.`}
-        confirmLabel={lockState.currentOperation === "DELETE" ? "DESCARTANDO..." : "DESCARTAR RASCUNHO"}
-        cancelLabel="VOLTAR"
-        variant="danger"
-        isLoading={isLoading && lockState.currentOperation === "DELETE"}
-        onConfirm={handleConfirmDiscard}
-        onCancel={() => setShowDiscardConfirm(false)}
-      />
-
       {/* Modal de Confirmação de Aposta Realizada */}
       <ConfirmDialog
         isOpen={showBetConfirmModal}
         title="Confirmar Aposta Realizada"
-        description={`Confirmar que os 5 jogos do concurso ${activeRecord?.contestNumber} foram registrados e pagos na lotérica (Custo: R$ 17,50)?\n\nEssa confirmação atualizará os relatórios de despesas e desempenho financeiro no Histórico.`}
+        description={`Confirmar que os 5 jogos do concurso ${activeRecord?.contestNumber} foram registrados e pagos na lotérica (Custo: R$ 17,50)?\n\nEssa confirmação congelará os jogos com hash SHA-256 e registrará a despesa no histórico financeiro.`}
         confirmLabel={lockState.currentOperation === "CONFIRM_BET" ? "CONFIRMANDO..." : "CONFIRMAR APOSTA"}
         cancelLabel="VOLTAR"
         variant="primary"
@@ -1372,13 +909,21 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         onClose={() => setShowHashModal(false)}
       />
 
-      {/* Modal de Registro de Prêmio / Fechamento Financeiro (V1.8) */}
+      {/* Modal de Registro de Prêmio */}
       <PrizeRecordModal
         isOpen={showPrizeModal}
         record={activeRecord}
-        isLoading={isLoading && lockState.currentOperation === "RECORD_PRIZE"}
+        isLoading={isLoading}
         onClose={() => setShowPrizeModal(false)}
-        onRecordPrize={handleRecordPrize}
+        onRecordPrize={async (amountCents: number) => {
+          setIsLoading(true);
+          try {
+            await controller.recordPrize(amountCents);
+            setShowPrizeModal(false);
+          } finally {
+            setIsLoading(false);
+          }
+        }}
       />
 
       {/* Folha de Impressão Oficial Limpa (visível exclusivamente em @media print) */}

@@ -186,12 +186,12 @@ export async function buildContestSyncState(
     });
 
     recommendedActions.push({
-      id: `discard-stale-${draftNum}`,
+      id: `discard-${draftNum}`,
       type: "DISCARD_DRAFT",
       contestNumber: draftNum,
       label: `DESCARTAR RASCUNHO ${draftNum}`,
-      description: `Excluir o rascunho obsoleto do concurso ${draftNum} (requer confirmação).`,
-      urgency: "LOW",
+      description: `Remover o rascunho ${draftNum} do armazenamento local para liberar a numeração.`,
+      urgency: "MEDIUM",
     });
   }
 

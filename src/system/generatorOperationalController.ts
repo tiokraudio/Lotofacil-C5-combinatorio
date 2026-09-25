@@ -516,20 +516,20 @@ export class GeneratorOperationalController {
   }
 
   /**
-   * Confirma o registro/pagamento dos 5 jogos do concurso ativo (FROZEN ou SCORED).
+   * Confirma o registro/pagamento dos 5 jogos do concurso ativo.
+   * V1.13:
+   * - Em DRAFT: congela e confirma atomicamente (confirmDraftBet).
+   * - Em FROZEN (legado): confirma a aposta sem recongelar (confirmBetPlaced).
    */
   async confirmBet(): Promise<ContestRecord> {
     if (!this.state.activeRecord) {
       throw new Error("Não há concurso selecionado para confirmar aposta.");
     }
-    if (this.state.activeRecord.status === "DRAFT") {
-      throw new Error("Concursos em rascunho (DRAFT) não podem ter aposta confirmada.");
-    }
     if (this.state.activeRecord.status === "SCORED") {
       throw new Error("Proibição de confirmação retroativa: concursos já apurados (SCORED) não podem ter aposta confirmada.");
     }
-    if (this.state.activeRecord.status !== "FROZEN") {
-      throw new Error("Apenas concursos congelados (FROZEN) podem ter aposta confirmada.");
+    if (this.state.activeRecord.status !== "DRAFT" && this.state.activeRecord.status !== "FROZEN") {
+      throw new Error(`Estado inválido para confirmação de aposta: '${this.state.activeRecord.status}'.`);
     }
     if (this.state.storageBlocked) {
       throw new Error("Armazenamento local bloqueado. Operação impedida.");
@@ -541,7 +541,12 @@ export class GeneratorOperationalController {
 
     try {
       const num = this.state.activeRecord.contestNumber;
-      const confirmed = await this.repository.confirmBetPlaced(num);
+      let confirmed: ContestRecord;
+      if (this.state.activeRecord.status === "DRAFT") {
+        confirmed = await this.repository.confirmDraftBet(num);
+      } else {
+        confirmed = await this.repository.confirmBetPlaced(num);
+      }
       this.state.activeRecord = confirmed;
       this.state.feedback = {
         type: "success",

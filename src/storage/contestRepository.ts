@@ -10,7 +10,12 @@ import {
   deepCloneScore,
   defaultClock,
 } from "../c5/record.ts";
-import { verifyContestIntegrity } from "../c5/integrity.ts";
+import {
+  verifyContestIntegrity,
+  buildCanonicalPayload,
+  serializeCanonicalPayload,
+  computeSHA256,
+} from "../c5/integrity.ts";
 import { areContestRecordsIdentical } from "./recordComparison.ts";
 import type { ContestRecord, ContestRecordStatus, Clock, PrizeRecord } from "../c5/types.ts";
 import {
@@ -442,6 +447,135 @@ export class ContestRepository {
     } finally {
       closeDatabase(db);
     }
+  }
+
+  /**
+   * Confirma atomicamente a aposta de um concurso em estado DRAFT (V1.13).
+   *
+   * Transição pura e atômica:
+   * DRAFT -> FROZEN + frozenAt + integrityHash + betPlacedAt
+   *
+   * Requisitos estritos:
+   * 1. Apenas registros no estado DRAFT podem ser confirmados por esta operação;
+   * 2. Rejeita registros em SCORED (proibição de confirmação retroativa);
+   * 3. Rejeita registros em FROZEN (devem usar confirmBetPlaced legado);
+   * 4. Validação de invariantes C5 e integridade antes do congelamento;
+   * 5. Timestamps: generatedAt <= frozenAt <= betPlacedAt (frozenAt === betPlacedAt);
+   * 6. betPlacedAt permanece fora do FrozenC5Payload;
+   * 7. Validação criptográfica pós-congelamento (verifyContestIntegrity);
+   * 8. Transação readwrite com proteção TOCTOU (releitura e areContestRecordsIdentical);
+   * 9. Se qualquer etapa falhar, o registro no IndexedDB permanece DRAFT original;
+   * 10. Emite pós-commit rigorosamente UM evento 'BET_CONFIRMED' (zero evento em falha).
+   */
+  async confirmDraftBet(
+    contestNumber: number,
+    options?: { clock?: Clock }
+  ): Promise<ContestRecord> {
+    const clock = options?.clock ?? this.options?.clock ?? defaultClock;
+    const snapshot = await this.getContestRecord(contestNumber);
+    if (!snapshot) {
+      throw new Error(`Concurso ${contestNumber} não encontrado para confirmação de aposta.`);
+    }
+
+    if (snapshot.status === "SCORED") {
+      throw new Error(
+        `Operação inválida: concursos já apurados (SCORED) não podem ser confirmados. Concurso ${contestNumber} está em estado SCORED.`
+      );
+    }
+
+    if (snapshot.status === "FROZEN") {
+      throw new Error(
+        `Operação inválida: a confirmação atômica de rascunho aplica-se a registros DRAFT. O concurso ${contestNumber} já está FROZEN.`
+      );
+    }
+
+    if (snapshot.status !== "DRAFT") {
+      throw new Error(
+        `Apenas registros em estado DRAFT podem ser confirmados por esta operação. Concurso ${contestNumber} possui status: '${snapshot.status}'.`
+      );
+    }
+
+    const validation = validateC5(snapshot.generation);
+    if (!validation.valid) {
+      throw new Error(
+        `Tentativa de confirmar DRAFT com invariantes C5 violadas: ${validation.errors.join("; ")}`
+      );
+    }
+
+    const now = clock().toISOString();
+    const frozenAt = now;
+    const betPlacedAt = now;
+
+    if (Date.parse(frozenAt) < Date.parse(snapshot.generatedAt)) {
+      throw new Error(
+        `Violação de ordem temporal: o timestamp de congelamento/aposta ('${frozenAt}') não pode ser anterior à geração ('${snapshot.generatedAt}').`
+      );
+    }
+
+    const canonicalPayload = buildCanonicalPayload(
+      snapshot.contestNumber,
+      snapshot.generationId,
+      snapshot.algorithmVersion,
+      snapshot.generatedAt,
+      frozenAt,
+      snapshot.generation
+    );
+
+    const serialized = serializeCanonicalPayload(canonicalPayload);
+    const integrityHash = await computeSHA256(serialized);
+
+    const updated: ContestRecord = {
+      status: "FROZEN",
+      contestNumber: snapshot.contestNumber,
+      generationId: snapshot.generationId,
+      algorithmVersion: snapshot.algorithmVersion,
+      generatedAt: snapshot.generatedAt,
+      frozenAt,
+      integrityHash,
+      betPlacedAt,
+      generation: deepCloneGeneration(snapshot.generation),
+    };
+
+    const audit = await verifyContestIntegrity(updated);
+    if (!audit.valid) {
+      throw new Error(
+        `Falha na auditoria de integridade ao confirmar rascunho do concurso ${contestNumber}: ${audit.errors.join("; ")}`
+      );
+    }
+
+    const db = await this.getDB();
+    try {
+      const tx = db.transaction(CONTEST_STORE_NAME, "readwrite");
+      const store = tx.objectStore(CONTEST_STORE_NAME);
+
+      const current = await promisifyRequest<ContestRecord | undefined>(store.get(contestNumber));
+      if (!current || !areContestRecordsIdentical(current, snapshot)) {
+        throw new Error(
+          `O registro do concurso ${contestNumber} mudou durante a operação. Confirmação de rascunho cancelada para evitar sobrescrita concorrente.`
+        );
+      }
+
+      const clone = deepCloneRecord(updated);
+      await promisifyRequest(store.put(clone));
+      await waitForTransaction(tx);
+      if (this.shouldNotifyCoordinator()) {
+        this.getRefreshCoordinator().notifyMutationCommitted("BET_CONFIRMED", contestNumber);
+      }
+
+      return deepCloneRecord(updated);
+    } finally {
+      closeDatabase(db);
+    }
+  }
+
+  /**
+   * Alias de conveniência semântica para confirmDraftBet.
+   */
+  async freezeAndConfirmBet(
+    contestNumber: number,
+    options?: { clock?: Clock }
+  ): Promise<ContestRecord> {
+    return this.confirmDraftBet(contestNumber, options);
   }
 
   /**

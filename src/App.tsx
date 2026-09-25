@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Header, NavTab } from "./components/Header.tsx";
 import { GeneratorView } from "./components/GeneratorView.tsx";
+import { ConferenceView } from "./components/ConferenceView.tsx";
 import { HistoryView } from "./components/HistoryView.tsx";
 import { AuditView } from "./components/AuditView.tsx";
 import { repository } from "./storage/service.ts";
@@ -161,6 +162,9 @@ export default function App() {
 
         {currentTab === "generator" && (
           <GeneratorView onRecordUpdated={handleDataInvalidated} />
+        )}
+        {currentTab === "conference" && (
+          <ConferenceView onRecordUpdated={handleDataInvalidated} />
         )}
         {currentTab === "history" && <HistoryView updateTrigger={updateKey} />}
         {currentTab === "audit" && <AuditView onImportSuccess={handleDataInvalidated} />}

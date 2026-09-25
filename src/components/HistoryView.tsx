@@ -14,7 +14,7 @@ import {
   Eye,
 } from "lucide-react";
 import type { ContestRecord } from "../c5/types.ts";
-import type { HistorySummary, StoredContestVerification } from "../storage/types.ts";
+import type { HistorySummary } from "../storage/types.ts";
 import { repository, formatLocalDate } from "../storage/service.ts";
 import { formatBRLFromCents, formatSignedBRLFromCents } from "../utils/money.ts";
 import { ContestDetailModal } from "./ContestDetailModal.tsx";
@@ -65,10 +65,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
     });
     return unsubscribe;
   }, []);
-
-  const handleVerifyIndividual = async (contestNumber: number): Promise<StoredContestVerification> => {
-    return await repository.verifyStoredContest(contestNumber);
-  };
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -472,7 +468,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
         isOpen={Boolean(selectedRecord)}
         record={selectedRecord}
         onClose={() => setSelectedRecord(null)}
-        onVerify={handleVerifyIndividual}
       />
     </div>
   );

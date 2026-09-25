@@ -289,7 +289,7 @@ export function reconcileOfficialResult(
  * 
  * Regra:
  * NO_RECORD -> GERAR 5 JOGOS
- * DRAFT -> CONGELAR JOGOS
+ * DRAFT -> CONFIRMAR APOSTA
  * FROZEN_WAITING_RESULT -> CONSULTAR RESULTADO
  * FROZEN_RESULT_AVAILABLE -> PONTUAR CONCURSO
  * SCORED -> nenhuma ação destrutiva
@@ -315,9 +315,9 @@ export function getOperationalPrimaryAction(
       return {
         state,
         actionKey: "FREEZE_GAMES",
-        label: "CONGELAR JOGOS",
+        label: "CONFIRMAR APOSTA — R$ 17,50",
         description:
-          "Sela criptograficamente os 5 jogos com hash SHA-256 no banco local.",
+          "Congela e confirma o registro das 5 apostas de forma atômica no banco local.",
         isDestructive: true,
       };
 

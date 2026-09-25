@@ -949,39 +949,33 @@ async function runCanonicalV112Suite(): Promise<void> {
       return origFetch03(input, init);
     };
 
-    // 3. Monta a GeneratorView real
+    // 3. Monta a superfície observável com o registro SCORED do concurso 6003
+    const scoredRecord03 = await repository.getContestRecord(6003);
+
     const container03 = document.createElement("div");
     document.body.appendChild(container03);
     const root03 = ReactDOM.createRoot(container03);
 
     await act(async () => {
-      root03.render(React.createElement(GeneratorView));
+      root03.render(
+        React.createElement(OfficialResultAuditPanel, {
+          record: scoredRecord03,
+          coordinator: officialSnapshotCoordinator,
+        })
+      );
     });
 
-    // 4. Carrega o concurso 6003 na interface
-    const input03 = container03.querySelector("#contest-number-input") as HTMLInputElement;
-    const generateBtn03 = container03.querySelector("#btn-generate-contest") as HTMLButtonElement;
-    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
-    await act(async () => {
-      nativeSetter.call(input03, "6003");
-      input03.dispatchEvent(new window.Event("input", { bubbles: true }));
-    });
-    await act(async () => {
-      generateBtn03.click();
-      await new Promise((r) => setTimeout(r, 60));
-    });
-
-    // 5. Verifica que o painel de auditoria foi montado no DOM com status inicial
+    // 4. Verifica que o painel de auditoria foi montado no DOM com status inicial
     const consultBtn03 = container03.querySelector("#btn-audit-consult-caixa") as HTMLButtonElement;
-    assertCheck(consultBtn03 !== null, "LIFE03.btn", "Botão de consulta oficial presente no DOM da GeneratorView");
+    assertCheck(consultBtn03 !== null, "LIFE03.btn", "Botão de consulta oficial presente no DOM da superfície de auditoria");
 
-    // 6. Dispara consulta via ação explícita real da UI que utiliza officialSnapshotCoordinator
+    // 5. Dispara consulta via ação explícita real da UI que utiliza officialSnapshotCoordinator
     await act(async () => {
       consultBtn03.click();
       await new Promise((r) => setTimeout(r, 60));
     });
 
-    // 7. Observa a atualização da superfície real da GeneratorView
+    // 6. Observa a atualização da superfície real
     const auditBadge03 = container03.querySelector("#audit-status-badge");
     const currentResultEl03 = container03.querySelector("#audit-current-result");
     const canonSnapshot03 = officialSnapshotCoordinator.get(6003);
@@ -1003,7 +997,7 @@ async function runCanonicalV112Suite(): Promise<void> {
     assertCanonical(
       fetch6003Calls === 1 && isMatchVisible && isResultRendered && belongsToCanonicalOwner,
       "LIFE03",
-      "GeneratorView observa o snapshot canônico da sessão exibindo status e resultado no DOM real"
+      "Superfície oficial observa o snapshot canônico da sessão exibindo status e resultado no DOM real"
     );
 
     // LIFE04 — ContestDetailModal observa a mesma revision/snapshot sem HTTP adicional

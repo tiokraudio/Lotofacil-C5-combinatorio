@@ -1,7 +1,7 @@
 import React from "react";
-import { Cpu, History, ShieldCheck, Layers } from "lucide-react";
+import { Cpu, CheckCircle2, History, ShieldCheck, Layers } from "lucide-react";
 
-export type NavTab = "generator" | "history" | "audit";
+export type NavTab = "generator" | "conference" | "history" | "audit";
 
 interface HeaderProps {
   currentTab: NavTab;
@@ -52,6 +52,20 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Cpu className="w-4 h-4" />
               <span>Gerador</span>
+            </button>
+
+            <button
+              type="button"
+              id="tab-conference-btn"
+              onClick={() => onTabChange("conference")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                currentTab === "conference"
+                  ? "bg-zinc-800 text-zinc-100 shadow-xs border border-zinc-700"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Conferência</span>
             </button>
 
             <button
