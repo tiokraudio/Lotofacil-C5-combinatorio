@@ -525,7 +525,7 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
                   activeRecord.prize === undefined ? (
                     <button
                       type="button"
-                      id="btn-conf-open-record-prize"
+                      id="btn-open-record-prize"
                       onClick={() => setShowPrizeModal(true)}
                       className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all inline-flex items-center gap-1.5 cursor-pointer"
                     >
@@ -534,7 +534,8 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
                     </button>
                   ) : (
                     <div
-                      id="badge-conf-prize-recorded"
+                      id="badge-prize-recorded"
+                      title="Registrado manualmente via formulário de encerramento financeiro (MANUAL)"
                       className="px-3.5 py-2 rounded-xl bg-emerald-950/60 border border-emerald-500/60 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
                     >
                       <Award className="w-3.5 h-3.5 text-emerald-400" />

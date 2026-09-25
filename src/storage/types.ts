@@ -292,6 +292,18 @@ export interface HistoryExportData {
 }
 
 /**
+ * Harness restrito e legítimo para controle determinístico de concorrência/falha em testes.
+ * Permite simular barreira de interleaving e falha de transação sem violar encapsulamento.
+ */
+export interface StorageTestHarness {
+  beforeTransactionCommit?: (
+    contestNumber: number,
+    phase: "read" | "write"
+  ) => Promise<void> | void;
+  simulateCommitFailure?: boolean;
+}
+
+/**
  * Opções de configuração para o IndexedDB e Repository (permite injeção de IDBFactory para testes).
  */
 export interface StorageOptions {
@@ -300,4 +312,5 @@ export interface StorageOptions {
   clock?: Clock;
   notifyCoordinator?: boolean;
   refreshCoordinator?: any;
+  testHarness?: StorageTestHarness;
 }

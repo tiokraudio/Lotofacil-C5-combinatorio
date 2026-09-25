@@ -71,6 +71,7 @@ import { parseBRLToCents, formatBRLFromCents, formatSignedBRLFromCents } from ".
 import { PrizeRecordModal, getPrizeModalInitialState } from "../components/PrizeRecordModal.tsx";
 import { ContestDetailModal } from "../components/ContestDetailModal.tsx";
 import { GeneratorView } from "../components/GeneratorView.tsx";
+import { ConferenceView } from "../components/ConferenceView.tsx";
 import { repository } from "../storage/service.ts";
 import { importHistory, validateHistoryBackup, prepareHistoryImport } from "../storage/import.ts";
 import { promisifyRequest, waitForTransaction, closeDatabase, CONTEST_STORE_NAME } from "../storage/db.ts";
@@ -1159,23 +1160,17 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
     await repository.scoreStoredContest(37001, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
     await act(async () => {
-      root.render(React.createElement(GeneratorView, {}));
+      root.render(React.createElement(ConferenceView, {
+        initialContestNumber: 37001,
+        repository,
+      }));
     });
-
-    const input = container.querySelector("#contest-number-input") as HTMLInputElement;
-    const generateBtn = container.querySelector("#btn-generate-contest") as HTMLButtonElement;
-    assert(input !== null && generateBtn !== null, "Controles de formulário do GeneratorView presentes no DOM");
-
-    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
     await act(async () => {
-      nativeSetter.call(input, "37001");
-      input.dispatchEvent(new window.Event("input", { bubbles: true }));
-    });
-
-    await act(async () => {
-      generateBtn.click();
       await new Promise((r) => setTimeout(r, 60));
     });
+
+    const input = container.querySelector("#conference-contest-input") as HTMLInputElement;
+    assert(input !== null, "Controles de formulário de conferência presentes no DOM");
 
     // 1. SCORED + betPlacedAt + prize ausente: ação REGISTRAR PRÊMIO real no DOM
     const btnOpen = container.querySelector("#btn-open-record-prize") as HTMLButtonElement;
@@ -1189,7 +1184,12 @@ export async function runPrizeManagementCertification(): Promise<{ passed: numbe
     await repository.recordPrize(37001, 3500);
 
     await act(async () => {
-      generateBtn.click();
+      root.render(React.createElement(ConferenceView, {
+        initialContestNumber: 37001,
+        repository,
+      }));
+    });
+    await act(async () => {
       await new Promise((r) => setTimeout(r, 60));
     });
 

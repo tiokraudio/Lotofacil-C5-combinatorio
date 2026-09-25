@@ -36,6 +36,17 @@ defineGlobal("IDBKeyRange", IDBKeyRange);
 
 (dom.window as any).indexedDB = indexedDB;
 (dom.window as any).IDBKeyRange = IDBKeyRange;
+if (typeof globalThis.crypto !== "undefined") {
+  try {
+    Object.defineProperty(dom.window, "crypto", {
+      value: globalThis.crypto,
+      configurable: true,
+      writable: true,
+    });
+  } catch {
+    // ignore
+  }
+}
 
 if (!dom.window.matchMedia) {
   (dom.window as any).matchMedia = () => ({

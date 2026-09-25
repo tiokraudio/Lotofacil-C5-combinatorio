@@ -189,7 +189,7 @@ export async function buildContestSyncState(
       id: `discard-${draftNum}`,
       type: "DISCARD_DRAFT",
       contestNumber: draftNum,
-      label: `DESCARTAR RASCUNHO ${draftNum}`,
+      label: `REMOVER RASCUNHO ${draftNum}`,
       description: `Remover o rascunho ${draftNum} do armazenamento local para liberar a numeração.`,
       urgency: "MEDIUM",
     });

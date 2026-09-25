@@ -18,8 +18,14 @@ import React, { act } from "react";
 import ReactDOM from "react-dom/client";
 import { IDBFactory } from "fake-indexeddb";
 import { createContestDraft, freezeContestRecord, scoreFrozenContest } from "../c5/record.ts";
+import type { ContestRecord } from "../c5/types.ts";
 import { ContestRepository, deepCloneRecord } from "../storage/contestRepository.ts";
-import { CONTEST_STORE_NAME } from "../storage/db.ts";
+import fs from "fs";
+import path from "path";
+import App from "../App.tsx";
+import { openDatabase, CONTEST_STORE_NAME } from "../storage/db.ts";
+import type { StorageTestHarness } from "../storage/types.ts";
+import { runGoldenTest } from "../c5/tests/golden.test.ts";
 import {
   verifyContestIntegrity,
   buildCanonicalPayload,
@@ -36,7 +42,7 @@ import { ContestDetailModal } from "../components/ContestDetailModal.tsx";
 import { getLotteryProvider, type LotteryResultProvider, type OfficialContestResult } from "../lottery/index.ts";
 import { formatGamesCanonical, copyGamesToClipboard } from "../utils/clipboard.ts";
 import { RefreshCoordinator } from "../system/refreshCoordinator.ts";
-import { LocalSyncCoordinator } from "../system/localSyncCoordinator.ts";
+import { LocalSyncCoordinator, LOCAL_SYNC_PROTOCOL_VERSION } from "../system/localSyncCoordinator.ts";
 import { OfficialSnapshotCoordinator, officialSnapshotCoordinator } from "../sync/officialSnapshotCoordinator.ts";
 
 let totalChecksCount = 0;
@@ -201,43 +207,53 @@ async function runV113CertificationSuite(): Promise<void> {
       "Falha antes do commit mantém o registro DRAFT original integralmente no IndexedDB"
     );
 
-    // ATOM07: Falha de persistência/transação mantém DRAFT original
+    // ATOM07: Falha de transação/commit preserva o estado DRAFT original sem transição espúria
+    const harness07: StorageTestHarness = { simulateCommitFailure: false };
+    const repo07 = new ContestRepository({
+      idbFactory: new IDBFactory(),
+      testHarness: harness07,
+      refreshCoordinator: refreshCoord,
+    });
     const draft07 = createContestDraft(1007);
-    await repo.saveDraft(draft07);
-    // Simula concorrência alterando o registro antes de um commit em voo
-    const origGetRecord07 = repo.getContestRecord.bind(repo);
-    let intercepted07 = false;
-    repo.getContestRecord = async (num: number) => {
-      const rec = await origGetRecord07(num);
-      if (num === 1007 && !intercepted07 && rec) {
-        intercepted07 = true;
-        // Mutação no banco antes do commit do confirmDraftBet para acionar detecção TOCTOU
-        const db = await (repo as any).getDB();
-        try {
-          const tx = db.transaction("contests", "readwrite");
-          const store = tx.objectStore("contests");
-          const modified = deepCloneRecord(rec);
-          modified.generation.games[0][0] = modified.generation.games[0][0] === 1 ? 2 : 1;
-          store.put(modified);
-        } finally {
-          db.close();
-        }
-      }
-      return rec;
-    };
+    await repo07.saveDraft(draft07);
+
+    const events07: string[] = [];
+    const unsub07 = refreshCoord.subscribe((_rev: number, reason: string) => {
+      events07.push(reason);
+    });
+
+    // Injeta falha controlada de commit na transação do storage
+    harness07.simulateCommitFailure = true;
 
     let failed07 = false;
     try {
-      await repo.confirmDraftBet(1007);
+      await repo07.confirmDraftBet(1007);
     } catch {
       failed07 = true;
     }
-    repo.getContestRecord = origGetRecord07;
-    const stored07 = await repo.getContestRecord(1007);
+    unsub07();
+
+    // 1. Reler pelo API público
+    const stored07 = await repo07.getContestRecord(1007);
+
     assertCanonical(
-      failed07 && stored07 !== null && stored07.status === "DRAFT",
+      failed07 &&
+        stored07 !== null &&
+        // 2. Provar DRAFT
+        stored07.status === "DRAFT" &&
+        // 3. Provar frozenAt === undefined
+        stored07.frozenAt === undefined &&
+        // 4. Provar betPlacedAt === undefined
+        stored07.betPlacedAt === undefined &&
+        // 5. Provar integrityHash === undefined
+        stored07.integrityHash === undefined &&
+        // 6. Provar geração original intacta
+        stored07.generationId === draft07.generationId &&
+        JSON.stringify(stored07.generation.games) === JSON.stringify(draft07.generation.games) &&
+        // 7. Provar zero BET_CONFIRMED
+        events07.filter((e) => e === "BET_CONFIRMED").length === 0,
       "ATOM07",
-      "Falha controlada de transação/TOCTOU preserva o estado DRAFT sem transição espúria para FROZEN"
+      "Falha controlada de transação/persistência preserva o estado DRAFT original sem transição espúria para FROZEN"
     );
 
     // ATOM08: DRAFT inválido/adulterado é rejeitado sem mutação parcial
@@ -324,20 +340,59 @@ async function runV113CertificationSuite(): Promise<void> {
       "Concurso inexistente gera e persiste exatamente uma geração no IndexedDB"
     );
 
-    // REGEN02: DRAFT existente é carregado; não gera novamente
-    let rngCalls02 = 0;
-    const trackedRng02 = () => {
-      rngCalls02++;
-      return 0.5;
+    // REGEN02: DRAFT existente solicitado pelo usuário é carregado pelo caminho real do Gerador sem nova geração
+    const draft02 = createContestDraft(2002);
+    await repo.saveDraft(draft02);
+
+    let saveDraftCalls02 = 0;
+    const origSaveDraft02 = repo.saveDraft.bind(repo);
+    repo.saveDraft = async (r: ContestRecord) => {
+      saveDraftCalls02++;
+      return origSaveDraft02(r);
     };
-    // Tentativa de recarregar o concurso existente
-    const loaded02 = await repo.getContestRecord(2001);
+
+    // Monta o Gerador real conectado ao mesmo repositório
+    const container02 = document.createElement("div");
+    document.body.appendChild(container02);
+    const root02 = ReactDOM.createRoot(container02);
+
+    await act(async () => {
+      root02.render(React.createElement(GeneratorView, { repository: repo }));
+    });
+
+    // Usuário solicita o mesmo concurso existente
+    const input02 = container02.querySelector("#contest-number-input") as HTMLInputElement;
+    const form02 = container02.querySelector("form") as HTMLFormElement;
+    if (input02 && form02) {
+      await act(async () => {
+        input02.value = "2002";
+        input02.dispatchEvent(new Event("input", { bubbles: true }));
+        form02.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+    }
+
+    // Aguarda microtarefas da operação
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 40));
+    });
+
+    // Reler estado persistido no banco
+    const loaded02 = await repo.getContestRecord(2002);
+
+    await act(async () => {
+      root02.unmount();
+    });
+    container02.remove();
+    repo.saveDraft = origSaveDraft02;
+
     assertCanonical(
       loaded02 !== null &&
-      loaded02.generationId === draft01.generationId &&
-      rngCalls02 === 0,
+        loaded02.generationId === draft02.generationId &&
+        JSON.stringify(loaded02.generation.games) === JSON.stringify(draft02.generation.games) &&
+        loaded02.generatedAt === draft02.generatedAt &&
+        saveDraftCalls02 === 0,
       "REGEN02",
-      "DRAFT existente é carregado diretamente da base com zero consumo de RNG e sem nova geração"
+      "DRAFT existente solicitado pelo usuário é carregado pelo caminho real do Gerador sem nova geração ou novo save"
     );
 
     // REGEN03: FROZEN existente é carregado; não gera novamente
@@ -468,51 +523,61 @@ async function runV113CertificationSuite(): Promise<void> {
       "Operação perdedora não corrompe nem sobrescreve o estado confirmado pelo vencedor"
     );
 
-    // RACE03: Mudança concorrente entre snapshot e commit é detectada por TOCTOU
-    const draft03 = createContestDraft(3003);
-    await repo.saveDraft(draft03);
+    // RACE03: Mudança concorrente entre snapshot e commit é detectada por TOCTOU e abortada
+    const sharedIdb03 = new IDBFactory();
+    let barrierReached03 = false;
+    let resolveBarrier03: () => void = () => {};
+    const barrierPromise03 = new Promise<void>((resolve) => {
+      resolveBarrier03 = resolve;
+    });
 
-    // Instrumenta para simular mutação concorrente externa exatamente após a leitura do snapshot
-    const origGetRecord03 = repo.getContestRecord.bind(repo);
-    let mutated03 = false;
-    repo.getContestRecord = async (num: number) => {
-      const snap = await origGetRecord03(num);
-      if (num === 3003 && !mutated03 && snap) {
-        mutated03 = true;
-        // Mutação concorrente externa no IndexedDB
-        const db = await (repo as any).getDB();
-        try {
-          const tx = db.transaction(CONTEST_STORE_NAME, "readwrite");
-          const store = tx.objectStore(CONTEST_STORE_NAME);
-          const mod = deepCloneRecord(snap);
-          mod.generationId = "external-concurrent-uuid";
-          store.put(mod);
-          await new Promise<void>((resolve, reject) => {
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-            tx.onabort = () => reject(tx.error);
-          });
-        } finally {
-          db.close();
+    const harness03: StorageTestHarness = {
+      beforeTransactionCommit: async (contestNumber: number, phase: string) => {
+        if (contestNumber === 3003 && phase === "read" && !barrierReached03) {
+          barrierReached03 = true;
+          // Aguarda deterministicamente a operação B alterar legitimamente o registro
+          await barrierPromise03;
         }
-      }
-      return snap;
+      },
     };
+
+    const repoA03 = new ContestRepository({ idbFactory: sharedIdb03, testHarness: harness03 });
+    const repoB03 = new ContestRepository({ idbFactory: sharedIdb03 });
+
+    const draft03 = createContestDraft(3003);
+    await repoA03.saveDraft(draft03);
 
     let toctouAborted03 = false;
     let actualError03 = "";
-    try {
-      await repo.confirmDraftBet(3003);
-    } catch (err: any) {
-      actualError03 = String(err?.message || err);
-      if (err?.message && err.message.includes("mudou durante a operação")) {
-        toctouAborted03 = true;
+
+    // Operação A lê snapshot e atinge a barreira determinística antes de comitar
+    const opAPromise = (async () => {
+      try {
+        await repoA03.confirmDraftBet(3003);
+      } catch (err: any) {
+        actualError03 = String(err?.message || err);
+        if (err?.message && err.message.includes("mudou durante a operação")) {
+          toctouAborted03 = true;
+        }
       }
+    })();
+
+    // Aguarda até A atingir a barreira determinística
+    while (!barrierReached03) {
+      await new Promise((r) => setTimeout(r, 0));
     }
-    repo.getContestRecord = origGetRecord03;
+
+    // Operação B altera legitimamente o registro via API pública
+    await repoB03.confirmDraftBet(3003);
+
+    // Libera a Operação A para prosseguir e reler na transação
+    resolveBarrier03();
+    await opAPromise;
+
+    const stored03 = await repoB03.getContestRecord(3003);
 
     assertCanonical(
-      toctouAborted03,
+      toctouAborted03 && stored03 !== null && stored03.status === "FROZEN",
       "RACE03",
       `Mudança concorrente entre snapshot e commit é detectada por TOCTOU e abortada com segurança (got: ${actualError03})`
     );
@@ -783,31 +848,53 @@ async function runV113CertificationSuite(): Promise<void> {
       "Header real contém Gerador, Conferência, Histórico e Auditoria com NavTab conference suportado"
     );
 
-    // FLOW02: Selecionar Conferência pela UI real monta ConferenceView
-    let selectedTab02 = "";
-    await act(async () => {
-      root01.render(React.createElement(Header, {
-        currentTab: "generator",
-        onTabChange: (t) => {
-          selectedTab02 = t;
-        },
-      }));
-    });
-
-    const confBtn02 = container01.querySelector("#tab-conference-btn") as HTMLButtonElement;
-    await act(async () => {
-      confBtn02.click();
-    });
-
     await act(async () => {
       root01.unmount();
     });
     container01.remove();
 
+    // FLOW02: App real monta; usuário clica na aba Conferência; GeneratorView deixa de ser ativa e ConferenceView real é montada
+    const appContainer02 = document.createElement("div");
+    document.body.appendChild(appContainer02);
+    const appRoot02 = ReactDOM.createRoot(appContainer02);
+
+    await act(async () => {
+      appRoot02.render(React.createElement(App));
+    });
+
+    // Aguarda conclusão do bootstrap do App
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 60));
+    });
+
+    const genInputBefore02 = appContainer02.querySelector("#contest-number-input");
+    const confInputBefore02 = appContainer02.querySelector("#conference-contest-input");
+    const confTabBtn02 = appContainer02.querySelector("#tab-conference-btn") as HTMLButtonElement;
+
+    // Usuário clica no botão real de navegação da aba Conferência
+    await act(async () => {
+      confTabBtn02?.click();
+    });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+    });
+
+    const genInputAfter02 = appContainer02.querySelector("#contest-number-input");
+    const confInputAfter02 = appContainer02.querySelector("#conference-contest-input");
+
+    await act(async () => {
+      appRoot02.unmount();
+    });
+    appContainer02.remove();
+
     assertCanonical(
-      selectedTab02 === "conference",
+      genInputBefore02 !== null &&
+        confInputBefore02 === null &&
+        genInputAfter02 === null &&
+        confInputAfter02 !== null,
       "FLOW02",
-      "Ação do usuário no Header seleciona e ativa a aba Conferência"
+      "App real: usuário clica na aba Conferência, GeneratorView deixa de ser ativa e ConferenceView real é montada"
     );
 
     // FLOW03: GeneratorView FROZEN não contém entrada operacional de resultado/score
@@ -1099,10 +1186,10 @@ async function runV113CertificationSuite(): Promise<void> {
     await repo.saveDraft(draft06);
     await repo.confirmDraftBet(6006);
 
-    // Adulteração manual no IndexedDB simulando corrupção externa
-    const db06 = await (repo as any).getDB();
+    // Adulteração manual no IndexedDB simulando corrupção externa via infraestrutura legítima
+    const rawDB06 = await openDatabase({ idbFactory: idb });
     try {
-      const tx = db06.transaction(CONTEST_STORE_NAME, "readwrite");
+      const tx = rawDB06.transaction(CONTEST_STORE_NAME, "readwrite");
       const store = tx.objectStore(CONTEST_STORE_NAME);
       const stored = await new Promise<any>((res) => {
         const req = store.get(6006);
@@ -1116,7 +1203,7 @@ async function runV113CertificationSuite(): Promise<void> {
         tx.onabort = () => reject(tx.error);
       });
     } finally {
-      db06.close();
+      rawDB06.close();
     }
 
     let scoringBlocked06 = false;
@@ -1140,22 +1227,43 @@ async function runV113CertificationSuite(): Promise<void> {
   // ===========================================================================
   console.log("\n--- 7. BARRIER01–BARRIER04 — BARREIRAS C5, PERSISTÊNCIA, V1.12 E VERSÕES ---");
   {
-    // BARRIER01: C5 combinatória aprovada
-    const sampleGen01 = createContestDraft(7001).generation;
-    const c5Valid01 = validateC5(sampleGen01);
+    // BARRIER01: Motor C5 combinatório matematicamente íntegro e validado pelo Golden Standard e processo formal
+    const goldenResult = runGoldenTest();
     assertCanonical(
-      c5Valid01.valid === true && sampleGen01.games.length === 5,
+      goldenResult.allPassed === true,
       "BARRIER01",
-      "Motor C5 combinatório matematicamente íntegro e validado com 5 jogos canônicos"
+      "Motor C5 combinatório matematicamente íntegro e validado pelo Golden Standard e processo formal (Golden, Massive e Exhaustive)"
     );
 
-    // BARRIER02: Persistência: BACKUP_SCHEMA_VERSION = 3, LOCAL_SYNC_PROTOCOL_VERSION = 1
-    const backupVersion02 = APPLICATION_MANIFEST.backupSchemaVersion;
-    const syncVersion02 = 1; // LOCAL_SYNC_PROTOCOL_VERSION
+    // BARRIER02: Persistência mantida com BACKUP_SCHEMA_VERSION = 3, LOCAL_SYNC_PROTOCOL_VERSION = 1 e ausência de novos campos persistidos
+    const repo02 = new ContestRepository({ idbFactory: new IDBFactory() });
+    const draft02 = createContestDraft(7002);
+    await repo02.saveDraft(draft02);
+    const sampleRecord02 = await repo02.confirmDraftBet(7002);
+    const ALLOWED_CONTEST_RECORD_FIELDS = new Set([
+      "status",
+      "contestNumber",
+      "generationId",
+      "algorithmVersion",
+      "generatedAt",
+      "generation",
+      "frozenAt",
+      "integrityHash",
+      "betPlacedAt",
+      "officialResult",
+      "scoredAt",
+      "score",
+      "prize",
+    ]);
+    const recordKeys02 = Object.keys(sampleRecord02);
+    const hasOnlyAllowedFields02 = recordKeys02.every((k) => ALLOWED_CONTEST_RECORD_FIELDS.has(k));
+
     assertCanonical(
-      backupVersion02 === 3 && syncVersion02 === 1,
+      APPLICATION_MANIFEST.backupSchemaVersion === 3 &&
+        LOCAL_SYNC_PROTOCOL_VERSION === 1 &&
+        hasOnlyAllowedFields02,
       "BARRIER02",
-      "Persistência mantida com BACKUP_SCHEMA_VERSION = 3 e LOCAL_SYNC_PROTOCOL_VERSION = 1"
+      "Persistência mantida com BACKUP_SCHEMA_VERSION = 3, LOCAL_SYNC_PROTOCOL_VERSION = 1 e ausência de novos campos persistidos no ContestRecord"
     );
 
     // BARRIER03: V1.12 intacta (provider imutável, ownership único, zero provider swapping)
@@ -1167,13 +1275,50 @@ async function runV113CertificationSuite(): Promise<void> {
       "Arquitetura V1.12 preservada com provider imutável e coordenador canônico único de sessão"
     );
 
-    // BARRIER04: Versões e RNG: APP_VERSION = 1.13.0, C5_ALGORITHM_VERSION = C5-1.0.0, Math.random = ZERO
+    // BARRIER04: Versões e RNG: APP_VERSION = 1.13.0, C5_ALGORITHM_VERSION = C5-1.0.0, BACKUP_SCHEMA = 3, PROTOCOL = 1, Math.random = ZERO
+    let runtimeMathRandomCalls04 = 0;
+    const origMathRandom04 = Math.random;
+    Math.random = () => {
+      runtimeMathRandomCalls04++;
+      return origMathRandom04();
+    };
+
+    // Executa operações reais de produção sob espionagem
+    const testGen04 = createContestDraft(7004);
+    validateC5(testGen04.generation);
+    Math.random = origMathRandom04;
+
+    // Varredura estática real do código de produção para assegurar ZERO chamadas a Math.random()
+    const prodDirs = ["src/c5", "src/storage", "src/sync", "src/lottery", "src/components", "src/system"];
+    let prodMathRandomMatches = 0;
+    const scanDir = (dir: string) => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const ent of entries) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) {
+          if (!ent.name.includes("test")) scanDir(full);
+        } else if (ent.isFile() && (ent.name.endsWith(".ts") || ent.name.endsWith(".tsx"))) {
+          if (ent.name.includes("test")) continue;
+          const content = fs.readFileSync(full, "utf8");
+          // Remove comentários de bloco e linha para inspecionar código executável real
+          const codeOnly = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "");
+          const matches = codeOnly.match(/Math\.random\s*\(/g);
+          if (matches) prodMathRandomMatches += matches.length;
+        }
+      }
+    };
+    prodDirs.forEach(scanDir);
+
     assertCanonical(
       APP_VERSION === "1.13.0" &&
-      APPLICATION_MANIFEST.appVersion === "1.13.0" &&
-      C5_ALGORITHM_VERSION === "C5-1.0.0",
+        APPLICATION_MANIFEST.appVersion === "1.13.0" &&
+        C5_ALGORITHM_VERSION === "C5-1.0.0" &&
+        APPLICATION_MANIFEST.backupSchemaVersion === 3 &&
+        LOCAL_SYNC_PROTOCOL_VERSION === 1 &&
+        runtimeMathRandomCalls04 === 0 &&
+        prodMathRandomMatches === 0,
       "BARRIER04",
-      "APP_VERSION 1.13.0 e C5_ALGORITHM_VERSION C5-1.0.0 conferidos com precisão canônica"
+      "APP_VERSION 1.13.0, C5_ALGORITHM_VERSION C5-1.0.0, BACKUP_SCHEMA 3, PROTOCOL 1 e ZERO Math.random em produção rigorosamente comprovados"
     );
   }
 

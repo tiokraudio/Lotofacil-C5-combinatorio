@@ -19,9 +19,6 @@ import { createContestDraft } from "../c5/index.ts";
 import { repository, formatLocalDate } from "../storage/service.ts";
 import { GamesDisplay } from "./GamesDisplay.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
-import { HashViewerModal } from "./HashViewerModal.tsx";
-import { PrizeRecordModal } from "./PrizeRecordModal.tsx";
-import { formatBRLFromCents } from "../utils/money.ts";
 import { getLotteryProvider } from "../lottery/index.ts";
 import type { ContestSyncState } from "../sync/index.ts";
 import { SyncStatusPanel } from "./SyncStatusPanel.tsx";
@@ -39,9 +36,14 @@ import {
 
 interface GeneratorViewProps {
   onRecordUpdated?: () => void;
+  repository?: any;
 }
 
-export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated }) => {
+export const GeneratorView: React.FC<GeneratorViewProps> = ({
+  onRecordUpdated,
+  repository: propRepository,
+}) => {
+  const repo = propRepository ?? repository;
   const [contestInput, setContestInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
@@ -50,7 +52,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
   const controllerRef = useRef<GeneratorOperationalController | null>(null);
   if (!controllerRef.current) {
     controllerRef.current = new GeneratorOperationalController(
-      repository,
+      repo,
       refreshCoordinator,
       getLotteryProvider
     );
@@ -66,8 +68,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
 
   // Modais de confirmação
   const [showBetConfirmModal, setShowBetConfirmModal] = useState<boolean>(false);
-  const [showHashModal, setShowHashModal] = useState<boolean>(false);
-  const [showPrizeModal, setShowPrizeModal] = useState<boolean>(false);
 
   const [lockState, setLockState] = useState<ActionLockState>({
     isLocked: actionLockController.isLocked(),
@@ -194,7 +194,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     setIsLoading(true);
     clearFeedback();
     try {
-      const record = await repository.getContestRecord(contestNumber);
+      const record = await repo.getContestRecord(contestNumber);
       if (record) {
         setContestInput(String(contestNumber));
         setActiveRecord(record);
@@ -231,7 +231,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     setIsLoading(true);
     clearFeedback();
     try {
-      const record = await repository.getContestRecord(contestNumber);
+      const record = await repo.getContestRecord(contestNumber);
       if (record) {
         setContestInput(String(contestNumber));
         setActiveRecord(record);
@@ -256,7 +256,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     setIsLoading(true);
     clearFeedback();
     try {
-      const record = await repository.getContestRecord(contestNumber);
+      const record = await repo.getContestRecord(contestNumber);
       if (record) {
         setContestInput(String(contestNumber));
         setActiveRecord(record);
@@ -314,7 +314,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
     setIsLoading(true);
     try {
       // 1.1 Verificar no IndexedDB se o concurso já existe (DRAFT, FROZEN, SCORED)
-      const existing = await repository.getContestRecord(contestNum);
+      const existing = await repo.getContestRecord(contestNum);
 
       if (existing) {
         // NÃO gerar outro! Carregar o existente sem consumir RNG e sem alterar dados
@@ -329,8 +329,8 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
       } else {
         // 1.2 Criar DRAFT e salvar
         const draft = createContestDraft(contestNum);
-        await repository.saveDraft(draft);
-        const storedDraft = await repository.getContestRecord(contestNum);
+        await repo.saveDraft(draft);
+        const storedDraft = await repo.getContestRecord(contestNum);
         setActiveRecord(storedDraft);
         setFeedback({
           type: "success",
@@ -342,7 +342,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
       }
     } catch (err: any) {
       try {
-        const recheck = await repository.getContestRecord(contestNum);
+        const recheck = await repo.getContestRecord(contestNum);
         if (recheck) {
           setActiveRecord(recheck);
           setFeedback({
@@ -617,7 +617,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                         className="px-2.5 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 font-mono text-[11px] font-medium flex items-center gap-1"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Integridade: verificada</span>
+                        <span>Integridade verificada</span>
                       </span>
                     </div>
                   )}
@@ -635,7 +635,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                         className="px-2.5 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 font-mono text-[11px] font-medium flex items-center gap-1"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Integridade: verificada</span>
+                        <span>Integridade verificada</span>
                       </span>
                     </div>
                   )}
@@ -699,39 +699,14 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                 {(activeRecord.status === "FROZEN" || activeRecord.status === "SCORED") && (
                   <>
                     {activeRecord.betPlacedAt ? (
-                      <>
-                        <div
-                          id="badge-bet-confirmed"
-                          className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
-                          title={`Aposta oficial registrada em ${formatLocalDate(activeRecord.betPlacedAt)}`}
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>APOSTA REGISTRADA (R$ 17,50)</span>
-                        </div>
-
-                        {activeRecord.status === "SCORED" && (
-                          activeRecord.prize === undefined ? (
-                            <button
-                              type="button"
-                              id="btn-open-record-prize"
-                              onClick={() => setShowPrizeModal(true)}
-                              className="px-3.5 py-2 text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/40 hover:bg-emerald-600/80 border border-emerald-500/50 rounded-xl transition-all inline-flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Award className="w-3.5 h-3.5" />
-                              <span>REGISTRAR PRÊMIO</span>
-                            </button>
-                          ) : (
-                            <div
-                              id="badge-prize-recorded"
-                              title="Registrado manualmente via formulário de encerramento financeiro (MANUAL)"
-                              className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
-                            >
-                              <Award className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>PRÊMIO: {formatBRLFromCents(activeRecord.prize.amountCents)}</span>
-                            </div>
-                          )
-                        )}
-                      </>
+                      <div
+                        id="badge-bet-confirmed"
+                        className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-semibold inline-flex items-center gap-1.5"
+                        title={`Aposta oficial registrada em ${formatLocalDate(activeRecord.betPlacedAt)}`}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>APOSTA REGISTRADA (R$ 17,50)</span>
+                      </div>
                     ) : activeRecord.status === "FROZEN" ? (
                       <button
                         type="button"
@@ -762,7 +737,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
             {activeRecord.status === "FROZEN" && (
               <div className="mt-4 p-3 rounded-xl bg-blue-950/20 border border-blue-500/30 text-xs text-blue-200">
                 <p>
-                  🔒 <strong>Aposta Registrada e Congelada:</strong> Os 5 jogos estão oficialmente registrados com hash SHA-256. Para conferir com a apuração da CAIXA, acesse a aba <strong>Conferência</strong>.
+                  🔒 <strong>Aposta Registrada e Congelada:</strong> Os 5 jogos estão oficialmente registrados com integridade criptográfica. Para conferir com a apuração da CAIXA, acesse a aba <strong>Conferência</strong>.
                 </p>
               </div>
             )}
@@ -777,7 +752,7 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
               >
                 {isDetailsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 <span className="font-mono uppercase font-semibold text-[11px] tracking-wider">
-                  {isDetailsOpen ? "Ocultar Detalhes Técnicos" : "DETALHES TÉCNICOS (ID, algoritmo e hash)"}
+                  {isDetailsOpen ? "Ocultar Detalhes Técnicos" : "DETALHES TÉCNICOS (ID e algoritmo)"}
                 </span>
               </button>
 
@@ -795,18 +770,9 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
                     <span className="text-zinc-200">{activeRecord.algorithmVersion} • Formato Canônico C₅</span>
                   </div>
                   {activeRecord.integrityHash && (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pt-1 border-t border-zinc-800/60">
-                      <span className="text-zinc-400 font-sans">Hash SHA-256 Completo:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 break-all text-[11px]">{activeRecord.integrityHash}</span>
-                        <button
-                          type="button"
-                          onClick={() => setShowHashModal(true)}
-                          className="px-2 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-300 hover:text-white cursor-pointer"
-                        >
-                          Auditar
-                        </button>
-                      </div>
+                    <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-800/60 text-emerald-400">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span className="font-sans text-xs">Integridade verificada</span>
                     </div>
                   )}
                 </div>
@@ -900,30 +866,6 @@ export const GeneratorView: React.FC<GeneratorViewProps> = ({ onRecordUpdated })
         isLoading={isLoading && lockState.currentOperation === "CONFIRM_BET"}
         onConfirm={handleConfirmBet}
         onCancel={() => setShowBetConfirmModal(false)}
-      />
-
-      {/* Modal de Visualização de Hash */}
-      <HashViewerModal
-        isOpen={showHashModal}
-        record={activeRecord}
-        onClose={() => setShowHashModal(false)}
-      />
-
-      {/* Modal de Registro de Prêmio */}
-      <PrizeRecordModal
-        isOpen={showPrizeModal}
-        record={activeRecord}
-        isLoading={isLoading}
-        onClose={() => setShowPrizeModal(false)}
-        onRecordPrize={async (amountCents: number) => {
-          setIsLoading(true);
-          try {
-            await controller.recordPrize(amountCents);
-            setShowPrizeModal(false);
-          } finally {
-            setIsLoading(false);
-          }
-        }}
       />
 
       {/* Folha de Impressão Oficial Limpa (visível exclusivamente em @media print) */}

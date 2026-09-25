@@ -62,7 +62,7 @@ export function createMulberry32(seed: number): RNG {
  *
  * Em produção (quando rng não é fornecido ou é defaultRNG), utiliza seleção inteira nativa
  * via cryptoRandomInt (globalThis.crypto.getRandomValues com rejection sampling), garantindo:
- * 1. Nenhuma dependência de Math.random();
+ * 1. Nenhuma dependência de gerador pseudoaleatório inseguro;
  * 2. Ausência total de viés de módulo (zero modulo bias);
  * 3. Todas as 25! permutações com probabilidade estritamente idêntica (1 / 25!).
  *

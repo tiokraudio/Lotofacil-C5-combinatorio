@@ -43,6 +43,7 @@ import {
 } from "../system/localSyncCoordinator.ts";
 import { createContestDraft } from "../c5/record.ts";
 import { closeDatabase } from "../storage/db.ts";
+import { OfficialSnapshotCoordinator } from "../sync/officialSnapshotCoordinator.ts";
 import {
   GeneratorOperationalController,
   HistoryOperationalController,
@@ -631,10 +632,13 @@ export async function runMultiTabSyncTests(): Promise<{ passed: number; failed: 
 
     const mockProviderA = new MockCaixaProvider();
     mockProviderA.getContestDelayMs = 0;
+    const coordA = new OfficialSnapshotCoordinator({ provider: mockProviderA });
     const controllerA = new GeneratorOperationalController(
       tabA.repo,
       tabA.coord,
-      () => mockProviderA
+      () => mockProviderA,
+      true,
+      coordA
     );
     await controllerA.refreshLocalState();
     const frozenRecord = await tabA.repo.getContestRecord(15000);
@@ -698,11 +702,14 @@ export async function runMultiTabSyncTests(): Promise<{ passed: number; failed: 
     const mockProviderA = new MockCaixaProvider();
     // Configura delay controlado de 60ms na consulta em voo
     mockProviderA.getContestDelayMs = 60;
+    const coordA = new OfficialSnapshotCoordinator({ provider: mockProviderA });
 
     const controllerA = new GeneratorOperationalController(
       tabA.repo,
       tabA.coord,
-      () => mockProviderA
+      () => mockProviderA,
+      true,
+      coordA
     );
     await controllerA.refreshLocalState();
     const frozenRecord = await tabA.repo.getContestRecord(16000);

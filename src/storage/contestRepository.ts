@@ -545,6 +545,10 @@ export class ContestRepository {
 
     const db = await this.getDB();
     try {
+      if (this.options?.testHarness?.beforeTransactionCommit) {
+        await this.options.testHarness.beforeTransactionCommit(contestNumber, "read");
+      }
+
       const tx = db.transaction(CONTEST_STORE_NAME, "readwrite");
       const store = tx.objectStore(CONTEST_STORE_NAME);
 
@@ -553,6 +557,15 @@ export class ContestRepository {
         throw new Error(
           `O registro do concurso ${contestNumber} mudou durante a operação. Confirmação de rascunho cancelada para evitar sobrescrita concorrente.`
         );
+      }
+
+      if (this.options?.testHarness?.simulateCommitFailure) {
+        tx.abort();
+        throw new Error("Falha simulada de persistência/commit na transação.");
+      }
+
+      if (this.options?.testHarness?.beforeTransactionCommit) {
+        await this.options.testHarness.beforeTransactionCommit(contestNumber, "write");
       }
 
       const clone = deepCloneRecord(updated);
