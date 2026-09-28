@@ -1,0 +1,44 @@
+{
+  "runId": "run-003",
+  "baselineCommit": "9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388",
+  "baselineParent": "9067721681b8396cfb0fff5f30c8e11cfa74837f",
+  "repository": "tiokraudio/Lotofacil-C5-combinatorio",
+  "appVersion": "1.13.0",
+  "c5AlgorithmVersion": "C5-1.0.0",
+  "c5MemoryAlgorithmVersion": "C5-Memory-2.0.0",
+  "certificationProtocolVersion": "C5M-CERT-1.0",
+  "frozenArtifacts": [
+    "Especificação Matemática C5-Memory / MAX-LEXIMIN Johnson v2.0",
+    "Matriz Canônica de Certificação — 72 cenários",
+    "Protocolo de Certificação C5M-CERT-1.0"
+  ],
+  "mathematicalConstants": {
+    "K": 500,
+    "universe": "U = {1,...,25}",
+    "universeSize": 25,
+    "gameSize": 15,
+    "gamesPerC5": 5,
+    "distance": "dJ(A,B) = 15 - |A ∩ B|",
+    "objective": "LEXMIN(n0,...,n9)",
+    "tieBreaker": "menor índice no pool"
+  },
+  "historicalRunsPolicy": {
+    "reusePolicy": "STRICT_PROHIBITION",
+    "description": "Execuções 001 e 002 são consideradas exclusivamente registros históricos. É proibido reutilizar como evidência qualquer vetor Golden, resultado REF×OPT, métrica de performance ou aprovação (72/72, 100k/100k, etc.) anterior. A Execução 003 é iniciada de forma 100% limpa."
+  },
+  "environment": {
+    "nodeVersion": "v22.23.2",
+    "npmVersion": "10.9.8",
+    "os": "Debian GNU/Linux 12 (bookworm) / Linux 4.19.0-gvisor",
+    "architecture": "x86_64",
+    "toolsValidated": {
+      "tsx": "4.23.13",
+      "git": "2.34.1"
+    }
+  },
+  "initialWorkingTreeState": "CLEAN",
+  "productionFilesModified": 0,
+  "stage": "CP0",
+  "status": "CP0_PASS",
+  "timestamp": "2026-09-28T21:09:00.000Z"
+}
