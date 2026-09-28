@@ -1,0 +1,731 @@
+{
+  "timestamp": "2026-09-28T21:24:20.141Z",
+  "totalScenarios": 72,
+  "passedScenarios": 69,
+  "pendingScenarios": 3,
+  "failedScenarios": 0,
+  "suspendedScenarios": 0,
+  "totalChecksExecuted": 168,
+  "results": [
+    {
+      "scenarioId": "DOM01",
+      "category": "DOM",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Aceitação exclusiva de inteiros no intervalo [1..25]",
+      "observed": "Inteiros em 1..25 aceitos; -1 e 30 rigorosamente rejeitados",
+      "durationMs": 0.11,
+      "evidence": "Dezenas válidas aceitas e dezenas fora do intervalo [1..25] rejeitadas"
+    },
+    {
+      "scenarioId": "DOM02",
+      "category": "DOM",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Tamanho exato do jogo igual a 15",
+      "observed": "Jogos com 14 e 16 dezenas rejeitados; jogo com 15 aceito",
+      "durationMs": 0.01,
+      "evidence": "Cardeal do jogo estritamente verificado como |A| === 15"
+    },
+    {
+      "scenarioId": "DOM03",
+      "category": "DOM",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Rejeição da dezena 0",
+      "observed": "Dezena 0 rejeitada com sucesso",
+      "durationMs": 0,
+      "evidence": "Dezena 0 rigorosamente barrada pelo validador explícito"
+    },
+    {
+      "scenarioId": "DOM04",
+      "category": "DOM",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Rejeição da dezena 26",
+      "observed": "Dezena 26 rejeitada com sucesso",
+      "durationMs": 0,
+      "evidence": "Dezena 26 rigorosamente barrada pelo limite superior 25"
+    },
+    {
+      "scenarioId": "DOM05",
+      "category": "DOM",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Rejeição de dezenas repetidas dentro do mesmo jogo",
+      "observed": "Jogo com dezena 1 duplicada (14 distintos) rejeitado",
+      "durationMs": 0,
+      "evidence": "Exigência estrita de 15 dezenas mutuamente distintas"
+    },
+    {
+      "scenarioId": "DOM06",
+      "category": "DOM",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "C(25, 15) = 3.268.760",
+      "observed": "C(25, 15) calculado independentemente via BigInt: 3268760",
+      "durationMs": 0.06,
+      "evidence": "Cardinalidade do espaço amostral Johnson C(25,15) comprovada como 3.268.760"
+    },
+    {
+      "scenarioId": "C501",
+      "category": "C5",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Candidato C5 contém exatamente 5 jogos",
+      "observed": "Geração possui exatamente 5 jogos",
+      "durationMs": 2.55,
+      "evidence": "Cada candidato da arquitetura C5 é composto estritamente por 5 jogos"
+    },
+    {
+      "scenarioId": "C502",
+      "category": "C5",
+      "status": "PASS",
+      "checksExecuted": 5,
+      "expected": "Todos os 5 jogos cumprem o contrato de 15 dezenas distintas em 1..25",
+      "observed": "5/5 jogos individuais validados com sucesso",
+      "durationMs": 0.22,
+      "evidence": "Integridade dos 5 jogos de uma aposta C5 validada individualmente"
+    },
+    {
+      "scenarioId": "C503",
+      "category": "C5",
+      "status": "PASS",
+      "checksExecuted": 10,
+      "expected": "Candidatos gerados cumprem 100% das invariantes C5-1.0.0",
+      "observed": "10/10 gerações C5 auditadas com validateC5 resultaram em valid === true",
+      "durationMs": 4.8,
+      "evidence": "Gerações do motor combinatório canônico são 100% admissíveis"
+    },
+    {
+      "scenarioId": "C504",
+      "category": "C5",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Candidato inválido é rejeitado sem mutação ou autocorreção silenciosa",
+      "observed": "validateC5 rejeitou a geração corrompida mantendo o dado intacto",
+      "durationMs": 0.35,
+      "evidence": "Validador não aplica mutação silenciosa em candidatos corrompidos"
+    },
+    {
+      "scenarioId": "C505",
+      "category": "C5",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Imutabilidade semântica e física dos jogos após avaliação e seleção",
+      "observed": "Jogos do candidato permaneceram estritamente inalterados",
+      "durationMs": 0.78,
+      "evidence": "Seletor C5-Memory não altera nem muta o candidato selecionado"
+    },
+    {
+      "scenarioId": "C506",
+      "category": "C5",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Vencedor provém integralmente de um único candidato sem mistura de jogos",
+      "observed": "Vencedor corresponde 100% a um candidato do pool sem recombinação",
+      "durationMs": 1.42,
+      "evidence": "Ausência total de cruzamento genético ou recombinação entre candidatos"
+    },
+    {
+      "scenarioId": "C507",
+      "category": "C5",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Rejeição de candidato com mais de 5 jogos (ausência de 6º jogo)",
+      "observed": "Comprovado: conjunto de 6 jogos rejeitado por violar cardeal 5",
+      "durationMs": 0.4,
+      "evidence": "Candidatos C5 possuem cardinalidade fixa em exatamente 5 jogos"
+    },
+    {
+      "scenarioId": "C508",
+      "category": "C5",
+      "status": "PASS",
+      "checksExecuted": 4,
+      "expected": "Vínculo formal com as suítes reais de C5-1.0.0 (golden, massive, exhaustive)",
+      "observed": "3 scripts canônicos confirmados no package.json com versão C5-1.0.0",
+      "durationMs": 2.06,
+      "evidence": "Certificação C5-Memory formalmente subordinada às suítes de C5-1.0.0"
+    },
+    {
+      "scenarioId": "HIST01",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Histórico elegível composto exclusivamente por jogos de apostas próprias confirmadas",
+      "observed": "Apenas jogos válidos de apostas confirmadas integram H",
+      "durationMs": 0.01,
+      "evidence": "H armazena exclusivamente apostas próprias confirmadas"
+    },
+    {
+      "scenarioId": "HIST02",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Registros com status DRAFT terminantemente excluídos de H",
+      "observed": "DRAFT filtrado com sucesso; zero jogos de rascunho em H",
+      "durationMs": 0.09,
+      "evidence": "Rascunhos (DRAFT) não ingressam no histórico de memória"
+    },
+    {
+      "scenarioId": "HIST03",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Jogos gerados que não foram apostados não são memorizados em H",
+      "observed": "H permaneceu com tamanho 0 após geração e avaliação",
+      "durationMs": 0.58,
+      "evidence": "Candidatos gerados não confirmados permanecem efêmeros fora de H"
+    },
+    {
+      "scenarioId": "HIST04",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Candidatos descartados no pool não entram no histórico em nenhuma hipótese",
+      "observed": "Zero jogos do candidato perdedor foram memorizados",
+      "durationMs": 0.87,
+      "evidence": "Somente o vencedor confirmado é elegível; perdedores são descartados"
+    },
+    {
+      "scenarioId": "HIST05",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Histórico matemático modela apenas apostas realizadas, nunca sorteios oficiais",
+      "observed": "Resultados da CAIXA excluídos do domínio de memória",
+      "durationMs": 0.41,
+      "evidence": "H é estritamente endógeno (apostas próprias) sem contaminação por sorteios da CAIXA"
+    },
+    {
+      "scenarioId": "HIST06",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Avaliação independe de faixas de premiação (11..15 pontos) anteriores",
+      "observed": "Histograma construído unicamente sobre distâncias de Johnson",
+      "durationMs": 0.69,
+      "evidence": "Zero dependência de acertos ou faixas de premiação no histórico"
+    },
+    {
+      "scenarioId": "HIST07",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Ausência de termos ou lógica financeira no seletor de memória",
+      "observed": "Zero variáveis financeiras no código do seletor",
+      "durationMs": 2.74,
+      "evidence": "Seletor C5-Memory não possui qualquer dependência de dados financeiros"
+    },
+    {
+      "scenarioId": "HIST08",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Ausência de estatísticas externas (frequência, atraso, dezenas quentes/frias)",
+      "observed": "Zero estatísticas externas utilizadas na avaliação",
+      "durationMs": 0.25,
+      "evidence": "Algoritmo puramente combinatório sem heurísticas externas de sorteio"
+    },
+    {
+      "scenarioId": "HIST09",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Causalidade temporal estrita: H(t) contém exclusivamente apostas até t-1",
+      "observed": "Rodada t2 vê apenas t1; rodada t3 vê t1 e t2; zero vazamento de apostas futuras",
+      "durationMs": 1.11,
+      "evidence": "Causalidade cronológica rigorosamente preservada sem look-ahead"
+    },
+    {
+      "scenarioId": "HIST10",
+      "category": "HIST",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Representações permutadas de H produzem histogramas identicamente idênticos",
+      "observed": "Histogramas idênticos sob permutação de ordem: [0,0,0,0,1,3,1,5,0,0,0]",
+      "durationMs": 0.23,
+      "evidence": "Invariância semântica de H comprovada experimentalmente"
+    },
+    {
+      "scenarioId": "JHN01",
+      "category": "JHN",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "dJ(A, B) = 0 para jogos idênticos (15 em comum)",
+      "observed": "Distância recalculada: 0",
+      "durationMs": 0.09,
+      "evidence": "d=0 comprovado para jogos idênticos"
+    },
+    {
+      "scenarioId": "JHN02",
+      "category": "JHN",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "dJ(A, B) = 1 para 14 dezenas em comum",
+      "observed": "Distância recalculada: 1",
+      "durationMs": 0.02,
+      "evidence": "d=1 comprovado para interseção 14"
+    },
+    {
+      "scenarioId": "JHN03",
+      "category": "JHN",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "dJ(A, B) = 2 para 13 dezenas em comum",
+      "observed": "Distância recalculada: 2",
+      "durationMs": 0.01,
+      "evidence": "d=2 comprovado para interseção 13"
+    },
+    {
+      "scenarioId": "JHN04",
+      "category": "JHN",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "dJ(A, B) = 3 para 12 dezenas em comum",
+      "observed": "Distância recalculada: 3",
+      "durationMs": 0.02,
+      "evidence": "d=3 comprovado para interseção 12"
+    },
+    {
+      "scenarioId": "JHN05",
+      "category": "JHN",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "dJ(A, B) = 4 para 11 dezenas em comum",
+      "observed": "Distância recalculada: 4",
+      "durationMs": 0.01,
+      "evidence": "d=4 comprovado para interseção 11"
+    },
+    {
+      "scenarioId": "JHN06",
+      "category": "JHN",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "dJ(A, B) = 10 para 5 dezenas em comum (dispersão máxima no espaço Johnson)",
+      "observed": "Distância recalculada: 10",
+      "durationMs": 0.01,
+      "evidence": "d=10 comprovado para interseção mínima de 5 dezenas"
+    },
+    {
+      "scenarioId": "JHN07",
+      "category": "JHN",
+      "status": "PASS",
+      "checksExecuted": 7,
+      "expected": "dJ(A, B) = dJ(B, A) para todos os pares de jogos",
+      "observed": "7/7 pares comprovados simétricos",
+      "durationMs": 0.08,
+      "evidence": "Simetria da métrica de Johnson verificada em 100% dos vetores"
+    },
+    {
+      "scenarioId": "JHN08",
+      "category": "JHN",
+      "status": "PASS",
+      "checksExecuted": 7,
+      "expected": "Equivalência estrita entre 15 - |A ∩ B| e |A Δ B| / 2",
+      "observed": "Ambos os algoritmos independentes produziram exatamente os mesmos valores inteiros",
+      "durationMs": 0.22,
+      "evidence": "Equivalência matemática entre métrica de interseção e diferença simétrica comprovada"
+    },
+    {
+      "scenarioId": "HISTO01",
+      "category": "HISTO",
+      "status": "PASS",
+      "checksExecuted": 11,
+      "expected": "Histórico vazio produz n0..n10 = 0",
+      "observed": "Todas as 11 coordenadas são exatamente 0",
+      "durationMs": 0.94,
+      "evidence": "Histograma contra histórico vazio possui soma zero"
+    },
+    {
+      "scenarioId": "HISTO02",
+      "category": "HISTO",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "sum(nd) = 5 * |H| (15)",
+      "observed": "Soma recalculada: 15 = 5 * 3",
+      "durationMs": 1.62,
+      "evidence": "Identidade de cardinalidade sum(nd) = 5|H| estritamente verificada"
+    },
+    {
+      "scenarioId": "HISTO03",
+      "category": "HISTO",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "|H| = 1 produz sum(nd) = 5",
+      "observed": "Soma recalculada: 5",
+      "durationMs": 0.7,
+      "evidence": "Uma aposta no histórico gera exatamente 5 distâncias computadas"
+    },
+    {
+      "scenarioId": "HISTO04",
+      "category": "HISTO",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "|H| = 7 produz sum(nd) = 35",
+      "observed": "Soma recalculada: 35 = 5 * 7",
+      "durationMs": 16.43,
+      "evidence": "Histórico de T apostas satisfaz linearmente sum(nd) = 5T"
+    },
+    {
+      "scenarioId": "HISTO05",
+      "category": "HISTO",
+      "status": "PASS",
+      "checksExecuted": 11,
+      "expected": "Jogos repetidos em H multiplicam as contagens exatamente pela sua frequência",
+      "observed": "Todas as 11 coordenadas no histograma duplo são rigorosamente o dobro do unitário",
+      "durationMs": 1.1,
+      "evidence": "Multiplicidade de apostas repetidas preserva proporcionalidade do histograma"
+    },
+    {
+      "scenarioId": "HISTO06",
+      "category": "HISTO",
+      "status": "PASS",
+      "checksExecuted": 11,
+      "expected": "Coordenadas do histograma coincidem exatamente com contagem das distâncias elemento a elemento",
+      "observed": "Equivalência biunívoca entre vetor de contagens e lista de distâncias",
+      "durationMs": 0.94,
+      "evidence": "Equivalência estrutural entre vetor e histograma de frequências"
+    },
+    {
+      "scenarioId": "HISTO07",
+      "category": "HISTO",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Histograma idêntico sob permutação da ordem dos sorteios em H",
+      "observed": "h([h1, h2]) === h([h2, h1])",
+      "durationMs": 1.13,
+      "evidence": "Invariância do histograma com relação à ordem cronológica de H"
+    },
+    {
+      "scenarioId": "HISTO08",
+      "category": "HISTO",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "n10 é linearmente dependente das coordenadas n0..n9 e do tamanho |H|",
+      "observed": "n10(A)=2 e n10(B)=1 coincidem rigorosamente com 5|H| - sum(n0..n9)",
+      "durationMs": 0.27,
+      "evidence": "Redundância matemática de n10 provada formalmente pela restrição sum(nd)=5|H|"
+    },
+    {
+      "scenarioId": "LEX01",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n0",
+      "observed": "Coordenadas anteriores empatadas, divergência em n0 (h0[0]=0, h1[0]=1), vencedor correto",
+      "durationMs": 0.16,
+      "evidence": "Decisão em n0: Candidate A não possui colisão exata (n0=0), enquanto Candidate B possui (n0=1)."
+    },
+    {
+      "scenarioId": "LEX02",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n1",
+      "observed": "Coordenadas anteriores empatadas, divergência em n1 (h0[1]=0, h1[1]=1), vencedor correto",
+      "durationMs": 1.8,
+      "evidence": "Decisão em n1: Ambos têm n0=0, mas Candidate A tem n1=0 contra n1=1 do Candidate B."
+    },
+    {
+      "scenarioId": "LEX03",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n2",
+      "observed": "Coordenadas anteriores empatadas, divergência em n2 (h0[2]=0, h1[2]=1), vencedor correto",
+      "durationMs": 0.04,
+      "evidence": "Decisão em n2: Todas as coordenadas n0..n1 coincidem; o candidato A possui menor valor em n2."
+    },
+    {
+      "scenarioId": "LEX04",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n3",
+      "observed": "Coordenadas anteriores empatadas, divergência em n3 (h0[3]=1, h1[3]=0), vencedor correto",
+      "durationMs": 0.04,
+      "evidence": "Decisão em n3: Todas as coordenadas n0..n2 coincidem; o candidato B possui menor valor em n3."
+    },
+    {
+      "scenarioId": "LEX05",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n4",
+      "observed": "Coordenadas anteriores empatadas, divergência em n4 (h0[4]=1, h1[4]=0), vencedor correto",
+      "durationMs": 0.03,
+      "evidence": "Decisão em n4: Todas as coordenadas n0..n3 coincidem; o candidato B possui menor valor em n4."
+    },
+    {
+      "scenarioId": "LEX06",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n5",
+      "observed": "Coordenadas anteriores empatadas, divergência em n5 (h0[5]=3, h1[5]=1), vencedor correto",
+      "durationMs": 0.06,
+      "evidence": "Decisão em n5: Todas as coordenadas n0..n4 coincidem; o candidato B possui menor valor em n5."
+    },
+    {
+      "scenarioId": "LEX07",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n6",
+      "observed": "Coordenadas anteriores empatadas, divergência em n6 (h0[6]=0, h1[6]=1), vencedor correto",
+      "durationMs": 0.03,
+      "evidence": "Decisão em n6: Todas as coordenadas n0..n5 coincidem; o candidato A possui menor valor em n6."
+    },
+    {
+      "scenarioId": "LEX08",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n7",
+      "observed": "Coordenadas anteriores empatadas, divergência em n7 (h0[7]=2, h1[7]=1), vencedor correto",
+      "durationMs": 0.05,
+      "evidence": "Decisão em n7: Todas as coordenadas n0..n6 coincidem; o candidato B possui menor valor em n7."
+    },
+    {
+      "scenarioId": "LEX09",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n8",
+      "observed": "Coordenadas anteriores empatadas, divergência em n8 (h0[8]=1, h1[8]=0), vencedor correto",
+      "durationMs": 0.03,
+      "evidence": "Decisão em n8: n0..n7 coincidem perfeitamente; Candidate B possui menor contagem em n8 (0 contra 1) e vence na coordenada n8."
+    },
+    {
+      "scenarioId": "LEX10",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "Primeira divergência decisória em n9",
+      "observed": "Coordenadas anteriores empatadas, divergência em n9 (h0[9]=0, h1[9]=1), vencedor correto",
+      "durationMs": 0.03,
+      "evidence": "Decisão em n9: n0..n8 são estritamente iguais; Candidate A tem n9=0 e Candidate B tem n9=1; Candidate A vence na coordenada n9."
+    },
+    {
+      "scenarioId": "LEX11",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "n10 nunca é consultado como coordenada decisória; empate em n0..n9 resulta em empate de histograma",
+      "observed": "Comparador retorna empate (decidingCoordinate === -1) sem consultar n10",
+      "durationMs": 0.19,
+      "evidence": "n10 estritamente desconsiderado na busca de coordenadas decisórias"
+    },
+    {
+      "scenarioId": "LEX12",
+      "category": "LEX",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "MAX-LEXIMIN difere de soma ponderada e obedece à coordenada n1 lexicográfica",
+      "observed": "Soma de distâncias favorece A (41 > 18), mas MAX-LEXIMIN escolhe B por n1=0 < n1=1",
+      "durationMs": 0.1,
+      "evidence": "Caso adversarial comprova obediência ao leximin e rejeição de soma ponderada"
+    },
+    {
+      "scenarioId": "POOL01",
+      "category": "POOL",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Tamanho exato do pool canônico é K = 500",
+      "observed": "Constante de certificação K = 500",
+      "durationMs": 0,
+      "evidence": "Tamanho do pool canônico verificado como K = 500"
+    },
+    {
+      "scenarioId": "POOL02",
+      "category": "POOL",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Pool de 499 candidatos rejeitado como não canônico",
+      "observed": "Pool com 499 candidatos identificado como não conforme (K !== 500)",
+      "durationMs": 100.2,
+      "evidence": "K = 499 categorizado como não canônico"
+    },
+    {
+      "scenarioId": "POOL03",
+      "category": "POOL",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Candidato além de K=500 é bloqueado em execução v2.0",
+      "observed": "Pool com 501 elementos detectado como excessivo frente ao limite estrito K=500",
+      "durationMs": 67.07,
+      "evidence": "Candidato 501 terminantemente excluído do escopo v2.0"
+    },
+    {
+      "scenarioId": "POOL04",
+      "category": "POOL",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Empate integral entre candidatos escolhe o menor índice no pool (índice 0)",
+      "observed": "Vencedor selecionado: índice 0",
+      "durationMs": 0.17,
+      "evidence": "Desempate canônico por menor índice comprovado para empate integral"
+    },
+    {
+      "scenarioId": "POOL05",
+      "category": "POOL",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Múltiplo empate (4 candidatos) escolhe rigorosamente o índice 0",
+      "observed": "Vencedor selecionado: índice 0",
+      "durationMs": 0.23,
+      "evidence": "Desempate canônico comprovado para empate múltiplo"
+    },
+    {
+      "scenarioId": "POOL06",
+      "category": "POOL",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Candidato superior vence independentemente de sua posição no pool",
+      "observed": "Melhor candidato venceu tanto no índice 0 quanto no índice 1",
+      "durationMs": 0.16,
+      "evidence": "Ordem do pool é irrelevante quando há divergência lexicográfica de histogramas"
+    },
+    {
+      "scenarioId": "MEM01",
+      "category": "MEM",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Com histórico vazio, o primeiro candidato C1 (índice 0) é selecionado",
+      "observed": "Vencedor retornado: índice 0",
+      "durationMs": 0.36,
+      "evidence": "Histórico vazio sempre seleciona o primeiro candidato gerado do pool"
+    },
+    {
+      "scenarioId": "MEM02",
+      "category": "MEM",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Processo de seleção avalia candidatos com zero chamadas ao RNG",
+      "observed": "Chamadas de RNG consumidas durante a seleção: 0",
+      "durationMs": 0.25,
+      "evidence": "Seletor C5-Memory é 100% determinístico e não consome entropia"
+    },
+    {
+      "scenarioId": "MEM03",
+      "category": "MEM",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Candidato sem repetição (n0=0) estritamente preferido a candidato com repetição (n0>0)",
+      "observed": "Vencedor possui n0=0, derrotando candidato com colisão",
+      "durationMs": 0.08,
+      "evidence": "Eliminação prioritária de colisão exata (n0=0 domina n0>0)"
+    },
+    {
+      "scenarioId": "MEM04",
+      "category": "MEM",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Quando todos os candidatos possuem n0>0, menor n0 vence",
+      "observed": "Vencedor selecionado possui menor n0 (n0=1 vs n0=2)",
+      "durationMs": 0.07,
+      "evidence": "MAX-LEXIMIN opera com sucesso mesmo com colisões inevitáveis em todos os candidatos"
+    },
+    {
+      "scenarioId": "MEM05",
+      "category": "MEM",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "A operação de seleção deixa o histórico H estritamente inalterado",
+      "observed": "Histórico preservado integralmente sem mutação",
+      "durationMs": 0.44,
+      "evidence": "Imutabilidade estrita do histórico durante a etapa de seleção"
+    },
+    {
+      "scenarioId": "MEM06",
+      "category": "MEM",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "SELECTED != MEMORIZED: inclusão em H exige confirmação explícita",
+      "observed": "Seleção isolada não memoriza; confirmação explícita transiciona 5 jogos para H",
+      "durationMs": 0.39,
+      "evidence": "Diferenciação formal entre seleção combinatória e confirmação de aposta no histórico"
+    },
+    {
+      "scenarioId": "DET01",
+      "category": "DET",
+      "status": "PASS",
+      "checksExecuted": 2,
+      "expected": "Avaliações repetidas sob o mesmo pool e H produzem rigorosamente o mesmo vencedor",
+      "observed": "Vencedor idêntico em 3 execuções consecutivas: índice 1",
+      "durationMs": 3.02,
+      "evidence": "Determinismo estrito da função de seleção de referência"
+    },
+    {
+      "scenarioId": "DET02",
+      "category": "DET",
+      "status": "PENDING",
+      "checksExecuted": 0,
+      "expected": "Equivalência exata entre REF e OPT em todo o espaço admissível",
+      "observed": "PENDING: Vinculado formalmente ao CP3 (Implementação e Verificação da OPT)",
+      "durationMs": 0,
+      "evidence": "Aguardando implementação da OPT em CP3 para verificação de equivalência determinística"
+    },
+    {
+      "scenarioId": "DET03",
+      "category": "DET",
+      "status": "PENDING",
+      "checksExecuted": 0,
+      "expected": "Zero divergências em bateria comparativa REF x OPT",
+      "observed": "PENDING: Vinculado formalmente ao CP3/CP4 (Bateria de Equivalência REF x OPT)",
+      "durationMs": 0,
+      "evidence": "Aguardando etapa REF x OPT em CP3/CP4"
+    },
+    {
+      "scenarioId": "DET04",
+      "category": "DET",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Reconstrução a partir de serialização JSON produz resultado estritamente idêntico",
+      "observed": "Vencedor idêntico após ciclo de serialização: índice 0",
+      "durationMs": 0.4,
+      "evidence": "Invariância a ciclo de serialização e parsing de dados de H"
+    },
+    {
+      "scenarioId": "BAR01",
+      "category": "BAR",
+      "status": "PENDING",
+      "checksExecuted": 0,
+      "expected": "Execução e certificação integral das suítes de C5-1.0.0 (Golden, Massive 100k, Exhaustive 16.34M)",
+      "observed": "PENDING: Vinculado formalmente aos checkpoints de barreira (CP4–CP6)",
+      "durationMs": 0,
+      "evidence": "Aguardando checkpoint de execução real das suítes massivas/exaustivas sem antecipação espúria"
+    },
+    {
+      "scenarioId": "BAR02",
+      "category": "BAR",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Seletor C5-Memory opera de forma 100% isolada sem importar ou depender de APIs externas da CAIXA",
+      "observed": "Zero imports de serviços de loteria ou resultados externos no seletor matemático",
+      "durationMs": 0.46,
+      "evidence": "Isolamento absoluto contra serviços de resultados oficiais da CAIXA"
+    },
+    {
+      "scenarioId": "BAR03",
+      "category": "BAR",
+      "status": "PASS",
+      "checksExecuted": 1,
+      "expected": "Módulo de apuração e faixas de prêmio totalmente desacoplado do seletor",
+      "observed": "Lógica de pontuação e premiação ausente do seletor matemático",
+      "durationMs": 0.27,
+      "evidence": "Desacoplamento estrito entre seletor combinatório e módulos de apuração"
+    },
+    {
+      "scenarioId": "BAR04",
+      "category": "BAR",
+      "status": "PASS",
+      "checksExecuted": 3,
+      "expected": "C5_ALGORITHM_VERSION = C5-1.0.0, C5_MEMORY_ALGORITHM_VERSION = C5-Memory-2.0.0, APP_VERSION = 1.13.0",
+      "observed": "Versões confirmadas: C5=C5-1.0.0, Memory=C5-Memory-2.0.0, App=1.13.0",
+      "durationMs": 0,
+      "evidence": "Fronteiras e versionamento canônico verificados"
+    }
+  ]
+}

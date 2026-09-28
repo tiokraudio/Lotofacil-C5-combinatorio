@@ -24,7 +24,7 @@
   },
   "historicalRunsPolicy": {
     "reusePolicy": "STRICT_PROHIBITION",
-    "description": "Execuções 001 e 002 são consideradas exclusivamente registros históricos. É proibido reutilizar como evidência qualquer vetor Golden, resultado REF×OPT, métrica de performance ou aprovação (72/72, 100k/100k, etc.) anterior. A Execução 003 é iniciada de forma 100% limpa."
+    "description": "Execuções 001 e 002 são consideradas exclusivamente registros históricos. É proibido reutilizar como evidência qualquer vetor Golden, resultado REF×OPT, métrica de performance ou aprovação anterior. A Execução 003 é iniciada de forma 100% limpa."
   },
   "environment": {
     "nodeVersion": "v22.23.2",
@@ -38,8 +38,8 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP1",
-  "status": "CP1_PASS",
+  "stage": "CP2",
+  "status": "CP2_PENDING_CONTROLADO",
   "cp1Artifacts": {
     "goldenVectorsCount": {
       "johnsonVectors": 7,
@@ -47,9 +47,18 @@
       "controlVectors": 10,
       "total": 27
     },
-    "totalIndividualGamesValidated": 240,
-    "totalVerificationChecksPassed": 174,
-    "syntheticHistogramsUsedAsEvidence": 0
+    "goldenVectorsSha256": "e892153893b1fa2b671b733d6531374cb1568d05210f25c22e1c9551d07c0773"
   },
-  "timestamp": "2026-09-28T21:18:00.000Z"
+  "cp2Artifacts": {
+    "canonicalMatrix": {
+      "total": 72,
+      "passed": 69,
+      "pending": 3,
+      "pendingIds": ["DET02", "DET03", "BAR01"],
+      "failed": 0,
+      "suspended": 0,
+      "checksExecuted": 168
+    }
+  },
+  "timestamp": "2026-09-28T21:24:30.000Z"
 }
