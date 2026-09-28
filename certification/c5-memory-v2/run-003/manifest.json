@@ -38,7 +38,18 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP0",
-  "status": "CP0_PASS",
-  "timestamp": "2026-09-28T21:09:00.000Z"
+  "stage": "CP1",
+  "status": "CP1_PASS",
+  "cp1Artifacts": {
+    "goldenVectorsCount": {
+      "johnsonVectors": 7,
+      "leximinVectors": 10,
+      "controlVectors": 10,
+      "total": 27
+    },
+    "totalIndividualGamesValidated": 240,
+    "totalVerificationChecksPassed": 174,
+    "syntheticHistogramsUsedAsEvidence": 0
+  },
+  "timestamp": "2026-09-28T21:18:00.000Z"
 }
