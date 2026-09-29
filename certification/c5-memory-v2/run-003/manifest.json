@@ -38,8 +38,8 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP2",
-  "status": "CP2_PENDING_CONTROLADO",
+  "stage": "CP3",
+  "status": "CP3_PASS",
   "cp1Artifacts": {
     "goldenVectorsCount": {
       "johnsonVectors": 7,
@@ -60,5 +60,46 @@
       "checksExecuted": 168
     }
   },
-  "timestamp": "2026-09-28T21:24:30.000Z"
+  "cp3Artifacts": {
+    "referenceEvaluatorSha256": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+    "referenceEvaluatorIntegrityConfirmed": true,
+    "goldenVectorsSha256": "e892153893b1fa2b671b733d6531374cb1568d05210f25c22e1c9551d07c0773",
+    "goldenVectorsIntegrityConfirmed": true,
+    "optimizedEvaluatorSha256": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+    "optIndependenceConfirmed": true,
+    "det02": {
+      "status": "PASS",
+      "totalChecks": 188,
+      "divergences": 0,
+      "evidence": "Equivalência exata e determinística em todos os 27 Golden vectors e casos de borda"
+    },
+    "det03": {
+      "status": "PASS",
+      "totalComparisons": 100000,
+      "candidatePoolSize": 500,
+      "divergences": 0,
+      "fullHistogramSubsampleChecks": 2000,
+      "individualCandidateHistogramsCompared": 1000000,
+      "distribution": {
+        "emptyHistory": 5000,
+        "smallHistory": 35000,
+        "mediumHistory": 40000,
+        "largeHistory": 20000,
+        "repeatedGamesInHistory": 3666,
+        "poolsWithInjectedTies": 5000
+      },
+      "durationSeconds": 860.61,
+      "ratePerSecond": 116.2
+    },
+    "canonicalMatrix": {
+      "total": 72,
+      "passed": 71,
+      "pending": 1,
+      "pendingIds": ["BAR01"],
+      "failed": 0,
+      "suspended": 0,
+      "checksExecuted": 368
+    }
+  },
+  "timestamp": "2026-09-28T21:50:00.000Z"
 }

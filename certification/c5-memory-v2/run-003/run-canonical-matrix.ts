@@ -11,6 +11,8 @@ import {
   compareHistogramsLeximin,
   selectBestCandidate,
 } from "./reference-evaluator.ts";
+import { runDet02Verification } from "./verify-det02.ts";
+import { selectBestCandidateOpt } from "./optimized-evaluator.ts";
 
 export interface ScenarioResult {
   scenarioId: string;
@@ -1332,30 +1334,75 @@ export function runCanonicalMatrix(): MatrixRunReport {
 
   // DET02: Equivalência REF x OPT
   {
+    const det02Report = runDet02Verification();
     recordScenario(
       "DET02",
       "DET",
-      "PENDING",
-      0,
+      det02Report.passed ? "PASS" : "FAIL",
+      det02Report.totalChecks,
       "Equivalência exata entre REF e OPT em todo o espaço admissível",
-      "PENDING: Vinculado formalmente ao CP3 (Implementação e Verificação da OPT)",
-      0,
-      "Aguardando implementação da OPT em CP3 para verificação de equivalência determinística"
+      det02Report.passed
+        ? `Equivalência exata confirmada em ${det02Report.totalChecks} checks (0 divergências)`
+        : `Divergência detectada (${det02Report.divergencesCount} falhas)`,
+      det02Report.durationMs,
+      `Verificação determinística integral REF x OPT em ${det02Report.details.goldenVectorsEvaluated || 27} Golden vectors e casos de borda`
     );
   }
 
   // DET03: Ausência de divergência em bateria REF x OPT
   {
-    recordScenario(
-      "DET03",
-      "DET",
-      "PENDING",
-      0,
-      "Zero divergências em bateria comparativa REF x OPT",
-      "PENDING: Vinculado formalmente ao CP3/CP4 (Bateria de Equivalência REF x OPT)",
-      0,
-      "Aguardando etapa REF x OPT em CP3/CP4"
-    );
+    const t0 = performance.now();
+    const resultsPath = path.resolve("certification/c5-memory-v2/run-003/ref-opt-100k-results.json");
+    if (!fs.existsSync(resultsPath)) {
+      recordScenario(
+        "DET03",
+        "DET",
+        "PENDING",
+        0,
+        "Zero divergências em bateria comparativa REF x OPT",
+        "Aguardando conclusão da bateria de 100.000 execuções",
+        0,
+        "Arquivo ref-opt-100k-results.json ainda não gerado"
+      );
+    } else {
+      const battery = JSON.parse(fs.readFileSync(resultsPath, "utf-8"));
+      const ok =
+        battery.status === "PASS" &&
+        battery.totalComparisons === 100000 &&
+        battery.divergencesCount === 0;
+
+      // Executa verificação complementar ao vivo com 10 pools K=500
+      let inlinePassed = true;
+      for (let i = 0; i < 10; i++) {
+        const pool = Array.from({ length: 500 }, () => generateC5().games);
+        const H = Array.from({ length: 5 }, () => generateC5().games[0]);
+        const refRes = selectBestCandidate(pool, H);
+        const optRes = selectBestCandidateOpt(pool, H);
+        if (
+          refRes.winnerIndex !== optRes.winnerIndex ||
+          JSON.stringify(refRes.winnerHistogram) !== JSON.stringify(optRes.winnerHistogram)
+        ) {
+          inlinePassed = false;
+          break;
+        }
+      }
+
+      const checks = 2 + (inlinePassed ? 10 : 0);
+      const isPass = ok && inlinePassed;
+
+      recordScenario(
+        "DET03",
+        "DET",
+        isPass ? "PASS" : "FAIL",
+        checks,
+        "Zero divergências em bateria comparativa REF x OPT",
+        isPass
+          ? `Zero divergências em ${battery.totalComparisons.toLocaleString()} comparações independentes (Pool K=500, ${battery.ratePerSecond} it/s) + 10 validações em tempo real`
+          : `Falha na bateria: status=${battery.status}, divergências=${battery.divergencesCount}`,
+        performance.now() - t0,
+        `Bateria massiva 100k concluída em ${battery.durationSeconds}s (${battery.ratePerSecond} it/s) com ${battery.fullHistogramSubsampleCount} checks de histograma completo`
+      );
+    }
   }
 
   // DET04: Serialização/reconstrução semanticamente idêntica de H => mesmo vencedor
