@@ -38,8 +38,8 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP3",
-  "status": "CP3_PASS",
+  "stage": "CP4",
+  "status": "CP4_PASS",
   "cp1Artifacts": {
     "goldenVectorsCount": {
       "johnsonVectors": 7,
@@ -101,5 +101,49 @@
       "checksExecuted": 368
     }
   },
-  "timestamp": "2026-09-28T21:50:00.000Z"
+  "cp4Artifacts": {
+    "suite": "C5-1.0.0 Golden Test Canônico",
+    "command": "npm run test:c5:golden",
+    "status": "PASS",
+    "exitCode": 0,
+    "durationMs": 498.16,
+    "checksReported": {
+      "slotMapping": true,
+      "slotDeepEqual": true,
+      "j1": true,
+      "j2": true,
+      "j3": true,
+      "j4": true,
+      "j5": true,
+      "gamesDeepEqual": true,
+      "slotSemantics": true,
+      "negativeGoldenTest": true,
+      "intersections8": true,
+      "intersections7": true,
+      "validateC5": true,
+      "overallResult": true,
+      "totalCheckCategories": 13,
+      "passedCheckCategories": 13
+    },
+    "logFile": "cp4-c5-golden.log",
+    "logSha256": "940126cb58fdb4f3b147bf5922f6e92f12921a5f9dec7dec1e6e8cc644117335",
+    "resultFile": "cp4-c5-golden-result.json",
+    "resultSha256": "e42b68decaa877f7197f3e10e49bb2f9c216629535f8487e104c5f490e0b4cb8",
+    "bar01Status": "PENDING",
+    "bar01Details": {
+      "golden": "PASS",
+      "massive": "PENDING",
+      "exhaustive": "PENDING",
+      "reason": "Barreira BAR01 exige cumulativamente Golden, Massive (100k) e Exhaustive (16.34M). Em CP4, apenas Golden foi executado."
+    },
+    "canonicalMatrix": {
+      "total": 72,
+      "passed": 71,
+      "pending": 1,
+      "pendingIds": ["BAR01"],
+      "failed": 0,
+      "suspended": 0
+    }
+  },
+  "timestamp": "2026-09-29T11:20:25.000Z"
 }

@@ -1,0 +1,45 @@
+{
+  "checkpoint": "CP4",
+  "suite": "C5-1.0.0 Golden Test Canônico",
+  "command": "npm run test:c5:golden",
+  "baselineCommit": "9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388",
+  "appVersion": "1.13.0",
+  "c5AlgorithmVersion": "C5-1.0.0",
+  "startedAt": "2026-09-29T11:20:22.419Z",
+  "finishedAt": "2026-09-29T11:20:22.920Z",
+  "durationMs": 498.16,
+  "exitCode": 0,
+  "status": "PASS",
+  "checksReported": {
+    "slotMapping": true,
+    "slotDeepEqual": true,
+    "j1": true,
+    "j2": true,
+    "j3": true,
+    "j4": true,
+    "j5": true,
+    "gamesDeepEqual": true,
+    "slotSemantics": true,
+    "negativeGoldenTest": true,
+    "intersections8": true,
+    "intersections7": true,
+    "validateC5": true,
+    "overallResult": true,
+    "totalCheckCategories": 13,
+    "passedCheckCategories": 13
+  },
+  "environment": {
+    "nodeVersion": "v22.23.2",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "logFile": "cp4-c5-golden.log",
+  "logSha256": "940126cb58fdb4f3b147bf5922f6e92f12921a5f9dec7dec1e6e8cc644117335",
+  "bar01Status": "PENDING",
+  "bar01Details": {
+    "golden": "PASS",
+    "massive": "PENDING",
+    "exhaustive": "PENDING",
+    "reason": "Barreira BAR01 exige cumulativamente Golden, Massive (100k) e Exhaustive (16.34M). Em CP4, apenas Golden foi executado."
+  }
+}

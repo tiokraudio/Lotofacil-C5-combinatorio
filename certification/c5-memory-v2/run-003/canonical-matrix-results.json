@@ -691,11 +691,11 @@
       "scenarioId": "BAR01",
       "category": "BAR",
       "status": "PENDING",
-      "checksExecuted": 0,
+      "checksExecuted": 13,
       "expected": "Execução e certificação integral das suítes de C5-1.0.0 (Golden, Massive 100k, Exhaustive 16.34M)",
-      "observed": "PENDING: Vinculado formalmente aos checkpoints de barreira (CP4–CP6)",
-      "durationMs": 0,
-      "evidence": "Aguardando checkpoint de execução real das suítes massivas/exaustivas sem antecipação espúria"
+      "observed": "PENDING — Golden concluído (13/13 PASS); Massive e Exhaustive pendentes",
+      "durationMs": 498.16,
+      "evidence": "Suíte Golden C5-1.0.0 executada com sucesso via npm run test:c5:golden (exit code 0). Massive 100k e Exhaustive 16.34M vinculados a CP5 e CP6."
     },
     {
       "scenarioId": "BAR02",
