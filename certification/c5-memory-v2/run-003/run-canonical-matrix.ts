@@ -1345,7 +1345,7 @@ export function runCanonicalMatrix(): MatrixRunReport {
         ? `Equivalência exata confirmada em ${det02Report.totalChecks} checks (0 divergências)`
         : `Divergência detectada (${det02Report.divergencesCount} falhas)`,
       det02Report.durationMs,
-      `Verificação determinística integral REF x OPT em ${det02Report.details.goldenVectorsEvaluated || 27} Golden vectors e casos de borda`
+      `Verificação determinística integral REF x OPT em ${(det02Report.details as any).goldenVectorsEvaluated || 27} Golden vectors e casos de borda`
     );
   }
 

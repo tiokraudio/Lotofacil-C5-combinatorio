@@ -50,7 +50,7 @@ export function runReplayExecution(mode: "A" | "B" | "REORDERED"): {
       caseId: c.caseId,
       inputHash: c.inputHash,
       winnerIndex: optRes.winnerIndex,
-      winnerGames: optRes.winnerGames,
+      winnerGames: c.pool[optRes.winnerIndex],
       winnerHistogram: optRes.winnerHistogram,
     });
 

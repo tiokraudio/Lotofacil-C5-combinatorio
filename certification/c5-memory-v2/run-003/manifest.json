@@ -38,8 +38,8 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP8",
-  "status": "CP8_PASS",
+  "stage": "CP9",
+  "status": "CP9_PASS",
   "cp1Artifacts": {
     "goldenVectorsCount": {
       "johnsonVectors": 7,
@@ -287,5 +287,59 @@
     "determinismReplay": "PASS",
     "certificationGlobalStatus": "EM EXECUÇÃO"
   },
-  "timestamp": "2026-09-29T12:12:00.000Z"
+  "cp9Artifacts": {
+    "suite": "Auditoria de Isolamento, Imutabilidade e Não Integração",
+    "status": "PASS",
+    "baselineCommit": "9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388",
+    "headCommit": "acffed2275aad2bc4b3b71657c330c0fbed61750",
+    "productionDiffBytes": 0,
+    "productionFilesModified": 0,
+    "c5MemoryOperationalReferencesInProduction": 0,
+    "crossBoundaryImportsSrcToCertification": 0,
+    "subsystemsIntact": {
+      "srcC5": true,
+      "components": true,
+      "controllersServices": true,
+      "persistenceIndexedDb": true,
+      "schemasBackup": true,
+      "syncMultiTab": true,
+      "sha256Mechanism": true,
+      "packageJson": true
+    },
+    "backupSchemaVersion": 3,
+    "localSyncProtocolVersion": 1,
+    "buildStatus": "PASS",
+    "buildExitCode": 0,
+    "c5MemoryInBundle": false,
+    "lintStatus": "PASS",
+    "lintExitCode": 0,
+    "diffFile": "cp9-baseline-diff.txt",
+    "diffSha256": "f69f65b1f99a80fb172a0cefdc2e07a989fb58724ffb0d2a9fbd19ff80c2defd",
+    "isolationFile": "cp9-production-isolation.json",
+    "isolationSha256": "4713bb0f711b20c5e8dba4aa6cd412d8659ff1296a560ef95ff7a9238ad0c8e7",
+    "staticSearchLog": "cp9-static-search.log",
+    "staticSearchSha256": "47458e13de79e1615bdc70c94d0f9715e4578aa2aab86d62abc50ddf601db040",
+    "buildLog": "cp9-build.log",
+    "buildLogSha256": "db710cf6f0f71dd661df82a1c23c1cd31483202bf23816646950ced433ce6515",
+    "buildResultFile": "cp9-build-result.json",
+    "buildResultSha256": "fe061932c061e29c542411c02bcd8f5f7c221f5b37f809581798fdf3672bca74",
+    "lintLog": "cp9-lint.log",
+    "lintLogSha256": "caae3717ae7200f175f4115c0acec37f6a8c1c1347fd492e7025ecb38a8093bc",
+    "lintResultFile": "cp9-lint-result.json",
+    "lintResultSha256": "e48d1f83ff7349bc3979ab842a88ea787a2c74d94ef17e7796ae7b8c185bd000",
+    "canonicalMatrix": {
+      "total": 72,
+      "passed": 72,
+      "pending": 0,
+      "pendingIds": [],
+      "failed": 0,
+      "suspended": 0,
+      "checksExecuted": 387
+    },
+    "performance": "PASS",
+    "determinismReplay": "PASS",
+    "isolation": "PASS",
+    "certificationGlobalStatus": "EM EXECUÇÃO"
+  },
+  "timestamp": "2026-09-29T12:33:00.000Z"
 }

@@ -1,0 +1,19 @@
+=== DIFF CONTRA BASELINE 9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388 ===
+--- 1. ARQUIVOS DE PRODUÇÃO FORA DE certification/ ---
+TOTAL_PRODUCTION_DIFF_BYTES: 0
+
+--- 2. LISTA DE ARQUIVOS DIFERENTES NO PROJETO ---
+A	certification/c5-memory-v2/run-003/build-golden-vectors.ts
+A	certification/c5-memory-v2/run-003/canonical-matrix-results.json
+A	certification/c5-memory-v2/run-003/checksums.sha256
+A	certification/c5-memory-v2/run-003/golden-vectors.json
+A	certification/c5-memory-v2/run-003/manifest.json
+A	certification/c5-memory-v2/run-003/optimized-evaluator.ts
+A	certification/c5-memory-v2/run-003/ref-opt-100k-results.json
+A	certification/c5-memory-v2/run-003/ref-opt-worker.ts
+A	certification/c5-memory-v2/run-003/reference-evaluator.ts
+A	certification/c5-memory-v2/run-003/run-canonical-matrix.ts
+A	certification/c5-memory-v2/run-003/run-ref-opt-batch.ts
+A	certification/c5-memory-v2/run-003/run-ref-opt-battery.ts
+A	certification/c5-memory-v2/run-003/verify-det02.ts
+A	certification/c5-memory-v2/run-003/verify-golden.ts
