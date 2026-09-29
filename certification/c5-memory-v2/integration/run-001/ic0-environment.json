@@ -1,0 +1,21 @@
+{
+  "nodeVersion": "v22.23.2",
+  "npmVersion": "10.9.8",
+  "gitVersion": "git version 2.34.1",
+  "os": "Linux (linux)",
+  "kernel": "4.19.0-gvisor",
+  "architecture": "x64",
+  "cpu": {
+    "model": "unknown",
+    "cores": 2,
+    "vCPUs": 2
+  },
+  "memory": {
+    "totalBytes": 4294967296,
+    "totalGB": "4.00"
+  },
+  "timezone": "UTC",
+  "utcOffset": 0,
+  "tsxVersion": "tsx v4.23.13",
+  "timestamp": "2026-09-29T14:43:20.295Z"
+}

@@ -1,0 +1,71 @@
+{
+  "integrationRunId": "C5M-INTEGRATION-RUN-001",
+  "protocolVersion": "1.0",
+  "integrationSpecificationVersion": "1.0",
+  "canonicalMatrixVersion": "1.0",
+  "c5MemoryAlgorithmVersion": "C5-Memory-2.0.0",
+
+  "repository": "tiokraudio/Lotofacil-C5-combinatorio",
+  "baselineCommit": "9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388",
+  "baselineParent": "9067721681b8396cfb0fff5f30c8e11cfa74837f",
+  "initialHead": "acffed2275aad2bc4b3b71657c330c0fbed61750",
+  "integrationBranch": "integration/c5-memory-2.0.0",
+  "branchOriginCommit": "acffed2275aad2bc4b3b71657c330c0fbed61750",
+
+  "appVersion": "1.13.0",
+  "c5AlgorithmVersion": "C5-1.0.0",
+  "backupSchemaVersion": 3,
+  "localSyncProtocolVersion": 1,
+
+  "refSha256": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+  "optSha256": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+  "goldenSha256": "e892153893b1fa2b671b733d6531374cb1568d05210f25c22e1c9551d07c0773",
+  "refOptSha256": "8c6aa6438a6e943e101d18fbec2eddc427867906122d1747e3e37ba04d8d37fa",
+  "matrixSha256": "ab46afab43ee62d706fcb9711c450ea964b20fed7c9792d7cf93125a332033f9",
+  "performanceSha256": "a24d4dc3e78fcbb3a5cf8e8f03b8c5504ee15de624f774341f978c0a24e7f46b",
+
+  "nodeVersion": "v22.23.2",
+  "npmVersion": "10.9.8",
+  "gitVersion": "git version 2.34.1",
+  "os": "Linux (linux)",
+  "kernel": "4.19.0-gvisor",
+  "architecture": "x64",
+  "cpu": {
+    "model": "unknown",
+    "cores": 2,
+    "vCPUs": 2
+  },
+  "timezone": "UTC",
+
+  "initialWorkingTreeState": "Audited clean production boundary; 14 modified/tracked files and 30 untracked artifacts strictly inside certification/c5-memory-v2/run-003/. Zero modifications outside certification/.",
+  "productionDiffAgainstBaseline": "0 files modified (zero diff outside certification/)",
+  "certificationArtifactsVerified": {
+    "run003Report": "certification/c5-memory-v2/run-003/c5-memory-2.0.0-certification-report.md",
+    "run003Json": "certification/c5-memory-v2/run-003/c5-memory-2.0.0-certification.json",
+    "checksumLedgerAudit": "51 files OK (100% verified)",
+    "criticalHashesAllMatch": true
+  },
+
+  "baselineHealthChecks": {
+    "build": {
+      "command": "npm run build",
+      "status": "PASS",
+      "exitCode": 0
+    },
+    "lint": {
+      "command": "npm run lint",
+      "status": "PASS",
+      "exitCode": 0
+    },
+    "tsxAvailable": true,
+    "c5SuitesFound": {
+      "test:c5:golden": true,
+      "test:c5:massive": true,
+      "test:c5:exhaustive": true
+    }
+  },
+
+  "startedAt": "2026-09-29T14:41:37.000Z",
+  "currentCheckpoint": "IC0",
+  "status": "IC0_PASS"
+}

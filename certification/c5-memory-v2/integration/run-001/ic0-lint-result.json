@@ -1,0 +1,10 @@
+{
+  "command": "npm run lint",
+  "exitCode": 0,
+  "status": "PASS",
+  "startedAt": "2026-09-29T14:43:31.233Z",
+  "finishedAt": "2026-09-29T14:43:33.834Z",
+  "durationMs": 2600,
+  "stdoutLength": 45,
+  "stderrLength": 0
+}

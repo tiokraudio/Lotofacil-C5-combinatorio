@@ -1,0 +1,44 @@
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   certification/c5-memory-v2/run-003/canonical-matrix-results.json
+	modified:   certification/c5-memory-v2/run-003/checksums.sha256
+	modified:   certification/c5-memory-v2/run-003/manifest.json
+	modified:   certification/c5-memory-v2/run-003/run-canonical-matrix.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	certification/c5-memory-v2/integration/
+	certification/c5-memory-v2/run-003/build-cp8-corpus.ts
+	certification/c5-memory-v2/run-003/c5-memory-2.0.0-certification-report.md
+	certification/c5-memory-v2/run-003/c5-memory-2.0.0-certification.json
+	certification/c5-memory-v2/run-003/capture-cp4-golden.ts
+	certification/c5-memory-v2/run-003/capture-cp5-massive.ts
+	certification/c5-memory-v2/run-003/capture-cp6-exhaustive.ts
+	certification/c5-memory-v2/run-003/cp10-artifact-inventory.json
+	certification/c5-memory-v2/run-003/cp10-chain-of-custody.json
+	certification/c5-memory-v2/run-003/cp10-checksum-audit.json
+	certification/c5-memory-v2/run-003/cp4-c5-golden-result.json
+	certification/c5-memory-v2/run-003/cp5-c5-massive-result.json
+	certification/c5-memory-v2/run-003/cp5-ref-opt-hash-observation.json
+	certification/c5-memory-v2/run-003/cp6-c5-exhaustive-result.json
+	certification/c5-memory-v2/run-003/cp7-performance-result.json
+	certification/c5-memory-v2/run-003/cp7-performance-samples.json
+	certification/c5-memory-v2/run-003/cp7-sanity-ref-result.json
+	certification/c5-memory-v2/run-003/cp8-consolidated-result.json
+	certification/c5-memory-v2/run-003/cp8-corpus.json
+	certification/c5-memory-v2/run-003/cp8-replay-a.json
+	certification/c5-memory-v2/run-003/cp8-replay-b.json
+	certification/c5-memory-v2/run-003/cp8-replay-reordered.json
+	certification/c5-memory-v2/run-003/cp9-baseline-diff.txt
+	certification/c5-memory-v2/run-003/cp9-build-result.json
+	certification/c5-memory-v2/run-003/cp9-lint-result.json
+	certification/c5-memory-v2/run-003/cp9-production-isolation.json
+	certification/c5-memory-v2/run-003/execute-cp8-replay.ts
+	certification/c5-memory-v2/run-003/generate-cp10-artifacts.ts
+	certification/c5-memory-v2/run-003/run-cp7-benchmark.ts
+	certification/c5-memory-v2/run-003/run-cp7-sanity-ref.ts
+	certification/c5-memory-v2/run-003/run-cp8-master.ts
+
+no changes added to commit (use "git add" and/or "git commit -a")
