@@ -38,8 +38,8 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP4",
-  "status": "CP4_PASS",
+  "stage": "CP5",
+  "status": "CP5_PASS",
   "cp1Artifacts": {
     "goldenVectorsCount": {
       "johnsonVectors": 7,
@@ -145,5 +145,41 @@
       "suspended": 0
     }
   },
-  "timestamp": "2026-09-29T11:20:25.000Z"
+  "cp5Artifacts": {
+    "suite": "src/c5/tests/massive.test.ts (C5-1.0.0 Massive Test 100.000)",
+    "command": "npm run test:c5:massive",
+    "status": "PASS",
+    "exitCode": 0,
+    "durationMs": 6968.94,
+    "metrics": {
+      "totalExecuted": 100000,
+      "totalValid": 100000,
+      "totalInvalid": 0,
+      "failures": 0,
+      "validityRate": 100,
+      "approvedStatus": true
+    },
+    "logFile": "cp5-c5-massive.log",
+    "logSha256": "40b4ae2127ae0ec5f6e76c1f230bae32071aae652cb53a4f4486e7f8fccc70b5",
+    "resultFile": "cp5-c5-massive-result.json",
+    "resultSha256": "cd95fd1741fc47dcf11e666b4d9e7dad7241d27cf80461bdd9e4c27e5b10964b",
+    "observationFile": "cp5-ref-opt-hash-observation.json",
+    "observationSha256": "adb265517f20d5253d897d54b19290a6e95712b96116e3ed3c2fbe2d32e41822",
+    "bar01Status": "PENDING",
+    "bar01Details": {
+      "golden": "PASS",
+      "massive": "PASS",
+      "exhaustive": "PENDING",
+      "reason": "Barreira BAR01 exige cumulativamente Golden, Massive (100k) e Exhaustive (16.34M). Em CP5, Golden e Massive foram aprovados; Exhaustive permanece PENDING."
+    },
+    "canonicalMatrix": {
+      "total": 72,
+      "passed": 71,
+      "pending": 1,
+      "pendingIds": ["BAR01"],
+      "failed": 0,
+      "suspended": 0
+    }
+  },
+  "timestamp": "2026-09-29T11:24:35.000Z"
 }
