@@ -38,8 +38,8 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP9",
-  "status": "CP9_PASS",
+  "stage": "CP10",
+  "status": "CERTIFIED",
   "cp1Artifacts": {
     "goldenVectorsCount": {
       "johnsonVectors": 7,
@@ -341,5 +341,42 @@
     "isolation": "PASS",
     "certificationGlobalStatus": "EM EXECUÇÃO"
   },
-  "timestamp": "2026-09-29T12:33:00.000Z"
+  "cp10Artifacts": {
+    "suite": "Auditoria Forense Final e Decisão de Certificação",
+    "status": "PASS",
+    "finalDecision": "CERTIFICADO",
+    "targetAlgorithm": "C5-Memory-2.0.0",
+    "scope": "C5-Memory / MAX-LEXIMIN Johnson — C5-Memory-2.0.0 — algoritmo matemático isolado (K=500)",
+    "totalArtifactsAudited": 47,
+    "checksumLedger": "VERIFIED_PERFECT (41/41 íntegros)",
+    "inventoryFile": "cp10-artifact-inventory.json",
+    "inventorySha256": "7db65e16f28154e6419262fbf98db53404879b8d7dde588118807dad322d76c9",
+    "checksumAuditFile": "cp10-checksum-audit.json",
+    "checksumAuditSha256": "9d9073db94db8e59c70d3297c841472b052902aef2a2b9f0c50d26e656151bab",
+    "chainOfCustodyFile": "cp10-chain-of-custody.json",
+    "chainOfCustodySha256": "e5ab5ec7575d26069f6fa78ded95c2922baf471f859476690766d4febbdae1ed",
+    "certificationJsonFile": "c5-memory-2.0.0-certification.json",
+    "certificationJsonSha256": "3389facdb5a8a6a7a9797f0c83927577a1219cb3ed5c6cfaaf66c3c6680c0401",
+    "certificationReportMd": "c5-memory-2.0.0-certification-report.md",
+    "certificationReportSha256": "80f66484243cd03253221b570d7972461778c4e8ef65852cd4670ffcbd6338a3",
+    "canonicalMatrix": {
+      "total": 72,
+      "passed": 72,
+      "pending": 0,
+      "pendingIds": [],
+      "failed": 0,
+      "suspended": 0,
+      "checksExecuted": 387
+    },
+    "nuclearHashes": {
+      "ref": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+      "opt": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+      "goldenVectors": "e892153893b1fa2b671b733d6531374cb1568d05210f25c22e1c9551d07c0773",
+      "refOptDefinitive": "8c6aa6438a6e943e101d18fbec2eddc427867906122d1747e3e37ba04d8d37fa",
+      "canonicalMatrix": "ab46afab43ee62d706fcb9711c450ea964b20fed7c9792d7cf93125a332033f9",
+      "performance": "a24d4dc3e78fcbb3a5cf8e8f03b8c5504ee15de624f774341f978c0a24e7f46b"
+    },
+    "certificationGlobalStatus": "CERTIFICADO"
+  },
+  "timestamp": "2026-09-29T12:42:00.000Z"
 }

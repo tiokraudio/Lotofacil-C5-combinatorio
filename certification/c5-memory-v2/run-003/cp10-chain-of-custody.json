@@ -1,0 +1,76 @@
+{
+  "checkpoint": "CP10",
+  "protocolVersion": "C5M-CERT-1.0",
+  "baselineCommit": "9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388",
+  "appVersion": "1.13.0",
+  "c5AlgorithmVersion": "C5-1.0.0",
+  "targetAlgorithm": "C5-Memory-2.0.0",
+  "executionHistory": [
+    {
+      "stage": "CP0",
+      "name": "Ambiente, Baseline e Isolamento de Governança",
+      "result": "PASS",
+      "evidence": "Working tree verificado limpo, baseline 9a0bd3c3 confirmado, protocolo C5M-CERT-1.0 estabelecido, zero modificações de produção."
+    },
+    {
+      "stage": "CP1",
+      "name": "Formalização Matemática e 27 Golden Vectors",
+      "result": "PASS",
+      "evidence": "27 Golden vectors canônicos construídos com testemunhas reais, testando Johnson d=0..10, MAX-LEXIMIN n0..n9, controle n10 e desempates canônicos."
+    },
+    {
+      "stage": "CP2",
+      "name": "Matriz Canônica Inicial (72 Cenários)",
+      "result": "PENDING_CONTROLADO",
+      "evidence": "69/72 cenários aprovados com 3 pendências legítimas (DET02, DET03 vinculados a CP3; BAR01 vinculada a CP4-CP6) sem antecipação espúria."
+    },
+    {
+      "stage": "CP3",
+      "name": "Implementação da OPT e Bateria de Equivalência 100k",
+      "result": "PASS",
+      "evidence": "OPT implementada sem heurísticas; DET02 aprovado em 188 checks; DET03 aprovado em 100.000 comparações independentes com zero divergências."
+    },
+    {
+      "stage": "CP4",
+      "name": "Barreira Real C5-1.0.0 — Golden Test Canônico",
+      "result": "PASS",
+      "evidence": "Suíte src/c5/tests/golden.test.ts executada com sucesso (exit code 0); 13/13 categorias de invariantes aprovadas; BAR01 mantido PENDING."
+    },
+    {
+      "stage": "CP5",
+      "name": "Barreira Real C5-1.0.0 — Massive Test 100.000",
+      "result": "PASS",
+      "evidence": "Suíte src/c5/tests/massive.test.ts executada com sucesso (exit code 0); 100.000/100.000 instâncias válidas; 0 falhas; BAR01 mantido PENDING."
+    },
+    {
+      "stage": "CP6",
+      "name": "Barreira Real C5-1.0.0 — Exhaustive Test 16.34M",
+      "result": "PASS",
+      "evidence": "Suíte src/c5/tests/exhaustive.test.ts executada com sucesso (exit code 0); 16.343.800 avaliações em 5 rotulagens sem violações; BAR01 -> PASS; Matriz -> 72/72 PASS."
+    },
+    {
+      "stage": "CP7",
+      "name": "Barreira Canônica de Performance Operacional da OPT",
+      "result": "PASS",
+      "evidence": "Benchmark oficial em K=500, T=3788 (|H|=18.940) com 1.000 medições: P95=216.28 ms (< 500 ms), Max=281.82 ms (< 2000 ms), 2/2 sanidade REF×OPT, 0 divergências."
+    },
+    {
+      "stage": "CP8",
+      "name": "Determinismo, Reprodutibilidade e Replay Canônico",
+      "result": "PASS",
+      "evidence": "Corpus determinístico de 1.000 casos: Replay A × B 100% idêntico, Replay Reordenado 100% idêntico, permutação de H 100/100, ordem do pool e estado oculto aprovados."
+    },
+    {
+      "stage": "CP9",
+      "name": "Isolamento, Imutabilidade e Não Integração",
+      "result": "PASS",
+      "evidence": "Zero alterações de produção contra baseline; zero imports cruzados; zero referências em produção; build PASS; lint/typecheck PASS; bundle dist/ limpo."
+    },
+    {
+      "stage": "CP10",
+      "name": "Auditoria Forense Final e Decisão de Certificação",
+      "result": "CERTIFICADO",
+      "evidence": "Cadeia completa de evidências auditada, hashes nucleares verificados, integridade do ledger confirmada e requisitos do protocolo 100% satisfeitos."
+    }
+  ]
+}
