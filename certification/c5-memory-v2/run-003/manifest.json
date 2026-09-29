@@ -38,8 +38,8 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP6",
-  "status": "CP6_PASS",
+  "stage": "CP7",
+  "status": "CP7_PASS",
   "cp1Artifacts": {
     "goldenVectorsCount": {
       "johnsonVectors": 7,
@@ -213,5 +213,39 @@
     },
     "certificationGlobalStatus": "EM EXECUÇÃO"
   },
-  "timestamp": "2026-09-29T11:38:00.000Z"
+  "cp7Artifacts": {
+    "suite": "run-cp7-benchmark.ts (OPT Canonical Performance Benchmark K=500, T=3788)",
+    "status": "PASS",
+    "officialMeasurements": 1000,
+    "p95Ms": 216.278,
+    "p95LimitMs": 500,
+    "maxMs": 281.817,
+    "maxLimitMs": 2000,
+    "minMs": 202.374,
+    "p50Ms": 205.776,
+    "p90Ms": 211.938,
+    "p99Ms": 228.068,
+    "meanMs": 207.223,
+    "stddevMs": 5.388,
+    "refSanitySamples": 2,
+    "refSanityDivergences": 0,
+    "samplesFile": "cp7-performance-samples.json",
+    "samplesSha256": "b7895367baf9cf9901f811c8cb7c5853eb373fe6789ccd020d0b7bb12b99f5cf",
+    "resultFile": "cp7-performance-result.json",
+    "resultSha256": "a24d4dc3e78fcbb3a5cf8e8f03b8c5504ee15de624f774341f978c0a24e7f46b",
+    "logFile": "cp7-performance.log",
+    "logSha256": "34f10955332fc38a43b57394c09adafff7cfc406f17138add52d61b12e5bd39e",
+    "sanityResultFile": "cp7-sanity-ref-result.json",
+    "sanityResultSha256": "1868e9a1706b74e4b5cc1d7e82d18879737a8a1d4b30a73b0c45cbde05de20aa",
+    "canonicalMatrix": {
+      "total": 72,
+      "passed": 72,
+      "pending": 0,
+      "pendingIds": [],
+      "failed": 0,
+      "suspended": 0
+    },
+    "certificationGlobalStatus": "EM EXECUÇÃO"
+  },
+  "timestamp": "2026-09-29T11:55:00.000Z"
 }

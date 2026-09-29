@@ -1,0 +1,76 @@
+{
+  "checkpoint": "CP7",
+  "algorithm": "C5-Memory-2.0.0",
+  "implementation": "OPT (optimized-evaluator.ts)",
+  "optSha256": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+  "constants": {
+    "K": 500,
+    "T": 3788,
+    "historicalGamesCount": 18940,
+    "candidateGamesCount": 5
+  },
+  "corpus": {
+    "rng": "Mulberry32",
+    "masterSeed": 20260929,
+    "corpusSha256": "fc4c4ca9dfe0ae339c1870e7a61ec06328dc340fc67fe404e8ea55c097ec55ae",
+    "constructionMethod": "3.788 apostas C5 de 5 jogos geradas determinística e sequencialmente"
+  },
+  "warmup": {
+    "iterations": 10,
+    "durationMs": 2099.98
+  },
+  "benchmark": {
+    "officialMeasurementsCount": 1000,
+    "timerMechanism": "performance.now() (Monotonic High-Resolution Timer)",
+    "statistics": {
+      "minMs": 202.374,
+      "p50Ms": 205.776,
+      "p90Ms": 211.938,
+      "p95Ms": 216.278,
+      "p99Ms": 228.068,
+      "maxMs": 281.817,
+      "meanMs": 207.223,
+      "stddevMs": 5.388
+    },
+    "limits": {
+      "p95LimitMs": 500,
+      "maxLimitMs": 2000,
+      "p95Passed": true,
+      "maxPassed": true
+    },
+    "functionalChecks": {
+      "allWinnersValid": true,
+      "exceptionsCount": 0,
+      "historyMutationsDetected": false,
+      "poolMutationsDetected": false,
+      "refSanityMatch": true,
+      "divergencesCount": 0
+    }
+  },
+  "memory": {
+    "rssBeforeBytes": 92504064,
+    "rssAfterBytes": 165937152,
+    "rssPeakBytes": 167124992,
+    "heapUsedBeforeBytes": 8432584,
+    "heapUsedAfterBytes": 47204584,
+    "heapUsedPeakBytes": 59660352
+  },
+  "environment": {
+    "nodeVersion": "v22.23.2",
+    "npmVersion": "10.9.8",
+    "platform": "linux",
+    "osRelease": "4.19.0-gvisor",
+    "architecture": "x64",
+    "cpuModel": "unknown",
+    "cpuCores": 2,
+    "totalMemoryMb": 4096,
+    "freeMemoryMb": 3466.8
+  },
+  "artifacts": {
+    "samplesFile": "cp7-performance-samples.json",
+    "samplesSha256": "b7895367baf9cf9901f811c8cb7c5853eb373fe6789ccd020d0b7bb12b99f5cf",
+    "logFile": "cp7-performance.log",
+    "logSha256": "34f10955332fc38a43b57394c09adafff7cfc406f17138add52d61b12e5bd39e"
+  },
+  "status": "PASS"
+}
