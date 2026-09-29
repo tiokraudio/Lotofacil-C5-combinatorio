@@ -1,0 +1,67 @@
+{
+  "checkpoint": "CP6",
+  "suite": "src/c5/tests/exhaustive.test.ts (C5-1.0.0 Exhaustive Test 16.343.800)",
+  "command": "npm run test:c5:exhaustive",
+  "baselineCommit": "9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388",
+  "appVersion": "1.13.0",
+  "c5AlgorithmVersion": "C5-1.0.0",
+  "startedAt": "2026-09-29T11:37:51.212Z",
+  "finishedAt": "2026-09-29T11:37:52.361Z",
+  "durationMs": 1145.23,
+  "exitCode": 0,
+  "status": "PASS",
+  "combinationsPerLabeling": 3268760,
+  "numLabelings": 5,
+  "totalEvaluations": 16343800,
+  "labelingResults": [
+    {
+      "labeling": 1,
+      "seed": 101,
+      "status": "PASS"
+    },
+    {
+      "labeling": 2,
+      "seed": 202,
+      "status": "PASS"
+    },
+    {
+      "labeling": 3,
+      "seed": 303,
+      "status": "PASS"
+    },
+    {
+      "labeling": 4,
+      "seed": 404,
+      "status": "PASS"
+    },
+    {
+      "labeling": 5,
+      "seed": 505,
+      "status": "PASS"
+    }
+  ],
+  "certifiedProperties": [
+    "Enumeração exata de todos os C(25,15) = 3.268.760 resultados via Gosper's Hack",
+    "Distribuição exata de maxHits (0..15) para cada candidato C5",
+    "Certificados de contagem de acertos: 11+ (1.626.630), 12+ (297.380), 13+ (24.380), 14+ (755), 15 (5)",
+    "Multiplicidade de 11+: [0: 1.642.130, 1: 1.522.755, 2: 103.750, 3: 125, 4: 0, 5: 0]",
+    "Invariância estrita sob 5 rotulagens/permutações independentes (seeds 101, 202, 303, 404, 505)"
+  ],
+  "violationsCount": 0,
+  "environment": {
+    "nodeVersion": "v22.23.2",
+    "npmVersion": "10.9.8",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "logFile": "cp6-c5-exhaustive.log",
+  "logSha256": "4f0d4d504918ba2d0dc002553ef9e98633ed45af1a047db9e1415fa393e272dc",
+  "barrierStatus": {
+    "golden": "PASS",
+    "massive": "PASS",
+    "exhaustive": "PASS",
+    "bar01": "PASS",
+    "matrixStatus": "72/72 PASS",
+    "certificationGlobalStatus": "EM EXECUÇÃO"
+  }
+}

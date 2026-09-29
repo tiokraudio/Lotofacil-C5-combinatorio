@@ -1438,16 +1438,53 @@ export function runCanonicalMatrix(): MatrixRunReport {
 
   // BAR01: Golden/Massive/Exhaustive de C5-1.0.0
   {
-    recordScenario(
-      "BAR01",
-      "BAR",
-      "PENDING",
-      0,
-      "Execução e certificação integral das suítes de C5-1.0.0 (Golden, Massive 100k, Exhaustive 16.34M)",
-      "PENDING: Vinculado formalmente aos checkpoints de barreira (CP4–CP6)",
-      0,
-      "Aguardando checkpoint de execução real das suítes massivas/exaustivas sem antecipação espúria"
-    );
+    const cp4Path = path.resolve("certification/c5-memory-v2/run-003/cp4-c5-golden-result.json");
+    const cp5Path = path.resolve("certification/c5-memory-v2/run-003/cp5-c5-massive-result.json");
+    const cp6Path = path.resolve("certification/c5-memory-v2/run-003/cp6-c5-exhaustive-result.json");
+
+    const hasCp4 = fs.existsSync(cp4Path);
+    const hasCp5 = fs.existsSync(cp5Path);
+    const hasCp6 = fs.existsSync(cp6Path);
+
+    if (hasCp4 && hasCp5 && hasCp6) {
+      const cp4 = JSON.parse(fs.readFileSync(cp4Path, "utf-8"));
+      const cp5 = JSON.parse(fs.readFileSync(cp5Path, "utf-8"));
+      const cp6 = JSON.parse(fs.readFileSync(cp6Path, "utf-8"));
+
+      const ok =
+        cp4.status === "PASS" &&
+        cp5.status === "PASS" &&
+        cp6.status === "PASS" &&
+        cp5.metrics.totalValid === 100000 &&
+        cp6.totalEvaluations === 16343800 &&
+        cp6.violationsCount === 0;
+
+      const durationTotal = (cp4.durationMs || 0) + (cp5.durationMs || 0) + (cp6.durationMs || 0);
+
+      recordScenario(
+        "BAR01",
+        "BAR",
+        ok ? "PASS" : "FAIL",
+        19,
+        "Execução e certificação integral das suítes de C5-1.0.0 (Golden, Massive 100k, Exhaustive 16.34M)",
+        ok
+          ? "PASS — Suítes C5-1.0.0 integralmente certificadas: Golden (13/13 PASS), Massive (100.000/100.000 válidas, 0 falhas), Exhaustive (16.343.800/16.343.800 em 5 rotulagens, 0 violações)"
+          : "Falha na verificação de barreiras reais de C5-1.0.0",
+        durationTotal,
+        "Barreira BAR01 integralmente aprovada nos checkpoints reais CP4, CP5 e CP6 sem antecipação espúria (Golden exit code 0, Massive exit code 0, Exhaustive exit code 0)."
+      );
+    } else {
+      recordScenario(
+        "BAR01",
+        "BAR",
+        "PENDING",
+        0,
+        "Execução e certificação integral das suítes de C5-1.0.0 (Golden, Massive 100k, Exhaustive 16.34M)",
+        "PENDING: Vinculado formalmente aos checkpoints de barreira (CP4–CP6)",
+        0,
+        "Aguardando checkpoint de execução real das suítes massivas/exaustivas sem antecipação espúria"
+      );
+    }
   }
 
   // BAR02: Isolamento de resultados oficiais

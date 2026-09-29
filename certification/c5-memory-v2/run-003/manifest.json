@@ -38,8 +38,8 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP5",
-  "status": "CP5_PASS",
+  "stage": "CP6",
+  "status": "CP6_PASS",
   "cp1Artifacts": {
     "goldenVectorsCount": {
       "johnsonVectors": 7,
@@ -181,5 +181,37 @@
       "suspended": 0
     }
   },
-  "timestamp": "2026-09-29T11:24:35.000Z"
+  "cp6Artifacts": {
+    "suite": "src/c5/tests/exhaustive.test.ts (C5-1.0.0 Exhaustive Test 16.343.800)",
+    "command": "npm run test:c5:exhaustive",
+    "status": "PASS",
+    "exitCode": 0,
+    "durationMs": 1145.23,
+    "combinationsPerLabeling": 3268760,
+    "numLabelings": 5,
+    "totalEvaluations": 16343800,
+    "violationsCount": 0,
+    "logFile": "cp6-c5-exhaustive.log",
+    "logSha256": "4f0d4d504918ba2d0dc002553ef9e98633ed45af1a047db9e1415fa393e272dc",
+    "resultFile": "cp6-c5-exhaustive-result.json",
+    "resultSha256": "b8c91183bab8077ac8b575f3860d1c7aabd8fdbe59a7d1fe24dbc695ff8e60c4",
+    "bar01Status": "PASS",
+    "bar01Details": {
+      "golden": "PASS",
+      "massive": "PASS",
+      "exhaustive": "PASS",
+      "reason": "Barreira BAR01 integralmente aprovada: Golden (13/13 PASS), Massive (100.000/100.000 válidas), Exhaustive (16.343.800 avaliações sem violações)."
+    },
+    "canonicalMatrix": {
+      "total": 72,
+      "passed": 72,
+      "pending": 0,
+      "pendingIds": [],
+      "failed": 0,
+      "suspended": 0,
+      "checksExecuted": 387
+    },
+    "certificationGlobalStatus": "EM EXECUÇÃO"
+  },
+  "timestamp": "2026-09-29T11:38:00.000Z"
 }
