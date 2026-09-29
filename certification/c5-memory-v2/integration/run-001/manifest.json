@@ -66,8 +66,8 @@
   },
 
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC3",
-  "status": "IC3_PASS",
+  "currentCheckpoint": "IC4",
+  "status": "IC4_PASS",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -251,6 +251,116 @@
     "verificationLog": {
       "path": "ic3-verification.log",
       "sha256": "ad9f3d015c9ba8f4f9d033b70be9b8af1ec282778c2b7dcb759bb551f7a6a5ae"
+    }
+  },
+  "ic4Artifacts": {
+    "sourceCode": {
+      "prng": {
+        "path": "src/c5-memory/prng.ts",
+        "sha256": "de9df384897c676d6a5a7e07fc0c062c45e6e402dd16ebc1383fc561976d5d0b"
+      },
+      "pool": {
+        "path": "src/c5-memory/pool.ts",
+        "sha256": "0211aac497f604bc77880bb9b843ba2ee90c5b79643fd48db93ffd6525bc16a8"
+      },
+      "unitTests": {
+        "path": "src/c5-memory/tests/pool.test.ts",
+        "sha256": "c9db80ce958dd15d90865f6c09fca5426f4bf6829b631a2af8eb37be714188a2",
+        "status": "PASS"
+      }
+    },
+    "verificationScript": {
+      "path": "run-ic4-verification.ts",
+      "sha256": "01ab8dd1df3f899c4132b636008fc182899fd451734987f84e139cf6b842002c"
+    },
+    "prngAppGoldenResult": {
+      "path": "ic4-prng-app-golden-result.json",
+      "sha256": "52da6ba5df84bc5042c33da8a88862ccd534cea288b91ac7e9d856aaed8e41f9",
+      "totalVectors": 6,
+      "passedVectors": 6,
+      "status": "PASS"
+    },
+    "rngConsumptionResult": {
+      "path": "ic4-rng-consumption-result.json",
+      "sha256": "a6fef2d247e4c25e62c5f52d306fce527bfeee51a43b27b1f139a547bd9775f8",
+      "wordsPerCandidate": 24,
+      "wordsPerPool": 12000,
+      "status": "PASS"
+    },
+    "rngShiftNegativeControl": {
+      "path": "ic4-rng-shift-negative-control.json",
+      "sha256": "dd269181767950771cd60c3c0a2d9c9d100a7f0c8fc8c8eda85c64a98c6a4f44",
+      "offByOneDetected": true,
+      "status": "PASS"
+    },
+    "poolGoldenVectors": {
+      "path": "ic4-pool-golden-vectors.json",
+      "sha256": "ffd0b6c719d6d2c8a2536170e9e900553b67cbdb066ff6a5983080d0653bb9f1",
+      "count": 6
+    },
+    "poolGoldenResult": {
+      "path": "ic4-pool-golden-result.json",
+      "sha256": "a489a4629ef4f73d84afb96d1e4e155ef4fda717be14489ca7a2871a6f4470d7",
+      "allVectorsVerified": true,
+      "status": "PASS"
+    },
+    "seedIsolationResult": {
+      "path": "ic4-seed-isolation-result.json",
+      "sha256": "a8f3a281db397518484de411a8d7cfc570fa6da1035ce3c01d9f6d2ae0e8a9bc",
+      "errPool05Verified": true,
+      "status": "PASS"
+    },
+    "replayResult": {
+      "path": "ic4-replay-result.json",
+      "sha256": "2940b1644a0fb595a9a74fa411a59ed14167dd7b33766722ba924626653332d1",
+      "poolReplayIdentical": true,
+      "decisionReplayIdentical": true,
+      "gvI11": "PASS",
+      "gvI12": "PASS",
+      "gvI18": "PASS",
+      "status": "PASS"
+    },
+    "asyncOrderResult": {
+      "path": "ic4-async-order-result.json",
+      "sha256": "d1d687d557ba72a918b546fc15946433763c895b346334bba41fa8ddaf29f7ed",
+      "poolIndexPreserved": true,
+      "minPoolIndexTieBreaker": true,
+      "status": "PASS"
+    },
+    "poolValidityResult": {
+      "path": "ic4-pool-validity-result.json",
+      "sha256": "b1d778a904622e1d63c195590ec3f874b3699f6056d4a18b38e5fbe4a2a32d47",
+      "candidatesAudited": 5000,
+      "gamesAudited": 25000,
+      "invalidGames": 0,
+      "invalidCandidates": 0,
+      "status": "PASS"
+    },
+    "referenceEquivalenceResult": {
+      "path": "ic4-reference-equivalence-result.json",
+      "sha256": "f9ef1bf3993a4ca17efb182e443a1f08e46947918c9486724ca30e5ed6e0cd43",
+      "candidatesCompared": 3000,
+      "divergences": 0,
+      "status": "PASS"
+    },
+    "regressionResult": {
+      "path": "ic4-regression-result.json",
+      "sha256": "7ebc017b19ea17b5628720dd259862a7f08c40f6fdcebe4bf99051d5f6b68f63",
+      "ic3Math": "PASS",
+      "c5Golden": "PASS",
+      "c5Massive": "PASS",
+      "c5Exhaustive": "PASS",
+      "build": "PASS",
+      "lint": "PASS",
+      "status": "PASS"
+    },
+    "diffInventory": {
+      "path": "ic4-diff-inventory.json",
+      "sha256": "0a7994ae447869ff470d2b08f2368982595d390813efd23f4faf33fdc0219e15"
+    },
+    "verificationLog": {
+      "path": "ic4-verification.log",
+      "sha256": "2911635ea45fd48fcc06e8d58dfcc7b3bf864bd4eecca9b4703c1860d6cd9320"
     }
   }
 }

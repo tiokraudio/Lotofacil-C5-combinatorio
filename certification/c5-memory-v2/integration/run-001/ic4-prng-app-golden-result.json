@@ -1,0 +1,54 @@
+{
+  "checkpoint": "IC4",
+  "algorithm": "MULBERRY32",
+  "version": "1.0.0",
+  "totalVectors": 6,
+  "totalChecks": 390,
+  "passedChecks": 390,
+  "failedChecks": 0,
+  "vectors": [
+    {
+      "seed": 0,
+      "wordsChecked": 32,
+      "allWordsMatch": true,
+      "finalStateMatch": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 1,
+      "wordsChecked": 32,
+      "allWordsMatch": true,
+      "finalStateMatch": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 100001,
+      "wordsChecked": 32,
+      "allWordsMatch": true,
+      "finalStateMatch": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 20260929,
+      "wordsChecked": 32,
+      "allWordsMatch": true,
+      "finalStateMatch": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 2147483647,
+      "wordsChecked": 32,
+      "allWordsMatch": true,
+      "finalStateMatch": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 4294967295,
+      "wordsChecked": 32,
+      "allWordsMatch": true,
+      "finalStateMatch": true,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

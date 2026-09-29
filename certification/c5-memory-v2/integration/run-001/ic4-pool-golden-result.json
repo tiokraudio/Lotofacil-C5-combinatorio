@@ -1,0 +1,44 @@
+{
+  "checkpoint": "IC4",
+  "totalPoolVectors": 6,
+  "allVectorsVerified": true,
+  "verifications": [
+    {
+      "seed": 0,
+      "canonicalPoolSha256": "f0479d5faea59cc11a9a280d3923bb5cfa74d6bfb74b6b978d67c49517a41b8e",
+      "matchesGolden": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 1,
+      "canonicalPoolSha256": "30261d16e55ef5a63fdd0399ed919e3ac2b8858f03edd5c640a5095357e32f7f",
+      "matchesGolden": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 100001,
+      "canonicalPoolSha256": "4757833628a615aa52dbe19827805e284b35aa2a048d297950ca3e32dd1673cb",
+      "matchesGolden": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 20260929,
+      "canonicalPoolSha256": "d8ce6012ee9a1553db35f38656d07490d359c69171df8ef65b77bc6dbfa187bf",
+      "matchesGolden": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 2147483647,
+      "canonicalPoolSha256": "abe3b033c6975311579afe6160ac268d6c4f89190b14e8b3eef5204a51c17c31",
+      "matchesGolden": true,
+      "status": "PASS"
+    },
+    {
+      "seed": 4294967295,
+      "canonicalPoolSha256": "48c50c5c10e2d6831f85b2edda250af35a4ed9c31b6025c0c05f8c9b9afaf6d5",
+      "matchesGolden": true,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

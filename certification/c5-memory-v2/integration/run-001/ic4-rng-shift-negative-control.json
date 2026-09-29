@@ -1,0 +1,24 @@
+{
+  "checkpoint": "IC4",
+  "testSeed": 20260929,
+  "normalPoolSha256": "d8ce6012ee9a1553db35f38656d07490d359c69171df8ef65b77bc6dbfa187bf",
+  "sabotageScenarios": [
+    {
+      "scenario": "OFF_BY_ONE_INITIAL_SHIFT",
+      "description": "1 palavra adicional consumida antes de iniciar a geração do pool",
+      "expectedDivergence": true,
+      "divergenceDetected": true,
+      "sabotagedHash": "d48091a1499fdb1b59d84eb6385487dd98c570c6b94f237e44f2d6c0df5d0bc0",
+      "status": "PASS"
+    },
+    {
+      "scenario": "OFF_BY_ONE_PER_CANDIDATE_LEAK",
+      "description": "25 palavras consumidas por candidato em vez de 24",
+      "expectedDivergence": true,
+      "divergenceDetected": true,
+      "sabotagedHash": "88461d62f2d2edb217886bbe46833c6a832f73cdd19dbe0b10ea08f5737baac6",
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

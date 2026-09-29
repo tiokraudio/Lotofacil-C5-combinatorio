@@ -1,0 +1,38 @@
+{
+  "checkpoint": "IC4",
+  "pairsTested": 3,
+  "allDeterministic": true,
+  "details": [
+    {
+      "seedA": 20260929,
+      "seedB": 100001,
+      "hashA1": "d8ce6012ee9a1553db35f38656d07490d359c69171df8ef65b77bc6dbfa187bf",
+      "hashB": "4757833628a615aa52dbe19827805e284b35aa2a048d297950ca3e32dd1673cb",
+      "hashA2": "d8ce6012ee9a1553db35f38656d07490d359c69171df8ef65b77bc6dbfa187bf",
+      "a1EqualsA2": true,
+      "aDiffersFromB": true,
+      "status": "PASS"
+    },
+    {
+      "seedA": 0,
+      "seedB": 4294967295,
+      "hashA1": "f0479d5faea59cc11a9a280d3923bb5cfa74d6bfb74b6b978d67c49517a41b8e",
+      "hashB": "48c50c5c10e2d6831f85b2edda250af35a4ed9c31b6025c0c05f8c9b9afaf6d5",
+      "hashA2": "f0479d5faea59cc11a9a280d3923bb5cfa74d6bfb74b6b978d67c49517a41b8e",
+      "a1EqualsA2": true,
+      "aDiffersFromB": true,
+      "status": "PASS"
+    },
+    {
+      "seedA": 123456,
+      "seedB": 654321,
+      "hashA1": "87b439efe81ba809ce846053540400d0ed3c63bff9321f8742b856350e031fb8",
+      "hashB": "71baf6b5e91fe577f40ffa1d9ed5801bba0536ee5e549220433978510fc503a6",
+      "hashA2": "87b439efe81ba809ce846053540400d0ed3c63bff9321f8742b856350e031fb8",
+      "a1EqualsA2": true,
+      "aDiffersFromB": true,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

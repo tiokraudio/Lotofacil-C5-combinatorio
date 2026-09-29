@@ -1,0 +1,33 @@
+{
+  "checkpoint": "IC4",
+  "ic3MathTests": {
+    "status": "PASS",
+    "assertions": 22
+  },
+  "ic4PoolTests": {
+    "status": "PASS"
+  },
+  "c5Golden": {
+    "status": "PASS",
+    "log": "ic4-c5-golden.log"
+  },
+  "c5Massive": {
+    "status": "PASS",
+    "log": "ic4-c5-massive.log"
+  },
+  "c5Exhaustive": {
+    "status": "PASS",
+    "log": "ic4-c5-exhaustive.log"
+  },
+  "build": {
+    "status": "PASS",
+    "exitCode": 0,
+    "log": "ic4-build.log"
+  },
+  "lint": {
+    "status": "PASS",
+    "exitCode": 0,
+    "log": "ic4-lint.log"
+  },
+  "status": "PASS"
+}
