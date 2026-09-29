@@ -1,0 +1,15 @@
+{
+  "checkpoint": "IC3",
+  "candidatePoolSize": 500,
+  "benchmarks": [
+    {
+      "historySize": 250,
+      "durationMs": 15
+    },
+    {
+      "historySize": 3788,
+      "durationMs": 128
+    }
+  ],
+  "status": "PASS"
+}

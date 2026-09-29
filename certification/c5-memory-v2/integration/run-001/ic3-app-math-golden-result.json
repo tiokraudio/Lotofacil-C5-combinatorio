@@ -1,0 +1,8 @@
+{
+  "checkpoint": "IC3",
+  "goldenVectorsFileSha256": "e892153893b1fa2b671b733d6531374cb1568d05210f25c22e1c9551d07c0773",
+  "totalChecks": 44,
+  "passedChecks": 44,
+  "failedChecks": 0,
+  "status": "PASS"
+}

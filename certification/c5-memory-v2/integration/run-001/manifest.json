@@ -66,8 +66,8 @@
   },
 
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC2",
-  "status": "IC2_PASS",
+  "currentCheckpoint": "IC3",
+  "status": "IC3_PASS",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -160,6 +160,97 @@
     "poolIndexContract": {
       "path": "ic2-pool-index-contract.json",
       "sha256": "2b41878815c6d8275e2f73ca6827835f8e0fe968b00385c74307ad9b430b38bb"
+    }
+  },
+  "ic3Artifacts": {
+    "sourceCode": {
+      "math": {
+        "path": "src/c5-memory/math.ts",
+        "sha256": "d902810102c73fa6ccca2c234effee565ffb02160fcfad3b82fb2237ea0155d5"
+      },
+      "types": {
+        "path": "src/c5-memory/types.ts",
+        "sha256": "e9c7c005cb66c3dc4b11d7e80ccc60ac25d1ed4f34f821b1c591b530b20d52ff"
+      },
+      "unitTests": {
+        "path": "src/c5-memory/tests/math.test.ts",
+        "sha256": "29107752a94b6037ad73451cb1876f14ee33ad12a34d95a4091d0a8270abe86e",
+        "assertionsPassed": 22,
+        "status": "PASS"
+      }
+    },
+    "verificationScript": {
+      "path": "run-ic3-verification.ts",
+      "sha256": "7f9153ee41f9b20c094558703c1300fd7bcaad2274f8172fae1b76529b40a133"
+    },
+    "mathGoldenResult": {
+      "path": "ic3-app-math-golden-result.json",
+      "sha256": "5d55b36e2f657a234ed3afcf4ac89d99b5fadfb6a586ff1b452fd5b10af26ec3",
+      "totalChecks": 44,
+      "passedChecks": 44,
+      "failedChecks": 0,
+      "status": "PASS"
+    },
+    "appRefOptComparativeResult": {
+      "path": "ic3-app-ref-opt-result.json",
+      "sha256": "35efbc228b9ff046772aa89efe7f132dfb4bfc4297e7545dbbfa837522561d70",
+      "totalCasesCompared": 10000,
+      "poolSize": 500,
+      "divergencesAppRef": 0,
+      "divergencesAppOpt": 0,
+      "divergencesHistogram": 0,
+      "status": "PASS",
+      "durationSeconds": 206.27
+    },
+    "fullHistogramComparison": {
+      "path": "ic3-full-histogram-comparison.json",
+      "sha256": "063fc23289c58295372aacb56343253629fbbc16375915dcc4e78bc1f4cd79bc",
+      "histogramsCompared": 50000,
+      "coordinatesCompared": 550000,
+      "divergences": 0,
+      "status": "PASS"
+    },
+    "performanceSanity": {
+      "path": "ic3-performance-sanity.json",
+      "sha256": "c024b4848a0a984f705f61f22f1087344b745cadcdab8159165710978d8fefc0",
+      "benchmarkH250Ms": 15,
+      "benchmarkH3788Ms": 128,
+      "status": "PASS"
+    },
+    "diffInventory": {
+      "path": "ic3-diff-inventory.json",
+      "sha256": "2d166ef7141211acdd20626a6b8b286fd324b38dd6bd60834260417498ba6949"
+    },
+    "healthChecks": {
+      "build": {
+        "log": "ic3-build.log",
+        "sha256": "9ada7062385179e2d8a475fa8db346dcdb8348a35f9d300c579349c89e831556",
+        "exitCode": 0
+      },
+      "lint": {
+        "log": "ic3-lint.log",
+        "sha256": "0d34694421d08876e8f7381eadbe6b29c4f90444f5eef4c98284b4fa3826f1e9",
+        "exitCode": 0
+      },
+      "c5Golden": {
+        "log": "ic3-c5-golden.log",
+        "sha256": "940126cb58fdb4f3b147bf5922f6e92f12921a5f9dec7dec1e6e8cc644117335",
+        "status": "PASS"
+      },
+      "c5Massive": {
+        "log": "ic3-c5-massive.log",
+        "sha256": "f082eb571abde1fcf81dc08b1b57898e7d4383935f7d6864ec0cebf48263a57a",
+        "status": "PASS"
+      },
+      "c5Exhaustive": {
+        "log": "ic3-c5-exhaustive.log",
+        "sha256": "eac4a2138f454527073906f6760fb0111cea341e8d1651e36d2e8d8dac6f4883",
+        "status": "PASS"
+      }
+    },
+    "verificationLog": {
+      "path": "ic3-verification.log",
+      "sha256": "ad9f3d015c9ba8f4f9d033b70be9b8af1ec282778c2b7dcb759bb551f7a6a5ae"
     }
   }
 }

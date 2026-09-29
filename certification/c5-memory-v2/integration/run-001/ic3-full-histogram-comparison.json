@@ -1,0 +1,10 @@
+{
+  "checkpoint": "IC3",
+  "subsampleCases": 100,
+  "candidatesPerCase": 500,
+  "totalHistogramsCompared": 50000,
+  "coordinatesPerHistogram": 11,
+  "totalCoordinatesCompared": 550000,
+  "divergencesCount": 0,
+  "status": "PASS"
+}
