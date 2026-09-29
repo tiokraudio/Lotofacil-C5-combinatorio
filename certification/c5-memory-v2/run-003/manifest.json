@@ -38,8 +38,8 @@
   },
   "initialWorkingTreeState": "CLEAN",
   "productionFilesModified": 0,
-  "stage": "CP7",
-  "status": "CP7_PASS",
+  "stage": "CP8",
+  "status": "CP8_PASS",
   "cp1Artifacts": {
     "goldenVectorsCount": {
       "johnsonVectors": 7,
@@ -247,5 +247,45 @@
     },
     "certificationGlobalStatus": "EM EXECUÇÃO"
   },
-  "timestamp": "2026-09-29T11:55:00.000Z"
+  "cp8Artifacts": {
+    "suite": "Determinismo, Reprodutibilidade e Replay Canônico C5-Memory-2.0.0",
+    "status": "PASS",
+    "corpusCases": 1000,
+    "k": 500,
+    "corpusSha256": "3f4ea04c2ce8e6fbb85349408508713a42b8c59a5996a9066fd10fe780208577",
+    "replayASha256": "69bddbb6318d7c0ea3bf041cc71ea88d051269a0462b64229f0df8ab0f22caf4",
+    "replayBSha256": "69bddbb6318d7c0ea3bf041cc71ea88d051269a0462b64229f0df8ab0f22caf4",
+    "replayReorderedSha256": "69bddbb6318d7c0ea3bf041cc71ea88d051269a0462b64229f0df8ab0f22caf4",
+    "divergencesAB": 0,
+    "divergencesAReordered": 0,
+    "historyPermutationsTested": 100,
+    "historyPermutationsIdentical": 100,
+    "poolOrderSensitivityPassed": true,
+    "serializationReReadingPassed": true,
+    "hiddenStatePassed": true,
+    "refSanityMatches": 10,
+    "refSanityTested": 10,
+    "totalDivergences": 0,
+    "refShaBefore": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+    "refShaAfter": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+    "optShaBefore": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+    "optShaAfter": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+    "resultFile": "cp8-consolidated-result.json",
+    "resultSha256": "09f5b6c8026c945d2864f1650b4b187c7016c61a4cba694223fa4b57a6b11a80",
+    "logFile": "cp8-replay.log",
+    "logSha256": "0d03446b8d6a3ab97e2dcb5732354897e30fbb6bd894737529d0de355c028262",
+    "canonicalMatrix": {
+      "total": 72,
+      "passed": 72,
+      "pending": 0,
+      "pendingIds": [],
+      "failed": 0,
+      "suspended": 0,
+      "checksExecuted": 387
+    },
+    "performance": "PASS",
+    "determinismReplay": "PASS",
+    "certificationGlobalStatus": "EM EXECUÇÃO"
+  },
+  "timestamp": "2026-09-29T12:12:00.000Z"
 }

@@ -1,0 +1,66 @@
+{
+  "checkpoint": "CP8",
+  "suite": "Determinismo, Reprodutibilidade e Replay Canônico C5-Memory-2.0.0",
+  "baselineCommit": "9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388",
+  "refShaBefore": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+  "refShaAfter": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+  "optShaBefore": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+  "optShaAfter": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+  "corpus": {
+    "rng": "Mulberry32",
+    "seed": 20260929,
+    "totalCases": 1000,
+    "k": 500,
+    "corpusSha256": "3f4ea04c2ce8e6fbb85349408508713a42b8c59a5996a9066fd10fe780208577"
+  },
+  "replays": {
+    "replayASha256": "69bddbb6318d7c0ea3bf041cc71ea88d051269a0462b64229f0df8ab0f22caf4",
+    "replayBSha256": "69bddbb6318d7c0ea3bf041cc71ea88d051269a0462b64229f0df8ab0f22caf4",
+    "replayReorderedSha256": "69bddbb6318d7c0ea3bf041cc71ea88d051269a0462b64229f0df8ab0f22caf4",
+    "comparisonAB": {
+      "casesCompared": 1000,
+      "divergencesCount": 0,
+      "identical": true
+    },
+    "comparisonAReordered": {
+      "casesCompared": 1000,
+      "divergencesCount": 0,
+      "identical": true
+    }
+  },
+  "specializedTests": {
+    "historyPermutation": {
+      "casesTested": 100,
+      "identicalCount": 100,
+      "passed": true
+    },
+    "poolOrderSensitivity": {
+      "passed": true,
+      "details": "Comprovação de desempate por menor índice: ordem do pool determina vencedor em empate integral. Res2=143, Res3=143"
+    },
+    "serializationReReading": {
+      "passed": true,
+      "details": "Decisão estritamente idêntica após ciclo de serialização JSON (Vencedor: índice 429)"
+    },
+    "hiddenStateIndependence": {
+      "passed": true,
+      "details": "Zero contaminação de estado oculto: frio (0) === quente (0)"
+    },
+    "refSanity": {
+      "casesTested": 10,
+      "matchesCount": 10,
+      "passed": true
+    }
+  },
+  "artifacts": {
+    "corpusFile": "cp8-corpus.json",
+    "replayAFile": "cp8-replay-a.json",
+    "replayBFile": "cp8-replay-b.json",
+    "replayReorderedFile": "cp8-replay-reordered.json",
+    "logFile": "cp8-replay.log",
+    "logSha256": "0d03446b8d6a3ab97e2dcb5732354897e30fbb6bd894737529d0de355c028262",
+    "resultFile": "cp8-consolidated-result.json",
+    "resultSha256": "7a02a0127df8ca054bb8d0a2f75de98e4fdc2993454e5f2e683b308e31d07242"
+  },
+  "status": "PASS"
+}
