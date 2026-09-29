@@ -1,0 +1,1288 @@
+[
+  {
+    "goldenId": "GV-I01",
+    "normativeSource": "Matriz Canônica de Integração C5-Memory-2.0.0 v1.0 — Sec. 4 (BAR02, CAT01)",
+    "description": "Histórico vazio (H = ∅) — Perfil de distâncias nulo e desempate puramente por menor poolIndex",
+    "inputs": {
+      "history": [],
+      "poolSize": 500,
+      "poolMasterSeed": 100001
+    },
+    "preconditions": {
+      "historyLength": 0,
+      "systemState": "NO_PREVIOUS_CONFIRMED_BETS"
+    },
+    "expected": {
+      "distanceVector": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "winnerIndex": 0,
+      "tieBreakerTriggered": true,
+      "tieBreakerRule": "MIN_POOL_INDEX",
+      "action": "SELECT_FIRST_CANONICAL_CANDIDATE"
+    },
+    "invariants": [
+      "Para qualquer candidato c e H = ∅, n_d = 0 para todo d ∈ [0..9].",
+      "O empate é estritamente integral entre os 500 candidatos.",
+      "O candidato no poolIndex = 0 vence incondicionalmente."
+    ],
+    "negativeAssertions": [
+      "Rejeitar qualquer seleção com poolIndex > 0 quando H = ∅.",
+      "Proibir falha de divisão por zero ou exceção aritmética ao calcular perfil sobre histórico vazio."
+    ],
+    "evidenceType": "DETERMINISTIC_SPECIFICATION"
+  },
+  {
+    "goldenId": "GV-I02",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 3.2; Erratum 01 — ERR-HIST02",
+    "description": "History Fingerprint Canônico para Histórico Vazio (H = ∅)",
+    "inputs": {
+      "games": []
+    },
+    "preconditions": {
+      "gamesCount": 0
+    },
+    "expected": {
+      "domainSeparation": "C5-MEMORY-H-FINGERPRINT-V1",
+      "canonicalPreimage": "C5-MEMORY-H-FINGERPRINT-V1:0:",
+      "expectedDigest": "77a0ea80168e96d83782c03b08e6155078b3d9e7477b966afc95bda0bb1a93fa",
+      "hashAlgorithm": "SHA-256",
+      "hexLength": 64
+    },
+    "invariants": [
+      "Fingerprint de multiconjunto vazio é imutável e determinístico.",
+      "Domain separation C5-MEMORY-H-FINGERPRINT-V1 é mandatória."
+    ],
+    "negativeAssertions": [
+      "Rejeitar hash vazio (\"\") ou hash de string nula sem header de domínio.",
+      "Rejeitar digest diferente de 77a0ea80168e96d83782c03b08e6155078b3d9e7477b966afc95bda0bb1a93fa"
+    ],
+    "evidenceType": "CRYPTOGRAPHIC_PREIMAGE"
+  },
+  {
+    "goldenId": "GV-I03",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 3.2; Erratum 01 — ERR-HIST02",
+    "description": "History Fingerprint Canônico para Histórico Concreto com 2 Jogos de 15 Dezenas",
+    "inputs": {
+      "games": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          16,
+          17,
+          18,
+          19,
+          20
+        ]
+      ]
+    },
+    "preconditions": {
+      "gamesCount": 2,
+      "allGamesValid15Of25": true
+    },
+    "expected": {
+      "domainSeparation": "C5-MEMORY-H-FINGERPRINT-V1",
+      "canonicalPreimage": "C5-MEMORY-H-FINGERPRINT-V1:2:01,02,03,04,05,06,07,08,09,10,11,12,13,14,15;01,02,03,04,05,06,07,08,09,10,16,17,18,19,20",
+      "expectedDigest": "6d68b02584a1c274a4c6ae2d555cfef573961bae4ccae88c261b88066e39273f",
+      "hashAlgorithm": "SHA-256",
+      "hexLength": 64
+    },
+    "invariants": [
+      "Cada jogo possui dezenas ordenadas em 2 dígitos com zeros à esquerda.",
+      "Jogos no multiconjunto são ordenados lexicograficamente.",
+      "Separador de dezenas é ',' e separador de jogos é ';'."
+    ],
+    "negativeAssertions": [
+      "Rejeitar formatação sem zero à esquerda (ex: '1,2,...').",
+      "Rejeitar inversão da ordem lexicográfica dos blocos."
+    ],
+    "evidenceType": "CRYPTOGRAPHIC_PREIMAGE"
+  },
+  {
+    "goldenId": "GV-I04",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 3.2 (Semântica de Multiconjunto)",
+    "description": "Invariância do History Fingerprint contra Reordenação de Jogos no Histórico",
+    "inputs": {
+      "sequenceA": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ],
+        [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ]
+      ],
+      "sequenceB": [
+        [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ]
+      ]
+    },
+    "preconditions": {
+      "sameMultisetElements": true,
+      "differentInsertionOrder": true
+    },
+    "expected": {
+      "preimageA": "C5-MEMORY-H-FINGERPRINT-V1:3:01,02,03,04,05,06,07,08,09,10,11,12,13,14,15;02,03,04,05,06,07,08,09,10,11,12,13,14,15,16;03,04,05,06,07,08,09,10,11,12,13,14,15,16,17",
+      "preimageB": "C5-MEMORY-H-FINGERPRINT-V1:3:01,02,03,04,05,06,07,08,09,10,11,12,13,14,15;02,03,04,05,06,07,08,09,10,11,12,13,14,15,16;03,04,05,06,07,08,09,10,11,12,13,14,15,16,17",
+      "digestA": "9a71864a594f4990302f9ba45a29c9f76bc02f834d8ee75f6caf8b918dd4c833",
+      "digestB": "9a71864a594f4990302f9ba45a29c9f76bc02f834d8ee75f6caf8b918dd4c833",
+      "digestsMatch": true
+    },
+    "invariants": [
+      "A ordem física no array de entrada não afeta o fingerprint.",
+      "fingerprint(A) === fingerprint(B)"
+    ],
+    "negativeAssertions": [
+      "Rejeitar implementações dependentes da ordem cronológica de inserção (array-order-dependent)."
+    ],
+    "evidenceType": "CRYPTOGRAPHIC_INVARIANCE"
+  },
+  {
+    "goldenId": "GV-I05",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 3.2 (Propriedade de Avalanche SHA-256)",
+    "description": "Sensibilidade do History Fingerprint a Mutação de Dezena Única (Anti-Colisão)",
+    "inputs": {
+      "originalGame": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "mutatedGame": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        16
+      ]
+    },
+    "preconditions": {
+      "hammingDistanceInNumbers": 1
+    },
+    "expected": {
+      "originalDigest": "429db719fc5efd701a93a119228c8857c1e4bc7bf6f4bb19d9403ba6fbdae875",
+      "mutatedDigest": "81a1d5489210cfae4d9f777e74f2496923101d760f5157b37bc607b1789cae62",
+      "digestsDiffer": true
+    },
+    "invariants": [
+      "Qualquer alteração em pelo menos 1 bit/dezena do histórico produz digest completamente divergente."
+    ],
+    "negativeAssertions": [
+      "Rejeitar digests idênticos para históricos com qualquer dezena divergente.",
+      "Rejeitar funções de hash fracas ou checksums simples vulneráveis a cancelamento de soma."
+    ],
+    "evidenceType": "CRYPTOGRAPHIC_SENSITIVITY"
+  },
+  {
+    "goldenId": "GV-I06",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 3.2; Erratum 01 — ERR-HIST02",
+    "description": "Sensibilidade do History Fingerprint à Multiplicidade de Jogos Idênticos",
+    "inputs": {
+      "singleSet": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      ],
+      "doubleSet": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      ]
+    },
+    "preconditions": {
+      "uniqueGamesCount": 1,
+      "multisetMultiplicitiesDiffer": true
+    },
+    "expected": {
+      "singleDigest": "429db719fc5efd701a93a119228c8857c1e4bc7bf6f4bb19d9403ba6fbdae875",
+      "doubleDigest": "d0a1585e5653b8897d8f48fda97b87886dbaf40f1d870985d4d22056f1cb15e9",
+      "singlePreimageCountHeader": 1,
+      "doublePreimageCountHeader": 2,
+      "digestsDiffer": true
+    },
+    "invariants": [
+      "Multiplicidades de jogos são rigorosamente preservadas.",
+      "H com jogos repetidos possui fingerprint diferente de H deduplicado."
+    ],
+    "negativeAssertions": [
+      "Rejeitar deduplicação silenciosa de multiconjunto para conjunto simples (Set)."
+    ],
+    "evidenceType": "CRYPTOGRAPHIC_SENSITIVITY"
+  },
+  {
+    "goldenId": "GV-I07",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 5.1; Erratum 01 — ERR-STALE05",
+    "description": "Detecção de Stale — Condição Compatível (Revisão e Fingerprint Idênticos)",
+    "inputs": {
+      "draft": {
+        "historyRevision": 5,
+        "historyFingerprint": "a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef"
+      },
+      "currentStoreState": {
+        "historyRevision": 5,
+        "historyFingerprint": "a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef"
+      }
+    },
+    "preconditions": {
+      "draftHistoryMatchesStore": true
+    },
+    "expected": {
+      "isStale": false,
+      "validationStatus": "COMPATIBLE",
+      "action": "ALLOW_CONFIRMATION"
+    },
+    "invariants": [
+      "Quando revision e fingerprint coincidem, a confirmação prossegue sem restrições."
+    ],
+    "negativeAssertions": [
+      "Proibir rejeição espúria de aposta válida não-stale."
+    ],
+    "evidenceType": "TRANSACTIONAL_CONTRACT"
+  },
+  {
+    "goldenId": "GV-I08",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 5.1; Erratum 01 — ERR-STALE05",
+    "description": "Detecção de Stale — Rejeição por Revisão Divergente (Concorrência Simples)",
+    "inputs": {
+      "draft": {
+        "historyRevision": 4,
+        "historyFingerprint": "rev4_fingerprint_hash_sample_value_canonical_000000000000000000000"
+      },
+      "currentStoreState": {
+        "historyRevision": 5,
+        "historyFingerprint": "rev5_fingerprint_hash_sample_value_canonical_000000000000000000000"
+      }
+    },
+    "preconditions": {
+      "storeMutatedAfterDraftGeneration": true
+    },
+    "expected": {
+      "isStale": true,
+      "validationStatus": "STALE_REVISION_REJECTED",
+      "action": "ABORT_PERSISTENCE_TRANSACTION",
+      "silentRecomputeAllowed": false
+    },
+    "invariants": [
+      "Divergência de revisão causa rejeição imediata com código STALE_REVISION_REJECTED.",
+      "Proibida confirmação ou mutação silenciosa do draft."
+    ],
+    "negativeAssertions": [
+      "Proibir commit de aposta em revisão stale.",
+      "Proibir auto-atualização silenciosa sem consentimento explícito do operador."
+    ],
+    "evidenceType": "TRANSACTIONAL_CONTRACT"
+  },
+  {
+    "goldenId": "GV-I09",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 5.1; Erratum 01 — ERR-HIST02",
+    "description": "Detecção de Stale — Rejeição por Fingerprint Divergente com Mesma Revisão Numérica",
+    "inputs": {
+      "draft": {
+        "historyRevision": 3,
+        "historyFingerprint": "fingerprint_original_content_hash_canonical_aaaaaaaaaaaaaaaaaaaa"
+      },
+      "currentStoreState": {
+        "historyRevision": 3,
+        "historyFingerprint": "fingerprint_replaced_content_hash_canonical_bbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "preconditions": {
+      "revisionNumbersMatch": true,
+      "contentDigestsDiffer": true
+    },
+    "expected": {
+      "isStale": true,
+      "validationStatus": "STALE_REVISION_REJECTED",
+      "action": "ABORT_PERSISTENCE_TRANSACTION"
+    },
+    "invariants": [
+      "A integridade criptográfica do conteúdo tem precedência sobre o contador ordinal.",
+      "Mesma revisão com digest diferente deve ser rejeitada como stale."
+    ],
+    "negativeAssertions": [
+      "Proibir confiar exclusivamente no campo numérico revision sem checar fingerprint."
+    ],
+    "evidenceType": "TRANSACTIONAL_CONTRACT"
+  },
+  {
+    "goldenId": "GV-I10",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 5.1; Erratum 01 — ERR-STALE05",
+    "description": "Detecção de Stale — Rejeição Atômica de Corrida TOCTOU (Time-of-Check to Time-of-Use)",
+    "inputs": {
+      "t0Validation": {
+        "revision": 10,
+        "fingerprint": "fp10"
+      },
+      "t1ConcurrentCommit": {
+        "newRevision": 11,
+        "newFingerprint": "fp11"
+      },
+      "t2PersistenceAttempt": {
+        "draftRevision": 10,
+        "draftFingerprint": "fp10"
+      }
+    },
+    "preconditions": {
+      "concurrentWriteBetweenValidationAndCommit": true
+    },
+    "expected": {
+      "commitOutcome": "TRANSACTION_ABORTED",
+      "rejectionReason": "STALE_REVISION_REJECTED",
+      "databaseRecordCountChange": 0,
+      "rollbackExecuted": true
+    },
+    "invariants": [
+      "A verificação de integridade deve ocorrer no momento atômico da gravação no IndexedDB.",
+      "Zero dados persistidos em caso de corrida TOCTOU detectada."
+    ],
+    "negativeAssertions": [
+      "Proibir gravações parciais ou fantasmas decorrentes de checagem prévia não-atômica."
+    ],
+    "evidenceType": "TRANSACTIONAL_CONTRACT"
+  },
+  {
+    "goldenId": "GV-I11",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 2.1; Erratum 01 — ERR-POOL05",
+    "description": "Reconstrução Determinística do Pool e Isolamento entre Seeds",
+    "inputs": {
+      "seedA": "20260929-MASTER-SEED-ALPHA",
+      "seedB": "20260929-MASTER-SEED-BETA",
+      "poolSize": 500
+    },
+    "preconditions": {
+      "dependency": "PRNG_DEPENDENT",
+      "contractReference": "CanonicalPoolPRNGContract",
+      "isolationRequired": true
+    },
+    "expected": {
+      "poolA1_equals_poolA2": true,
+      "poolA_differs_from_poolB": true,
+      "interExecutionStateLeakage": false,
+      "reconstructionDeterminism": "BITWISE_IDENTICAL"
+    },
+    "invariants": [
+      "Execuções com mesma seed geram exatamente o mesmo pool de 500 candidatos.",
+      "Geração intermediária com Seed B não altera o estado do gerador para replay de Seed A."
+    ],
+    "negativeAssertions": [
+      "Rejeitar geradores com estado global mutável residual que causem deriva de replay."
+    ],
+    "evidenceType": "PRNG_DEPENDENT"
+  },
+  {
+    "goldenId": "GV-I12",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 2.2; Erratum 01 — ERR-POOL03",
+    "description": "Imutabilidade Estrita dos Índices do Pool (poolIndex 0..499)",
+    "inputs": {
+      "poolSize": 500,
+      "candidateEvaluationModes": [
+        "SEQUENTIAL",
+        "PARALLEL_WEB_WORKER",
+        "SHUFFLED_EVALUATION"
+      ]
+    },
+    "preconditions": {
+      "dependency": "PRNG_DEPENDENT",
+      "contractReference": "CanonicalPoolPRNGContract"
+    },
+    "expected": {
+      "indexAssignmentRule": "GENERATION_ORDINAL_STRICT",
+      "indexRange": [
+        0,
+        499
+      ],
+      "indexInvariantToEvaluationOrder": true,
+      "candidateAtZeroAlwaysFirstGenerated": true
+    },
+    "invariants": [
+      "candidate[i].poolIndex === i para todo i ∈ [0, 499].",
+      "O índice do candidato independe de timing de threads, workers ou promises."
+    ],
+    "negativeAssertions": [
+      "Rejeitar poolIndex derivado de ordem de término assíncrono ou worker ID."
+    ],
+    "evidenceType": "STRUCTURAL_INVARIANT"
+  },
+  {
+    "goldenId": "GV-I13",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 4.1; Erratum 01 — ERR-HIST04",
+    "description": "Estrutura do FrozenMemoryPayload — Segregação e Preservação de Integridade",
+    "inputs": {
+      "sampleContestRecordWithMemory": {
+        "contestNumber": 3200,
+        "algorithmVersion": "C5-Memory-2.0.0",
+        "games": [
+          [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17
+          ],
+          [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ]
+        ],
+        "createdAt": "2026-09-29T12:00:00.000Z",
+        "memoryPayload": {
+          "payloadVersion": 1,
+          "algorithmVersion": "C5-Memory-2.0.0",
+          "poolMasterSeed": "CANONICAL-SEED-3200",
+          "poolIndex": 42,
+          "historyRevision": 15,
+          "historyFingerprint": "9f8e7d6c5b4a3928170f0e0d0c0b0a099f8e7d6c5b4a3928170f0e0d0c0b0a09",
+          "distanceVector": [
+            0,
+            2,
+            5,
+            12,
+            35,
+            80,
+            150,
+            300,
+            400,
+            116
+          ]
+        }
+      }
+    },
+    "preconditions": {
+      "storageSchemaValidation": "SCHEMA_V3_COMPATIBLE"
+    },
+    "expected": {
+      "payloadSegregated": true,
+      "legacyFieldsUnmodified": true,
+      "memoryPayloadPreserved": true,
+      "schemaValidationPass": true
+    },
+    "invariants": [
+      "Campos legados mantêm seus tipos primitivos e semântica intactos.",
+      "Campos Memory ficam estritamente encapsulados sob memoryPayload."
+    ],
+    "negativeAssertions": [
+      "Proibir dispersão de campos de memória na raiz do ContestRecord.",
+      "Proibir quebra de validação em registros com memoryPayload presente."
+    ],
+    "evidenceType": "SCHEMA_CONTRACT"
+  },
+  {
+    "goldenId": "GV-I14",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 4.2; Matriz Canônica v1.0 — BAR01",
+    "description": "Compatibilidade Retroativa com Registros Legados C5-1.0.0",
+    "inputs": {
+      "legacyRecord": {
+        "contestNumber": 3100,
+        "algorithmVersion": "C5-1.0.0",
+        "games": [
+          [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17
+          ],
+          [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ]
+        ],
+        "createdAt": "2026-01-01T10:00:00.000Z"
+      }
+    },
+    "preconditions": {
+      "hasMemoryPayload": false,
+      "legacyFormat": true
+    },
+    "expected": {
+      "isMemoryBet": false,
+      "loadSuccess": true,
+      "auditPass": true,
+      "noDeserializationError": true
+    },
+    "invariants": [
+      "Registros legados sem memória continuam perfeitamente válidos e auditáveis.",
+      "C5-Memory não altera nem corrompe o carregamento de registros C5-1.0.0."
+    ],
+    "negativeAssertions": [
+      "Rejeitar exigência mandatória de memoryPayload para registros legados.",
+      "Proibir injeção automática de dados fictícios em registros C5-1.0.0."
+    ],
+    "evidenceType": "COMPATIBILITY_CONTRACT"
+  },
+  {
+    "goldenId": "GV-I15",
+    "normativeSource": "Especificação de Integração v1.0 — Sec. 4.3; Matriz Canônica v1.0 — BAR02",
+    "description": "Preservação de Backup e Restore no Schema v3 com Registros Mistos",
+    "inputs": {
+      "backupFile": {
+        "schemaVersion": 3,
+        "appVersion": "1.13.0",
+        "exportedAt": "2026-09-29T14:00:00.000Z",
+        "contests": [
+          {
+            "contestNumber": 3001,
+            "algorithmVersion": "C5-1.0.0",
+            "games": [
+              [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15
+              ],
+              [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                16,
+                17,
+                18,
+                19,
+                20
+              ],
+              [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16
+              ],
+              [
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17
+              ],
+              [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15
+              ]
+            ]
+          },
+          {
+            "contestNumber": 3002,
+            "algorithmVersion": "C5-Memory-2.0.0",
+            "games": [
+              [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15
+              ],
+              [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                16,
+                17,
+                18,
+                19,
+                20
+              ],
+              [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16
+              ],
+              [
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17
+              ],
+              [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                16,
+                17,
+                18,
+                19,
+                20
+              ]
+            ],
+            "memoryPayload": {
+              "poolMasterSeed": "SEED-3002",
+              "poolIndex": 10,
+              "historyRevision": 1,
+              "historyFingerprint": "77a0ea80168e96d83782c03b08e6155078b3d9e7477b966afc95bda0bb1a93fa",
+              "distanceVector": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "preconditions": {
+      "backupSchemaVersion": 3
+    },
+    "expected": {
+      "validationExitCode": 0,
+      "restoreExitCode": 0,
+      "legacyContestRestoredIntact": true,
+      "memoryContestRestoredWithPayload": true
+    },
+    "invariants": [
+      "BACKUP_SCHEMA_VERSION = 3 permanece inalterado.",
+      "Interoperabilidade bidirecional de export e import."
+    ],
+    "negativeAssertions": [
+      "Proibir perda de dados do payload Memory durante backup/restore.",
+      "Proibir que backup falhe ao encontrar concursos mistos (legados + Memory)."
+    ],
+    "evidenceType": "BACKUP_CONTRACT"
+  },
+  {
+    "goldenId": "GV-I16",
+    "normativeSource": "C5-Memory-2.0.0 — Especificação Matemática Certificada (Run 003 CP10)",
+    "description": "Seleção MAX-LEXIMIN Matemática com Histórico Conhecido",
+    "inputs": {
+      "history": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ]
+      ],
+      "poolSize": 500,
+      "referenceEvaluatorSha256": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+      "optimizedEvaluatorSha256": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60"
+    },
+    "preconditions": {
+      "mathematicalEngine": "MAX_LEXIMIN_CERTIFIED"
+    },
+    "expected": {
+      "leximinComparisonRule": "MAXIMIZE_LEXICOGRAPHIC_HISTOGRAM",
+      "profileCoordinates": 10,
+      "profileRange": "n0_to_n9",
+      "selectionOptimality": "PROVABLY_OPTIMAL"
+    },
+    "invariants": [
+      "Para dois perfis u e v, u > v se u[k] > v[k] no primeiro k onde u[k] !== v[k].",
+      "Vencedor maximiza o perfil de distâncias contra H."
+    ],
+    "negativeAssertions": [
+      "Rejeitar qualquer candidato com perfil lexicograficamente inferior ao vencedor ótimo."
+    ],
+    "evidenceType": "MATHEMATICAL_EVALUATION"
+  },
+  {
+    "goldenId": "GV-I17",
+    "normativeSource": "Matriz Canônica de Integração v1.0 — Erratum 01 (ERR-POOL03); Protocolo v1.0",
+    "description": "Desempate Estrito por Menor poolIndex em Caso de Empate Integral no Perfil de Distâncias",
+    "inputs": {
+      "candidateA": {
+        "poolIndex": 14,
+        "distanceVector": [
+          2,
+          5,
+          8,
+          15,
+          30,
+          50,
+          40,
+          20,
+          5,
+          1
+        ]
+      },
+      "candidateB": {
+        "poolIndex": 87,
+        "distanceVector": [
+          2,
+          5,
+          8,
+          15,
+          30,
+          50,
+          40,
+          20,
+          5,
+          1
+        ]
+      },
+      "otherCandidates": "ALL_PROFILES_STRICTLY_INFERIOR"
+    },
+    "preconditions": {
+      "exactProfileEquality": true,
+      "poolIndicesStrictlyOrdered": true
+    },
+    "expected": {
+      "winnerIndex": 14,
+      "tieReason": "IDENTICAL_LEXIMIN_PROFILE",
+      "tieBreakerRule": "MIN_POOL_INDEX",
+      "rejectedIndex": 87
+    },
+    "invariants": [
+      "Em empate integral no vetor (n0..n9), o menor poolIndex vence incondicionalmente.",
+      "poolIndex é derivado unicamente da posição canônica no pool gerado."
+    ],
+    "negativeAssertions": [
+      "Rejeitar vitória de Candidate B (poolIndex = 87).",
+      "Rejeitar qualquer desempate por timestamp, workerId ou ordem de resolução de Promise."
+    ],
+    "evidenceType": "DETERMINISTIC_SPECIFICATION"
+  },
+  {
+    "goldenId": "GV-I18",
+    "normativeSource": "Matriz Canônica de Integração v1.0 — CAT12; Especificação de Integração v1.0 — Sec. 6",
+    "description": "Replay Canônico Fim-a-Fim a Partir dos Metadados Congelados",
+    "inputs": {
+      "poolMasterSeed": "REPLAY-CANONICAL-TEST-018",
+      "historyFingerprint": "6d68b02584a1c274a4c6ae2d555cfef573961bae4ccae88c261b88066e39273f",
+      "historyGames": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          16,
+          17,
+          18,
+          19,
+          20
+        ]
+      ],
+      "expectedPoolIndex": 27
+    },
+    "preconditions": {
+      "dependency": "PRNG_DEPENDENT",
+      "contractReference": "CanonicalPoolPRNGContract",
+      "historyFingerprintMatches": true
+    },
+    "expected": {
+      "replayIntegrityPass": true,
+      "regeneratedPoolMatchesOriginal": true,
+      "recalculatedWinnerIndexMatches": 27,
+      "recalculatedGamesBitwiseIdentical": true
+    },
+    "invariants": [
+      "Qualquer seleção C5-Memory pode ser reproduzida posteriormente apenas a partir dos dados canônicos.",
+      "Replay com mesma seed e mesmo histórico produz o mesmo C5 vencedor."
+    ],
+    "negativeAssertions": [
+      "Rejeitar divergência entre jogos da aposta confirmada e jogos gerados pelo replay."
+    ],
+    "evidenceType": "REPLAY_AUDIT"
+  }
+]

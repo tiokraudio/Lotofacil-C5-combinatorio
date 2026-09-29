@@ -66,6 +66,43 @@
   },
 
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC0",
-  "status": "IC0_PASS"
+  "currentCheckpoint": "IC1",
+  "status": "IC1_PASS",
+  "ic1Artifacts": {
+    "goldenVectors": {
+      "path": "ic1-golden-vectors.json",
+      "count": 18,
+      "sha256": "fc10df0c8322de562a96d08c3f9c0dbd74d66a85bd24629aa3496baea7e4399d"
+    },
+    "equivalenceCorpus": {
+      "path": "ic1-equivalence-corpus.json",
+      "casesCount": 1000,
+      "sha256": "a15465e8a4306e6790a4a2327902d3c3ffcc20af95d2a5430ca5052e0eff39cd"
+    },
+    "equivalenceCorpusManifest": {
+      "path": "ic1-equivalence-corpus-manifest.json",
+      "sha256": "969a8e0414e94ca2cabb4a98dab913868c7c69f90bad08c98f37d67a1279c41e"
+    },
+    "verificationScript": {
+      "path": "ic1-verify-artifacts.ts",
+      "sha256": "195e47df6544493864b2e8b2e067a590eabeb2236f84aa74d2e1b9276370b323"
+    },
+    "verificationResult": {
+      "path": "ic1-verification-result.json",
+      "sha256": "1c813ac549353ff2f47791378285b092e18c5953ab864408f22c07afcbd50fe1"
+    },
+    "verificationLog": {
+      "path": "ic1-verification.log",
+      "sha256": "9c90327edb8b1bb4952c937f6913bd26b2603119f5702444aa1d8544800f125f"
+    },
+    "totalAssertionsChecked": 8214,
+    "totalGamesAudited": 446290,
+    "invalidGamesCount": 0,
+    "ic9ProofRequirements": {
+      "comparisonsRequired": 5000000,
+      "winnerIndexEquivalence": "1000/1000",
+      "selectedC5Equivalence": "1000/1000",
+      "toleratedDivergences": 0
+    }
+  }
 }
