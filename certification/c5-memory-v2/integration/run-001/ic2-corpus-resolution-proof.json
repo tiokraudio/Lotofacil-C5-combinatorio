@@ -1,0 +1,15 @@
+{
+  "proofId": "C5M-IC2-CORPUS-RESOLUTION-PROOF",
+  "ic1CorpusSha256": "a15465e8a4306e6790a4a2327902d3c3ffcc20af95d2a5430ca5052e0eff39cd",
+  "resolvedCorpusSha256": "450d94978f93a566b4bbe6f2c50a22a01dfe7a4c1b3507cb844e7bcafea72616",
+  "totalCasesBefore": 1000,
+  "totalCasesAfter": 1000,
+  "casesCountUnchanged": true,
+  "caseIdsMatchExactly": true,
+  "classesMatchExactly": true,
+  "historiesMatchExactly": true,
+  "seedsMatchExactly": true,
+  "t3788CasesCountBefore": 20,
+  "t3788CasesCountAfter": 20,
+  "derivativeResolutionValid": true
+}

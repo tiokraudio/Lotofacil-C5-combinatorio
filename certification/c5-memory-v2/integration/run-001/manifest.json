@@ -66,8 +66,8 @@
   },
 
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC1",
-  "status": "IC1_PASS",
+  "currentCheckpoint": "IC2",
+  "status": "IC2_PASS",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -103,6 +103,63 @@
       "winnerIndexEquivalence": "1000/1000",
       "selectedC5Equivalence": "1000/1000",
       "toleratedDivergences": 0
+    }
+  },
+  "ic2Artifacts": {
+    "prngContract": {
+      "path": "ic2-canonical-pool-prng-contract.json",
+      "sha256": "68954cc71222efff5a236924a1e893d0de9396026fd18c2f2038c5456668edc3"
+    },
+    "prngContractMd": {
+      "path": "ic2-canonical-pool-prng-contract.md",
+      "sha256": "b333f60c61657f6f1d15d1d0af4568d3c7efb29cf3a1fcb1bd72bc70638c97f1"
+    },
+    "prngGoldenVectors": {
+      "path": "ic2-prng-golden-vectors.json",
+      "count": 6,
+      "sha256": "2288f0d6329af383caa635203bf550179b9005791a389c9164fc272be63f64b8"
+    },
+    "prngVerification": {
+      "script": "ic2-verify-prng.ts",
+      "scriptSha256": "9540f13b230fed533c82430eed5292863c062561d786d25886f531e1ea1d1de1",
+      "result": "ic2-prng-verification-result.json",
+      "resultSha256": "a5be95bfa3a43d47544c9c1dc6e9a5b34428aa6cd0cd42f3688087dac8ecbe82",
+      "log": "ic2-prng-verification.log",
+      "logSha256": "1118817a22bda9e76975c68525741e74e26ab11dba529792ee67067041b785d2",
+      "status": "PASS",
+      "totalAssertionsChecked": 923
+    },
+    "resolvedEquivalenceCorpus": {
+      "path": "ic2-equivalence-corpus-resolved.json",
+      "sha256": "450d94978f93a566b4bbe6f2c50a22a01dfe7a4c1b3507cb844e7bcafea72616",
+      "proofPath": "ic2-corpus-resolution-proof.json",
+      "proofSha256": "e768510804d58ad2efebf71ff5a1c40f63aca06d7daffff278fb7615ed15c7f6"
+    },
+    "schemaCompatibilityAudit": {
+      "path": "ic2-schema-compatibility-audit.json",
+      "sha256": "de7bf8cd34bc0e988e0b56d081becc1ce473bb064926b4a1998c1f8c3effd5fb",
+      "mdPath": "ic2-schema-compatibility-audit.md",
+      "mdSha256": "e7d0edd50767758897ae892f68ebbe8187dc457cf52e8958402414ed4fc7779b",
+      "decision": "SCHEMA_COMPATIBLE_V3",
+      "backupSchemaVersion": 3,
+      "localSyncProtocolVersion": 1,
+      "migrationRequired": false
+    },
+    "historyContract": {
+      "path": "ic2-history-contract.json",
+      "sha256": "7a9522a135d575b56b7b9fa9b1e195faf2bc08088d64dd19c3e3b867be5a2576"
+    },
+    "fingerprintContract": {
+      "path": "ic2-fingerprint-contract.json",
+      "sha256": "d925aa72d056e9097a7effe54d8b9534c86d95b61034dad9c564e9cc6d923fb2"
+    },
+    "draftStaleContract": {
+      "path": "ic2-draft-stale-contract.json",
+      "sha256": "fcb690614bc9eaf41e173cf0e21fc4ca8070de50ec5284e981b693fe9d4486a6"
+    },
+    "poolIndexContract": {
+      "path": "ic2-pool-index-contract.json",
+      "sha256": "2b41878815c6d8275e2f73ca6827835f8e0fe968b00385c74307ad9b430b38bb"
     }
   }
 }

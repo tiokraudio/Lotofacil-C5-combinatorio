@@ -1,0 +1,15 @@
+{
+  "checkpoint": "IC2",
+  "component": "PRNG_CANONICAL_VERIFICATION",
+  "algorithm": "MULBERRY32",
+  "status": "PASS",
+  "startedAt": "2026-09-29T14:58:19.455Z",
+  "finishedAt": "2026-09-29T14:58:19.496Z",
+  "durationMs": 42,
+  "totalAssertionsChecked": 923,
+  "goldenVectorsChecked": 6,
+  "isolationTestPass": true,
+  "wordsConsumedFor500Candidates": 12000,
+  "portabilityVerified": true,
+  "derivativeCorpusResolutionValid": true
+}

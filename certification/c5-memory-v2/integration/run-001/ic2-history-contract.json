@@ -1,0 +1,18 @@
+{
+  "contractId": "C5M-HISTORY-CONTRACT-V1",
+  "version": "1.0.0",
+  "frozenAt": "2026-09-29T14:57:42.083Z",
+  "concepts": {
+    "historyRevision": {
+      "type": "uint32 monotonic sequence integer",
+      "purpose": "Controle de concorrência otimista (OCC). Incrementado a cada mutação de aposta confirmada.",
+      "initialValue": 0
+    },
+    "historyFingerprint": {
+      "type": "SHA-256 hex string (64 characters lowercase)",
+      "purpose": "Identidade criptográfica do conteúdo do multiconjunto de jogos elegíveis de H.",
+      "preimageSpecification": "C5-MEMORY-H-FINGERPRINT-V1:{count}:{sortedGames}"
+    }
+  },
+  "cardinalityRule": "Mesma contagem de jogos (|H|) NÃO implica mesmo historyFingerprint. O digest criptográfico tem precedência de integridade."
+}

@@ -1,0 +1,23 @@
+{
+  "contractId": "C5M-DRAFT-STALE-CONTRACT-V1",
+  "version": "1.0.0",
+  "frozenAt": "2026-09-29T14:57:42.083Z",
+  "draftMetadata": {
+    "requiredFields": [
+      "draftHistoryRevision",
+      "draftHistoryFingerprint",
+      "poolMasterSeed",
+      "selectedPoolIndex",
+      "algorithmVersion"
+    ],
+    "algorithmVersionValue": "C5-Memory-2.0.0"
+  },
+  "confirmationCondition": {
+    "rule": "currentStoreState.historyRevision === draft.draftHistoryRevision && currentStoreState.historyFingerprint === draft.draftHistoryFingerprint",
+    "onMatch": "ALLOW_CONFIRMATION_AND_PERSIST",
+    "onMismatch": "REJECT_TRANSACTION",
+    "rejectionReason": "STALE_REVISION_REJECTED",
+    "silentRecomputeAllowed": false
+  },
+  "antiToctouGuarantee": "A validação deve ocorrer no escopo atômico da transação IndexedDB no momento do commit."
+}
