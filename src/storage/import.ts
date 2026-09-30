@@ -16,7 +16,13 @@ import {
   ContestRepository,
   contestRepository,
   deepCloneRecord,
+  deepCloneMemoryPayload,
 } from "./contestRepository.ts";
+import {
+  buildCanonicalPayload,
+  serializeCanonicalPayload,
+} from "../c5/integrity.ts";
+import { sha256 } from "../c5-memory/sha256.ts";
 import type {
   ContestRecord,
   ContestRecordStatus,
@@ -24,6 +30,7 @@ import type {
   C5Score,
   HitCount,
   PrizeRecord,
+  FrozenMemoryPayload,
 } from "../c5/types.ts";
 import {
   type HistoryExportData,
@@ -59,7 +66,96 @@ export const EXPECTED_SCHEMA_VERSION = 3;
 /**
  * Versões do algoritmo C5 aceitas nesta versão operacional.
  */
-export const SUPPORTED_ALGORITHM_VERSIONS = ["C5-1.0.0"] as const;
+export const SUPPORTED_ALGORITHM_VERSIONS = ["C5-1.0.0", "C5-Memory-2.0.0"] as const;
+
+/**
+ * Validador estrito de FrozenMemoryPayload para importação segura de backups.
+ * Rejeita qualquer mutação ou corrupção nos metadados congelados de memória.
+ */
+export function validateMemoryPayload(payload: unknown): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return { valid: false, errors: ["'memoryPayload' deve ser um objeto."] };
+  }
+  const p = payload as Record<string, any>;
+
+  // 1. algorithmVersion
+  if (p.algorithmVersion !== "C5-Memory-2.0.0") {
+    errors.push(`'memoryPayload.algorithmVersion' inválido: '${String(p.algorithmVersion)}'. Deve ser 'C5-Memory-2.0.0'.`);
+  }
+
+  // 2. poolMasterSeed (uint32 se número, ou string não vazia)
+  if (p.poolMasterSeed === undefined || p.poolMasterSeed === null) {
+    errors.push("'memoryPayload.poolMasterSeed' obrigatória.");
+  } else if (typeof p.poolMasterSeed === "number") {
+    if (!Number.isInteger(p.poolMasterSeed) || p.poolMasterSeed < 0 || p.poolMasterSeed > 4294967295) {
+      errors.push(`'memoryPayload.poolMasterSeed' fora da faixa uint32: ${p.poolMasterSeed}.`);
+    }
+  } else if (typeof p.poolMasterSeed === "string") {
+    if (p.poolMasterSeed.trim().length === 0) {
+      errors.push("'memoryPayload.poolMasterSeed' não pode ser string vazia.");
+    }
+  } else {
+    errors.push(`'memoryPayload.poolMasterSeed' possui tipo inválido: ${typeof p.poolMasterSeed}.`);
+  }
+
+  // 3. poolIndex (0..499)
+  if (typeof p.poolIndex !== "number" || !Number.isInteger(p.poolIndex) || p.poolIndex < 0 || p.poolIndex > 499) {
+    errors.push(`'memoryPayload.poolIndex' fora do intervalo [0..499]: ${String(p.poolIndex)}.`);
+  }
+
+  // 4. selectedC5 (exatamente 5 jogos de 15 dezenas, se presente)
+  if (p.selectedC5 !== undefined) {
+    if (!Array.isArray(p.selectedC5) || p.selectedC5.length !== 5) {
+      errors.push("'memoryPayload.selectedC5' deve conter exatamente 5 jogos.");
+    } else {
+      for (let g = 0; g < 5; g++) {
+        const game = p.selectedC5[g];
+        if (!Array.isArray(game) || game.length !== 15) {
+          errors.push(`'memoryPayload.selectedC5[${g}]' deve conter exatamente 15 dezenas.`);
+        } else {
+          const seen = new Set<number>();
+          for (const num of game) {
+            if (typeof num !== "number" || !Number.isInteger(num) || num < 1 || num > 25) {
+              errors.push(`'memoryPayload.selectedC5[${g}]' contém dezena inválida: ${String(num)}.`);
+            }
+            if (seen.has(num)) {
+              errors.push(`'memoryPayload.selectedC5[${g}]' contém dezena duplicada: ${num}.`);
+            }
+            seen.add(num);
+          }
+        }
+      }
+    }
+  }
+
+  // 5. historyRevision (inteiro >= 0)
+  if (typeof p.historyRevision !== "number" || !Number.isInteger(p.historyRevision) || p.historyRevision < 0) {
+    errors.push(`'memoryPayload.historyRevision' inválido: ${String(p.historyRevision)}. Deve ser inteiro >= 0.`);
+  }
+
+  // 6. historyFingerprint (SHA-256 de 64 hexadecimais)
+  if (typeof p.historyFingerprint !== "string" || !/^[0-9a-f]{64}$/.test(p.historyFingerprint)) {
+    errors.push(`'memoryPayload.historyFingerprint' malformado: '${String(p.historyFingerprint)}'. Deve ser hash SHA-256 de 64 caracteres hexadecimais em minúsculas.`);
+  }
+
+  // 7. winnerHistogram (11 elementos numéricos >= 0, ou distanceVector 10/11)
+  const hist = p.winnerHistogram ?? p.distanceVector;
+  if (!Array.isArray(hist) || (hist.length !== 11 && hist.length !== 10)) {
+    errors.push(`'memoryPayload.winnerHistogram' com dimensão inválida (esperava-se 11 elementos).`);
+  } else {
+    for (let i = 0; i < hist.length; i++) {
+      if (typeof hist[i] !== "number" || !Number.isInteger(hist[i]) || hist[i] < 0) {
+        errors.push(`'memoryPayload.winnerHistogram[${i}]' inválido: ${String(hist[i])}.`);
+      }
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
 
 // ============================================================================
 // TIPOS E INTERFACES
@@ -446,26 +542,27 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         versionSet.add(v);
       }
 
-      if (v !== "C5-1.0.0") {
-        errors.push(`Versão de algoritmo desconhecida ou não suportada: '${v}'. Suportada apenas 'C5-1.0.0'.`);
+      if (v !== "C5-1.0.0" && v !== "C5-Memory-2.0.0") {
+        errors.push(`Versão de algoritmo desconhecida ou não suportada: '${v}'. Suportadas apenas 'C5-1.0.0' e 'C5-Memory-2.0.0'.`);
       }
     }
   }
 
   // 4. records
-  if (!("records" in raw)) {
+  const rawRecordsList = raw.records ?? raw.contests;
+  if (!rawRecordsList) {
     errors.push("Campo obrigatório 'records' ausente no backup.");
     return { valid: false, errors };
   }
 
-  if (!Array.isArray(raw.records)) {
+  if (!Array.isArray(rawRecordsList)) {
     errors.push("Campo 'records' deve ser um array de registros de concurso.");
     return { valid: false, errors };
   }
 
-  if (raw.records.length > MAX_BACKUP_RECORDS) {
+  if (rawRecordsList.length > MAX_BACKUP_RECORDS) {
     errors.push(
-      `Número de registros no backup (${raw.records.length}) excede o limite máximo permitido de ${MAX_BACKUP_RECORDS}.`
+      `Número de registros no backup (${rawRecordsList.length}) excede o limite máximo permitido de ${MAX_BACKUP_RECORDS}.`
     );
     return { valid: false, errors };
   }
@@ -480,8 +577,8 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
 
   const sanitizedRecords: ContestRecord[] = [];
 
-  for (let index = 0; index < raw.records.length; index++) {
-    const r = raw.records[index];
+  for (let index = 0; index < rawRecordsList.length; index++) {
+    const r = rawRecordsList[index];
     const prefix = `Registro #${index + 1}`;
 
     if (!r || typeof r !== "object" || Array.isArray(r)) {
@@ -508,12 +605,17 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
       seenContestNumbers.add(contestNumber);
     }
 
+    const isLegacy = r.algorithmVersion === "C5-1.0.0";
+    const isMemory = r.algorithmVersion === "C5-Memory-2.0.0";
+
     // 4.2 generationId
     if (!isValidGenerationId(r.generationId)) {
-      errors.push(
-        `Concurso ${contestNumber}: 'generationId' inválido: '${String(r.generationId)}'. Deve ser um UUID compatível.`
-      );
-      continue;
+      if (!isMemory || typeof r.generationId !== "string" || r.generationId.trim().length === 0) {
+        errors.push(
+          `Concurso ${contestNumber}: 'generationId' inválido: '${String(r.generationId)}'. Deve ser um UUID compatível.`
+        );
+        continue;
+      }
     }
     const generationId = r.generationId;
 
@@ -534,10 +636,29 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
     genIdToContest.set(generationId, contestNumber);
 
     // 4.4 algorithmVersion
-    if (r.algorithmVersion !== "C5-1.0.0") {
+    if (!isLegacy && !isMemory) {
       errors.push(
-        `Concurso ${contestNumber}: versão de algoritmo não suportada: '${String(r.algorithmVersion)}'. Suportada apenas 'C5-1.0.0'.`
+        `Concurso ${contestNumber}: versão de algoritmo não suportada: '${String(r.algorithmVersion)}'. Suportadas apenas 'C5-1.0.0' e 'C5-Memory-2.0.0'.`
       );
+    }
+
+    // Validação estrita do memoryPayload
+    let memoryPayloadValid: FrozenMemoryPayload | undefined = undefined;
+    if (isMemory) {
+      if (r.memoryPayload === undefined || r.memoryPayload === null) {
+        errors.push(`Concurso ${contestNumber}: registro C5-Memory-2.0.0 deve possuir 'memoryPayload'.`);
+      } else {
+        const payloadValidation = validateMemoryPayload(r.memoryPayload);
+        if (!payloadValidation.valid) {
+          errors.push(
+            `Concurso ${contestNumber}: 'memoryPayload' inválido: ${payloadValidation.errors.join("; ")}`
+          );
+        } else {
+          memoryPayloadValid = deepCloneMemoryPayload(r.memoryPayload);
+        }
+      }
+    } else if (isLegacy && r.memoryPayload !== undefined) {
+      errors.push(`Concurso ${contestNumber}: registro legado C5-1.0.0 não pode possuir 'memoryPayload'.`);
     }
 
     // 4.5 generatedAt
@@ -548,15 +669,73 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
     }
 
     // 4.6 generation
-    const sanitizedGen = sanitizeGeneration(r.generation, contestNumber, errors);
-    if (!sanitizedGen) {
-      continue;
+    let rawGen = r.generation;
+    if (!rawGen && Array.isArray(r.games)) {
+      rawGen = {
+        permutation: Array.isArray(r.permutation) ? r.permutation : [],
+        slotAssignments: r.slotAssignments && typeof r.slotAssignments === "object" ? r.slotAssignments : {},
+        games: r.games,
+      };
     }
-    const c5Validation = validateC5(sanitizedGen);
-    if (!c5Validation.valid) {
-      errors.push(
-        `Concurso ${contestNumber}: geração viola invariantes matemáticas C5: ${c5Validation.errors.join("; ")}`
-      );
+
+    let sanitizedGen: C5Generation | null = null;
+    if (isLegacy) {
+      sanitizedGen = sanitizeGeneration(rawGen, contestNumber, errors);
+      if (!sanitizedGen) {
+        continue;
+      }
+      const c5Validation = validateC5(sanitizedGen);
+      if (!c5Validation.valid) {
+        errors.push(
+          `Concurso ${contestNumber}: geração viola invariantes matemáticas C5: ${c5Validation.errors.join("; ")}`
+        );
+        continue;
+      }
+    } else if (isMemory) {
+      const rawGames = rawGen?.games ?? r.games ?? memoryPayloadValid?.selectedC5;
+      if (!Array.isArray(rawGames) || rawGames.length !== 5) {
+        errors.push(`Concurso ${contestNumber}: 'generation.games' deve conter exatamente 5 jogos.`);
+      } else {
+        const cleanGames: [number[], number[], number[], number[], number[]] = [[], [], [], [], []];
+        let gamesValid = true;
+        for (let i = 0; i < 5; i++) {
+          const g = rawGames[i];
+          if (!Array.isArray(g) || g.length !== 15) {
+            errors.push(`Concurso ${contestNumber}: jogo J${i + 1} deve possuir exatamente 15 dezenas.`);
+            gamesValid = false;
+            break;
+          }
+          const cleanG: number[] = [];
+          const seen = new Set<number>();
+          for (const num of g) {
+            if (typeof num !== "number" || !Number.isInteger(num) || num < 1 || num > 25) {
+              errors.push(`Concurso ${contestNumber}: dezena inválida no jogo J${i + 1}: ${String(num)}.`);
+              gamesValid = false;
+              break;
+            }
+            if (seen.has(num)) {
+              errors.push(`Concurso ${contestNumber}: dezena duplicada no jogo J${i + 1}: ${num}.`);
+              gamesValid = false;
+              break;
+            }
+            seen.add(num);
+            cleanG.push(num);
+          }
+          if (!gamesValid) break;
+          cleanGames[i] = cleanG.sort((a, b) => a - b);
+        }
+        if (gamesValid) {
+          sanitizedGen = {
+            permutation: Array.isArray(rawGen?.permutation) ? [...rawGen.permutation] : [],
+            slotAssignments: rawGen?.slotAssignments && typeof rawGen.slotAssignments === "object" ? { ...rawGen.slotAssignments } : {},
+            games: cleanGames,
+          };
+        }
+      }
+      if (!sanitizedGen) {
+        continue;
+      }
+    } else {
       continue;
     }
 
@@ -599,6 +778,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         algorithmVersion: r.algorithmVersion,
         generatedAt: r.generatedAt,
         generation: sanitizedGen,
+        ...(memoryPayloadValid ? { memoryPayload: memoryPayloadValid } : {}),
       });
     } else if (status === "FROZEN") {
       if (!isValidIsoDate(r.frozenAt)) {
@@ -643,16 +823,35 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         generatedAt: r.generatedAt,
         frozenAt: r.frozenAt,
         ...(candidateBetPlacedAt ? { betPlacedAt: candidateBetPlacedAt } : {}),
+        ...(memoryPayloadValid ? { memoryPayload: memoryPayloadValid } : {}),
         integrityHash: r.integrityHash,
         generation: sanitizedGen,
       };
 
-      // Auditoria criptográfica obrigatória via Web Crypto SHA-256
-      const audit = await verifyContestIntegrity(candidateFrozen);
-      if (!audit.valid || !audit.hashMatches || !audit.generationValid) {
-        errors.push(
-          `Concurso ${contestNumber}: auditoria de integridade do registro congelado falhou (adulteração detectada): ${audit.errors.join("; ")}`
+      // Auditoria criptográfica obrigatória
+      if (isLegacy) {
+        const audit = await verifyContestIntegrity(candidateFrozen);
+        if (!audit.valid || !audit.hashMatches || !audit.generationValid) {
+          errors.push(
+            `Concurso ${contestNumber}: auditoria de integridade do registro congelado falhou (adulteração detectada): ${audit.errors.join("; ")}`
+          );
+        }
+      } else if (isMemory) {
+        const payload = buildCanonicalPayload(
+          candidateFrozen.contestNumber,
+          candidateFrozen.generationId,
+          candidateFrozen.algorithmVersion,
+          candidateFrozen.generatedAt,
+          candidateFrozen.frozenAt ?? "",
+          candidateFrozen.generation
         );
+        const serialized = serializeCanonicalPayload(payload);
+        const computedHash = sha256(serialized);
+        if (computedHash !== candidateFrozen.integrityHash) {
+          errors.push(
+            `Concurso ${contestNumber}: auditoria de integridade do registro C5-Memory congelado falhou: esperado '${candidateFrozen.integrityHash}', recalculado '${computedHash}'.`
+          );
+        }
       }
 
       sanitizedRecords.push(candidateFrozen);
@@ -750,6 +949,7 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
           frozenAt: r.frozenAt,
           ...(candidateBetPlacedAt ? { betPlacedAt: candidateBetPlacedAt } : {}),
           ...(candidatePrize ? { prize: candidatePrize } : {}),
+          ...(memoryPayloadValid ? { memoryPayload: memoryPayloadValid } : {}),
           integrityHash: r.integrityHash,
           officialResult: validatedOfficialResult,
           scoredAt: r.scoredAt,
@@ -758,11 +958,29 @@ export async function validateHistoryBackup(data: unknown): Promise<BackupValida
         };
 
         // Auditoria criptográfica da geração congelada
-        const genAudit = await verifyContestIntegrity(candidateScored);
-        if (!genAudit.valid || !genAudit.hashMatches || !genAudit.generationValid) {
-          errors.push(
-            `Concurso ${contestNumber}: auditoria de integridade da geração congelada falhou (adulteração detectada): ${genAudit.errors.join("; ")}`
+        if (isLegacy) {
+          const genAudit = await verifyContestIntegrity(candidateScored);
+          if (!genAudit.valid || !genAudit.hashMatches || !genAudit.generationValid) {
+            errors.push(
+              `Concurso ${contestNumber}: auditoria de integridade da geração congelada falhou (adulteração detectada): ${genAudit.errors.join("; ")}`
+            );
+          }
+        } else if (isMemory) {
+          const payload = buildCanonicalPayload(
+            candidateScored.contestNumber,
+            candidateScored.generationId,
+            candidateScored.algorithmVersion,
+            candidateScored.generatedAt,
+            candidateScored.frozenAt ?? "",
+            candidateScored.generation
           );
+          const serialized = serializeCanonicalPayload(payload);
+          const computedHash = sha256(serialized);
+          if (computedHash !== candidateScored.integrityHash) {
+            errors.push(
+              `Concurso ${contestNumber}: auditoria de integridade do registro C5-Memory congelado falhou: esperado '${candidateScored.integrityHash}', recalculado '${computedHash}'.`
+            );
+          }
         }
 
         // Auditoria estrita da pontuação calculada

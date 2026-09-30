@@ -1,0 +1,72 @@
+{
+  "checkpoint": "IC8",
+  "totalTested": 8,
+  "allRejected": true,
+  "details": [
+    {
+      "id": "CORRUPT-01-ALGO-VERSION",
+      "description": "Versão de algoritmo inválida",
+      "rejected": true,
+      "errors": [
+        "'memoryPayload.algorithmVersion' inválido: 'C5-Memory-9.9.9'. Deve ser 'C5-Memory-2.0.0'."
+      ]
+    },
+    {
+      "id": "CORRUPT-02-SEED-NEGATIVE",
+      "description": "Seed negativa fora de uint32",
+      "rejected": true,
+      "errors": [
+        "'memoryPayload.poolMasterSeed' fora da faixa uint32: -1."
+      ]
+    },
+    {
+      "id": "CORRUPT-03-SEED-OVERFLOW",
+      "description": "Seed > uint32 max",
+      "rejected": true,
+      "errors": [
+        "'memoryPayload.poolMasterSeed' fora da faixa uint32: 5000000000."
+      ]
+    },
+    {
+      "id": "CORRUPT-04-INDEX-OUT-OF-BOUNDS",
+      "description": "poolIndex >= 500",
+      "rejected": true,
+      "errors": [
+        "'memoryPayload.poolIndex' fora do intervalo [0..499]: 500."
+      ]
+    },
+    {
+      "id": "CORRUPT-05-GAMES-COUNT",
+      "description": "selectedC5 com 4 jogos",
+      "rejected": true,
+      "errors": [
+        "'memoryPayload.selectedC5' deve conter exatamente 5 jogos."
+      ]
+    },
+    {
+      "id": "CORRUPT-06-DUPLICATE-NUMBER",
+      "description": "Dezena duplicada no jogo",
+      "rejected": true,
+      "errors": [
+        "'memoryPayload.selectedC5[0]' contém dezena duplicada: 1."
+      ]
+    },
+    {
+      "id": "CORRUPT-07-MALFORMED-FINGERPRINT",
+      "description": "historyFingerprint malformado",
+      "rejected": true,
+      "errors": [
+        "'memoryPayload.historyFingerprint' malformado: 'invalid-hash'. Deve ser hash SHA-256 de 64 caracteres hexadecimais em minúsculas."
+      ]
+    },
+    {
+      "id": "CORRUPT-08-HISTOGRAM-DIMENSION",
+      "description": "winnerHistogram com dimensão errada",
+      "rejected": true,
+      "errors": [
+        "'memoryPayload.winnerHistogram' com dimensão inválida (esperava-se 11 elementos)."
+      ]
+    }
+  ],
+  "status": "PASS"
+}

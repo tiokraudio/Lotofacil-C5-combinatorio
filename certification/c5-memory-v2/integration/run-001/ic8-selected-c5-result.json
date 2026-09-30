@@ -1,0 +1,14 @@
+{
+  "checkpoint": "IC8",
+  "gamesCount": 5,
+  "gameSizes": [
+    15,
+    15,
+    15,
+    15,
+    15
+  ],
+  "strictlyAscendingPerGame": true,
+  "domainIntegersValid": true,
+  "status": "PASS"
+}

@@ -1,0 +1,38 @@
+{
+  "checkpoint": "IC8",
+  "attacksAudited": 6,
+  "allBlocked": true,
+  "details": [
+    {
+      "attackId": "ADV-P01-MEMORY-PAYLOAD-STRIPPING",
+      "description": "Tentativa de stripping silencioso de memoryPayload no deepClone",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-P02-PROTOTYPE-POLLUTION-BACKUP",
+      "description": "Injeção de __proto__ e constructor no arquivo de backup",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-P03-POOL-INDEX-OUT-OF-BOUNDS",
+      "description": "Injeção de poolIndex fora do intervalo [0..499] no import",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-P04-TAMPERED-FROZEN-PAYLOAD",
+      "description": "Tentativa de restaurar payload com fingerprint ou seed corrompidos",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-P05-PARTIAL-IMPORT-SPLIT",
+      "description": "Tentativa de escrita parcial interrompendo a transação de import",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-P06-DIRTY-REPLAY-SABOTAGE",
+      "description": "Substituição do candidato durante replay determinístico",
+      "outcome": "BLOCKED"
+    }
+  ],
+  "status": "PASS"
+}

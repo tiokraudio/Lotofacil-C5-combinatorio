@@ -216,6 +216,24 @@ export interface FrozenC5Payload {
 }
 
 /**
+ * Payload persistido congelado de uma aposta C5-Memory-2.0.0 confirmada.
+ * Preserva integralmente os metadados necessários para auditoria, replay e restauração.
+ */
+export interface FrozenMemoryPayload {
+  readonly algorithmVersion: "C5-Memory-2.0.0";
+  readonly poolMasterSeed: number | string;
+  readonly poolIndex: number;
+  readonly selectedC5: readonly (readonly number[])[] | number[][];
+  readonly historyRevision: number;
+  readonly historyFingerprint: string;
+  readonly winnerHistogram: readonly number[] | number[];
+  readonly confirmedRevision?: number;
+  readonly confirmedAt?: string;
+  readonly payloadVersion?: number;
+  readonly distanceVector?: readonly number[] | number[];
+}
+
+/**
  * Estrutura completa de um registro de concurso C₅, acompanhando seu ciclo de vida.
  */
 export interface ContestRecord {
@@ -250,6 +268,12 @@ export interface ContestRecord {
    * Somente pode existir em SCORED com betPlacedAt previamente confirmado.
    */
   prize?: PrizeRecord;
+
+  /**
+   * Metadados persistidos e imutáveis de memória para apostas confirmadas C5-Memory-2.0.0.
+   * Não pode existir em registros legados C5-1.0.0 (onde permanece undefined).
+   */
+  memoryPayload?: FrozenMemoryPayload;
 }
 
 /**

@@ -5,9 +5,10 @@ import type {
   ScoreIntegrityVerification,
   PrizeRecord,
   Clock,
+  FrozenMemoryPayload,
 } from "../c5/types.ts";
 
-export type { PrizeRecord };
+export type { PrizeRecord, FrozenMemoryPayload };
 
 /**
  * Constantes financeiras canônicas do sistema Lotofácil C₅.

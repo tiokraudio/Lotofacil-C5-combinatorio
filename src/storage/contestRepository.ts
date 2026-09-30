@@ -16,8 +16,9 @@ import {
   serializeCanonicalPayload,
   computeSHA256,
 } from "../c5/integrity.ts";
+import { sha256 } from "../c5-memory/sha256.ts";
 import { areContestRecordsIdentical } from "./recordComparison.ts";
-import type { ContestRecord, ContestRecordStatus, Clock, PrizeRecord } from "../c5/types.ts";
+import type { ContestRecord, ContestRecordStatus, Clock, PrizeRecord, FrozenMemoryPayload } from "../c5/types.ts";
 import {
   openDatabase,
   closeDatabase,
@@ -66,6 +67,45 @@ export function generateDiagnosticFilename(date: Date = new Date()): string {
   const mm = pad(date.getMinutes());
   const ss = pad(date.getSeconds());
   return `lotofacil-c5-diagnostico-${YYYY}-${MM}-${DD}-${HH}${mm}${ss}.json`;
+}
+
+/**
+ * Realiza clonagem defensiva profunda de um FrozenMemoryPayload.
+ * Garante que arrays e objetos internos não compartilhem referências na memória.
+ */
+export function deepCloneMemoryPayload(payload: FrozenMemoryPayload): FrozenMemoryPayload {
+  const selectedC5Cloned = Array.isArray(payload.selectedC5)
+    ? payload.selectedC5.map((game) => (Array.isArray(game) ? [...game] : game))
+    : [];
+
+  const histCloned = Array.isArray(payload.winnerHistogram)
+    ? [...payload.winnerHistogram]
+    : payload.winnerHistogram;
+
+  const result: any = {
+    algorithmVersion: payload.algorithmVersion,
+    poolMasterSeed: payload.poolMasterSeed,
+    poolIndex: payload.poolIndex,
+    selectedC5: selectedC5Cloned,
+    historyRevision: payload.historyRevision,
+    historyFingerprint: payload.historyFingerprint,
+    winnerHistogram: histCloned,
+  };
+
+  if (payload.confirmedRevision !== undefined) {
+    result.confirmedRevision = payload.confirmedRevision;
+  }
+  if (payload.confirmedAt !== undefined) {
+    result.confirmedAt = payload.confirmedAt;
+  }
+  if (payload.payloadVersion !== undefined) {
+    result.payloadVersion = payload.payloadVersion;
+  }
+  if (payload.distanceVector !== undefined) {
+    result.distanceVector = Array.isArray(payload.distanceVector) ? [...payload.distanceVector] : payload.distanceVector;
+  }
+
+  return result as FrozenMemoryPayload;
 }
 
 /**
@@ -131,6 +171,9 @@ export function deepCloneRecord(record: ContestRecord): ContestRecord {
       recordedAt: record.prize.recordedAt,
       source: record.prize.source,
     };
+  }
+  if (record.memoryPayload !== undefined) {
+    clonedRecord.memoryPayload = deepCloneMemoryPayload(record.memoryPayload);
   }
 
   return clonedRecord;
@@ -887,15 +930,21 @@ export class ContestRepository {
     }
 
     // 2. Validação da versão do algoritmo (Requisito 9: não tentar migrar ou interpretar outra versão)
-    if (record.algorithmVersion !== C5_ALGORITHM_VERSION) {
+    const isLegacy = record.algorithmVersion === C5_ALGORITHM_VERSION;
+    const isMemory = record.algorithmVersion === "C5-Memory-2.0.0";
+
+    if (!isLegacy && !isMemory) {
       errors.push(
-        `Versão de algoritmo desconhecida ou não suportada: '${String(record.algorithmVersion)}'. Suportada apenas '${C5_ALGORITHM_VERSION}'.`
+        `Versão de algoritmo desconhecida ou não suportada: '${String(record.algorithmVersion)}'. Suportadas apenas '${C5_ALGORITHM_VERSION}' e 'C5-Memory-2.0.0'.`
       );
     }
 
-    // 3. Validação do generationId (UUID v4 RFC 4122 estrito)
-    if (!isValidGenerationId(record.generationId)) {
-      errors.push("Campo 'generationId' inválido: deve ser um UUID v4 RFC 4122 estrito.");
+    // 3. Validação do generationId (UUID v4 RFC 4122 estrito para C5-1.0.0, string não vazia para C5-Memory)
+    const genId: unknown = record.generationId;
+    if (!isValidGenerationId(genId)) {
+      if (!isMemory || typeof genId !== "string" || genId.trim().length === 0) {
+        errors.push("Campo 'generationId' inválido: deve ser um UUID v4 RFC 4122 estrito.");
+      }
     }
 
     // 4. Validação do generatedAt (ISO 8601 válido)
@@ -906,10 +955,24 @@ export class ContestRepository {
     // 5. Validação estrutural da geração C5
     if (!record.generation || typeof record.generation !== "object") {
       errors.push("Campo 'generation' ausente ou inválido.");
-    } else {
+    } else if (isLegacy) {
       const c5Val = validateC5(record.generation);
       if (!c5Val.valid) {
         errors.push(...c5Val.errors);
+      }
+    } else if (isMemory) {
+      if (!Array.isArray(record.generation.games) || record.generation.games.length !== 5) {
+        errors.push("Campo 'generation.games' deve conter exatamente 5 jogos.");
+      } else {
+        for (let i = 0; i < 5; i++) {
+          const game = record.generation.games[i];
+          if (!Array.isArray(game) || game.length !== 15) {
+            errors.push(`Jogo J${i + 1} deve conter exatamente 15 dezenas.`);
+          }
+        }
+      }
+      if (record.memoryPayload === undefined && (record.status === "FROZEN" || record.status === "SCORED")) {
+        errors.push("Registro C5-Memory-2.0.0 deve possuir 'memoryPayload'.");
       }
     }
 
@@ -962,13 +1025,33 @@ export class ContestRepository {
 
       // Verificação criptográfica da geração congelada
       if (record.generation && typeof record.generation === "object") {
-        try {
-          genAudit = await verifyContestIntegrity(record);
-          if (!genAudit.valid) {
-            errors.push(...genAudit.errors);
+        if (isLegacy) {
+          try {
+            genAudit = await verifyContestIntegrity(record);
+            if (!genAudit.valid) {
+              errors.push(...genAudit.errors);
+            }
+          } catch (e: any) {
+            errors.push(`Falha na verificação de integridade: ${e?.message || "estrutura de geração corrompida"}`);
           }
-        } catch (e: any) {
-          errors.push(`Falha na verificação de integridade: ${e?.message || "estrutura de geração corrompida"}`);
+        } else if (isMemory) {
+          try {
+            const payload = buildCanonicalPayload(
+              record.contestNumber,
+              record.generationId,
+              record.algorithmVersion,
+              record.generatedAt,
+              record.frozenAt ?? "",
+              record.generation
+            );
+            const serialized = serializeCanonicalPayload(payload);
+            const computedHash = sha256(serialized);
+            if (computedHash !== record.integrityHash) {
+              errors.push(`Divergência de hash de integridade C5-Memory: armazenado '${record.integrityHash}', recalculado '${computedHash}'.`);
+            }
+          } catch (e: any) {
+            errors.push(`Falha na verificação de integridade C5-Memory: ${e?.message || "erro"}`);
+          }
         }
       }
     } else if (record.status === "SCORED") {
@@ -1047,13 +1130,33 @@ export class ContestRepository {
 
       // Integridade criptográfica da geração
       if (record.generation && typeof record.generation === "object") {
-        try {
-          genAudit = await verifyContestIntegrity(record);
-          if (!genAudit.valid) {
-            errors.push(...genAudit.errors);
+        if (isLegacy) {
+          try {
+            genAudit = await verifyContestIntegrity(record);
+            if (!genAudit.valid) {
+              errors.push(...genAudit.errors);
+            }
+          } catch (e: any) {
+            errors.push(`Falha na verificação de integridade: ${e?.message || "estrutura de geração corrompida"}`);
           }
-        } catch (e: any) {
-          errors.push(`Falha na verificação de integridade: ${e?.message || "estrutura de geração corrompida"}`);
+        } else if (isMemory) {
+          try {
+            const payload = buildCanonicalPayload(
+              record.contestNumber,
+              record.generationId,
+              record.algorithmVersion,
+              record.generatedAt,
+              record.frozenAt ?? "",
+              record.generation
+            );
+            const serialized = serializeCanonicalPayload(payload);
+            const computedHash = sha256(serialized);
+            if (computedHash !== record.integrityHash) {
+              errors.push(`Divergência de hash de integridade C5-Memory: armazenado '${record.integrityHash}', recalculado '${computedHash}'.`);
+            }
+          } catch (e: any) {
+            errors.push(`Falha na verificação de integridade C5-Memory: ${e?.message || "erro"}`);
+          }
         }
       }
 

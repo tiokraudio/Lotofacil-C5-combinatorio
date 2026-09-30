@@ -1,0 +1,11 @@
+{
+  "checkpoint": "IC8",
+  "schemaVersion": 3,
+  "recordsInB0": 2,
+  "restoreSuccess": true,
+  "importedCount": 2,
+  "legacyRecordPreservedWithoutPayload": true,
+  "memoryRecordRestoredWithPayload": true,
+  "cycleB0_Restore_B1_Identical": true,
+  "status": "PASS"
+}

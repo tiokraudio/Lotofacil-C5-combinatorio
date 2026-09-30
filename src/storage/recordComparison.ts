@@ -97,10 +97,13 @@ export function areContestRecordsIdentical(r1: ContestRecord, r2: ContestRecord)
 
   // Comparação da geração
   if (r1.generation.permutation.length !== r2.generation.permutation.length) return false;
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < r1.generation.permutation.length; i++) {
     if (r1.generation.permutation[i] !== r2.generation.permutation[i]) return false;
   }
-  for (const slot of C5_SLOTS) {
+  const slots1 = Object.keys(r1.generation.slotAssignments || {});
+  const slots2 = Object.keys(r2.generation.slotAssignments || {});
+  if (slots1.length !== slots2.length) return false;
+  for (const slot of slots1) {
     if (r1.generation.slotAssignments[slot] !== r2.generation.slotAssignments[slot]) return false;
   }
   for (let g = 0; g < 5; g++) {
@@ -115,6 +118,43 @@ export function areContestRecordsIdentical(r1: ContestRecord, r2: ContestRecord)
     if (r1.prize.amountCents !== r2.prize.amountCents) return false;
     if (r1.prize.recordedAt !== r2.prize.recordedAt) return false;
     if (r1.prize.source !== r2.prize.source) return false;
+  }
+
+  // Comparação de memoryPayload
+  if (Boolean(r1.memoryPayload) !== Boolean(r2.memoryPayload)) return false;
+  if (r1.memoryPayload && r2.memoryPayload) {
+    const m1 = r1.memoryPayload;
+    const m2 = r2.memoryPayload;
+    if (m1.algorithmVersion !== m2.algorithmVersion) return false;
+    if (m1.poolMasterSeed !== m2.poolMasterSeed) return false;
+    if (m1.poolIndex !== m2.poolIndex) return false;
+    if (m1.historyRevision !== m2.historyRevision) return false;
+    if (m1.historyFingerprint !== m2.historyFingerprint) return false;
+
+    if (Array.isArray(m1.selectedC5) && Array.isArray(m2.selectedC5)) {
+      if (m1.selectedC5.length !== m2.selectedC5.length) return false;
+      for (let g = 0; g < m1.selectedC5.length; g++) {
+        const g1 = m1.selectedC5[g];
+        const g2 = m2.selectedC5[g];
+        if (g1.length !== g2.length) return false;
+        for (let d = 0; d < g1.length; d++) {
+          if (g1[d] !== g2[d]) return false;
+        }
+      }
+    } else if (m1.selectedC5 !== m2.selectedC5) {
+      return false;
+    }
+
+    const h1 = m1.winnerHistogram ?? m1.distanceVector;
+    const h2 = m2.winnerHistogram ?? m2.distanceVector;
+    if (Array.isArray(h1) && Array.isArray(h2)) {
+      if (h1.length !== h2.length) return false;
+      for (let i = 0; i < h1.length; i++) {
+        if (h1[i] !== h2[i]) return false;
+      }
+    } else if (h1 !== h2) {
+      return false;
+    }
   }
 
   return true;

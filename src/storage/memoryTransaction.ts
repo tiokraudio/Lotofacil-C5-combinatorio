@@ -32,7 +32,7 @@ import {
   serializeCanonicalPayload,
 } from "../c5/integrity.ts";
 import { sha256 } from "../c5-memory/sha256.ts";
-import type { ContestRecord, C5Generation } from "../c5/types.ts";
+import type { ContestRecord, C5Generation, FrozenMemoryPayload } from "../c5/types.ts";
 import type { StorageOptions } from "./types.ts";
 
 export interface ConfirmMemoryBetParams {
@@ -238,11 +238,15 @@ export async function confirmMemoryBetAtomic(
             ],
           };
 
+          const draftCreatedTime = draft.createdAt ? new Date(draft.createdAt).getTime() : NaN;
+          const nowTime = new Date(nowIso).getTime();
+          const effectiveGeneratedAt = (!isNaN(draftCreatedTime) && draftCreatedTime <= nowTime) ? draft.createdAt : nowIso;
+
           const canonicalPayload = buildCanonicalPayload(
             contestNumber,
             generationId,
             draft.algorithmVersion,
-            draft.createdAt || nowIso,
+            effectiveGeneratedAt,
             nowIso,
             generation
           );
@@ -250,12 +254,20 @@ export async function confirmMemoryBetAtomic(
           // Cálculo síncrono puro de SHA-256 para preservar a transação ativa sem microtask gaps
           const integrityHash = sha256(serialized);
 
-          const memoryPayload = {
+          const memoryPayload: FrozenMemoryPayload = {
             algorithmVersion: draft.algorithmVersion,
             poolMasterSeed: draft.poolMasterSeed,
             poolIndex: draft.poolIndex,
-            expectedHistoryRevision: draft.expectedHistoryRevision,
-            expectedHistoryFingerprint: draft.expectedHistoryFingerprint,
+            selectedC5: [
+              [...draft.selectedC5[0]],
+              [...draft.selectedC5[1]],
+              [...draft.selectedC5[2]],
+              [...draft.selectedC5[3]],
+              [...draft.selectedC5[4]],
+            ],
+            historyRevision: draft.expectedHistoryRevision ?? draft.draftHistoryRevision,
+            historyFingerprint: draft.expectedHistoryFingerprint ?? draft.draftHistoryFingerprint,
+            winnerHistogram: [...draft.winnerHistogram],
             confirmedRevision: currentHistoryRevision + 1,
             confirmedAt: nowIso,
           };
@@ -265,12 +277,12 @@ export async function confirmMemoryBetAtomic(
             contestNumber,
             generationId,
             algorithmVersion: draft.algorithmVersion,
-            generatedAt: draft.createdAt || nowIso,
+            generatedAt: effectiveGeneratedAt,
             frozenAt: nowIso,
             betPlacedAt: nowIso,
             generation,
             integrityHash,
-            ...({ memoryPayload } as any),
+            memoryPayload,
           };
 
           // 6. SIMULAÇÃO DE FALHA INJETADA (SE ATIVADA)
@@ -283,12 +295,6 @@ export async function confirmMemoryBetAtomic(
 
           // 7. GRAVAÇÃO NO OBJECT STORE (EXECUTADA IMEDIATAMENTE)
           const clone = deepCloneRecord(confirmedRecord);
-          if ((confirmedRecord as any).memoryPayload) {
-            (clone as any).memoryPayload = JSON.parse(
-              JSON.stringify((confirmedRecord as any).memoryPayload)
-            );
-          }
-
           store.put(clone);
 
           // 8. RESULTADO PÓS-COMMIT

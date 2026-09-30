@@ -1,0 +1,20 @@
+{
+  "checkpoint": "IC8",
+  "draftSeed": "IDENTITY-SEED-999",
+  "draftIndex": 0,
+  "persistedSeed": "IDENTITY-SEED-999",
+  "persistedIndex": 0,
+  "fieldComparisons": {
+    "algorithmVersion": true,
+    "poolMasterSeed": true,
+    "poolIndex": true,
+    "historyRevision": true,
+    "historyFingerprint": true,
+    "selectedC5": true,
+    "winnerHistogram": true
+  },
+  "noRegeneration": true,
+  "noNewPoolGenerated": true,
+  "noPRNGDrift": true,
+  "status": "PASS"
+}
