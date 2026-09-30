@@ -1,7 +1,7 @@
 {
   "contractId": "C5M-POOL-INDEX-CONTRACT-V1",
   "version": "1.0.0",
-  "frozenAt": "2026-09-30T14:46:24.492Z",
+  "frozenAt": "2026-09-30T18:39:44.354Z",
   "poolIndexDefinition": "Índice inteiro canônico ordinal no intervalo [0, 499] atribuído sequencialmente durante a geração determinística do pool.",
   "immutabilityRule": "O poolIndex de um candidato é estritamente imutável durante avaliação, paralelização em Web Workers e resolução assíncrona.",
   "tieBreakerRule": "MIN_POOL_INDEX — Em caso de empate integral em todas as coordenadas de distância (n0..n9), o candidato com o menor poolIndex vence obrigatoriamente.",

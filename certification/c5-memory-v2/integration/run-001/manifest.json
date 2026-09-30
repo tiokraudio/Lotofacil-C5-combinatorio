@@ -59,8 +59,8 @@
     }
   },
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC8",
-  "status": "IC8_PASS",
+  "currentCheckpoint": "IC9",
+  "status": "IC9_PASS",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -837,6 +837,79 @@
     "verificationLog": {
       "path": "ic8-verification.log",
       "sha256": "4ffade0e4acbaba610c44629c091f2681209858bb148a9da196e658ed363c9d0"
+    }
+  },
+  "ic9Artifacts": {
+    "equivalenceResult": {
+      "path": "ic9-equivalence-result.json",
+      "sha256": "735a61ae8b685d65f78ba20a07d3384c87a36a6bb6d17fd8399eb3dc18cb9184",
+      "coordinatesCompared": 5000000,
+      "coordinateMismatches": 0,
+      "winnerComparisons": 1000,
+      "winnerMismatches": 0,
+      "selectedC5Mismatches": 0,
+      "status": "PASS"
+    },
+    "caseResults": {
+      "path": "ic9-case-results.json",
+      "sha256": "6706428b0ef7d888759b4c05caf8e5396f25678bb4daa35fd544da2f59317bd3",
+      "casesCount": 1000,
+      "status": "PASS"
+    },
+    "classResults": {
+      "path": "ic9-class-results.json",
+      "sha256": "fa7c94bb58b631708c5db5d4b88588366d8dd536681d109aa3b25de47c42d9bf",
+      "classesCount": 12,
+      "allClassesPass": true,
+      "status": "PASS"
+    },
+    "histogramComparisonResult": {
+      "path": "ic9-histogram-comparison-result.json",
+      "sha256": "e1a844330c68464d4d0c2b8ca60521229464c34f4fcf8433940a1b703cc13780",
+      "status": "PASS"
+    },
+    "negativeControlResult": {
+      "path": "ic9-negative-control-result.json",
+      "sha256": "46c2b70bb6c15febcd6c3251741374cb6b96e2ab9149b15e6ea3ea53c0ea9dd9",
+      "negativeControlDetected": true,
+      "winnerNegativeControlDetected": true,
+      "status": "PASS"
+    },
+    "cardinalityControlsResult": {
+      "path": "ic9-cardinality-controls-result.json",
+      "sha256": "a7978d6d42a9e65648e3259b3cc0a94135feecba2c39f0bdd9beee7d8526d947",
+      "status": "PASS"
+    },
+    "performanceResult": {
+      "path": "ic9-performance-result.json",
+      "sha256": "88262c45f581987d6c76c1cbe8d1df65bb0089565923888b25e3ca46b3fc7e95",
+      "totalDurationSeconds": 25.614720000000002,
+      "coordinatesPerSecond": 195200.26,
+      "status": "PASS"
+    },
+    "regressionResult": {
+      "path": "ic9-regression-result.json",
+      "sha256": "cdd670917a9579eb7c7ca2171877e546d645561eb06722d1d9ba98030d1a3d13",
+      "ic3Math": "PASS",
+      "ic4Pool": "PASS",
+      "ic5History": "PASS",
+      "ic6Draft": "PASS",
+      "ic7Transaction": "PASS",
+      "ic8Persistence": "PASS",
+      "c5Golden": "PASS",
+      "c5Massive": "PASS",
+      "c5Exhaustive": "PASS",
+      "build": "PASS",
+      "lint": "PASS",
+      "status": "PASS"
+    },
+    "diffInventory": {
+      "path": "ic9-diff-inventory.json",
+      "sha256": "16207db4b2c268add7a4f24dbb596b2626ffc99d8ea52089fc143c4c0183485a"
+    },
+    "verificationLog": {
+      "path": "ic9-verification.log",
+      "sha256": "a893d9c7d3f174d264562aca3ee527872df0b17e26409a6ce10829ea80fcc047"
     }
   }
 }

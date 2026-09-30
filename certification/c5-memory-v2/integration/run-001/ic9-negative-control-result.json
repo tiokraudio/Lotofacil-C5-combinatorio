@@ -1,0 +1,15 @@
+{
+  "checkpoint": "IC9",
+  "coordinateNegativeControl": {
+    "tamperedCoordinate": "n3",
+    "detected": true,
+    "status": "PASS"
+  },
+  "winnerNegativeControl": {
+    "expected": 42,
+    "tampered": 43,
+    "detected": true,
+    "status": "PASS"
+  },
+  "status": "PASS"
+}

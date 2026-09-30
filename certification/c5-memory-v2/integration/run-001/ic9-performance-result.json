@@ -1,0 +1,11 @@
+{
+  "checkpoint": "IC9",
+  "totalDurationMs": 25614.72,
+  "totalDurationSeconds": 25.614720000000002,
+  "casesPerSecond": 39.04,
+  "candidatesPerSecond": 19520.03,
+  "coordinatesPerSecond": 195200.26,
+  "peakMemoryRssMb": 810.93,
+  "heapUsedMb": 84.25,
+  "status": "PASS"
+}

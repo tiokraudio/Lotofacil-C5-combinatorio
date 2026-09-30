@@ -1,0 +1,88 @@
+{
+  "checkpoint": "IC9",
+  "generatedAt": "2026-09-30T18:43:55.886Z",
+  "inventory": {
+    "producaoC5Memory": [
+      {
+        "file": "src/c5-memory/types.ts",
+        "sha256": "e9c7c005cb66c3dc4b11d7e80ccc60ac25d1ed4f34f821b1c591b530b20d52ff"
+      },
+      {
+        "file": "src/c5-memory/math.ts",
+        "sha256": "d902810102c73fa6ccca2c234effee565ffb02160fcfad3b82fb2237ea0155d5"
+      },
+      {
+        "file": "src/c5-memory/prng.ts",
+        "sha256": "de9df384897c676d6a5a7e07fc0c062c45e6e402dd16ebc1383fc561976d5d0b"
+      },
+      {
+        "file": "src/c5-memory/pool.ts",
+        "sha256": "0211aac497f604bc77880bb9b843ba2ee90c5b79643fd48db93ffd6525bc16a8"
+      },
+      {
+        "file": "src/c5-memory/sha256.ts",
+        "sha256": "adebb6031ea12268526814f92d2ea6efe2b2b04a41c3d8b9933f674d01a2b165"
+      },
+      {
+        "file": "src/c5-memory/history.ts",
+        "sha256": "e8d2f84e42aff81518eee9db083ac8ab9445069cd7f42e5aaee93b8ada982b9b"
+      },
+      {
+        "file": "src/c5-memory/draft.ts",
+        "sha256": "8adcc10b41b3048d0c1360e6e36d72f472b8aa26a4e34557af86bf8ba5cd1428"
+      }
+    ],
+    "storagePersistence": [
+      {
+        "file": "src/c5/types.ts",
+        "sha256": "e960c0193248c0910998f5b0c07929e9d38aca712234ac01f7ba94796ea7f467"
+      },
+      {
+        "file": "src/storage/types.ts",
+        "sha256": "19a3e94273049d4ef4f567e575183648f6a589a211222b85ba563f743be7d123"
+      },
+      {
+        "file": "src/storage/contestRepository.ts",
+        "sha256": "c81ee9efa6727610e307c29ff8588379cdb4b7a2ecbd2809ed8ae1fe4ab7d4cc"
+      },
+      {
+        "file": "src/storage/import.ts",
+        "sha256": "15178f3a12826f302ff5cd2b21e86c10e71ae6eebcdbe2431630fee086e09739"
+      },
+      {
+        "file": "src/storage/recordComparison.ts",
+        "sha256": "ff1f0c032d14d7adf7dc9eda522a5732122d42ee960cef4702b3d3190e03bfe8"
+      },
+      {
+        "file": "src/storage/memoryTransaction.ts",
+        "sha256": "6f50a78ff4cad0a76268a79096ce8910a2ffe0cd605551a21999df50ab1b84d6"
+      },
+      {
+        "file": "src/storage/tests/memoryPersistence.test.ts",
+        "sha256": "ce6397acd5486678d95296c9fd1f3bc34f9dfe0565f8f2479bc6f232e5bf35e9"
+      }
+    ],
+    "arquivosAppModificadosEmIC9": "ZERO arquivos de código de produção APP modificados durante IC9 (read-only estrito)",
+    "syncFiles": "Zero alterações (LOCAL_SYNC_PROTOCOL_VERSION = 1)",
+    "schemaFiles": "Schema V3 estritamente preservado (BACKUP_SCHEMA_VERSION = 3)",
+    "uiReact": "Zero alterações em UI/React",
+    "configs": "Zero alterações em package.json ou configs",
+    "certificationIntegration": "certification/c5-memory-v2/integration/run-001/",
+    "outros": []
+  },
+  "invariantsCheck": {
+    "alteracoesC5_1_0_0": 0,
+    "alteracoesSchema": 0,
+    "alteracoesSync": 0,
+    "alteracoesReact": 0,
+    "alteracoesPackageJson": 0,
+    "arquivosAppModificadosDuranteIC9": 0,
+    "arquivosForaDoEscopo": 0
+  },
+  "appVersion": "1.13.0",
+  "c5AlgorithmVersion": "C5-1.0.0",
+  "c5MemoryAlgorithmVersion": "C5-Memory-2.0.0",
+  "backupSchemaVersion": 3,
+  "localSyncProtocolVersion": 1,
+  "status": "PASS"
+}

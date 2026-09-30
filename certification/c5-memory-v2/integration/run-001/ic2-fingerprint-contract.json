@@ -1,7 +1,7 @@
 {
   "contractId": "C5M-FINGERPRINT-CONTRACT-V1",
   "version": "1.0.0",
-  "frozenAt": "2026-09-30T14:46:24.492Z",
+  "frozenAt": "2026-09-30T18:39:44.354Z",
   "domainSeparation": "C5-MEMORY-H-FINGERPRINT-V1",
   "canonicalizationRules": [
     "1. Cada jogo contém exatamente 15 dezenas em ordem crescente [1..25].",

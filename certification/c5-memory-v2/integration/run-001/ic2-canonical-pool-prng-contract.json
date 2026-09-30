@@ -1,7 +1,7 @@
 {
   "contractId": "C5M-CANONICAL-POOL-PRNG-CONTRACT-V1",
   "version": "1.0.0",
-  "frozenAt": "2026-09-30T14:46:21.045Z",
+  "frozenAt": "2026-09-30T18:39:41.253Z",
   "decisionJustification": {
     "selectedAlgorithm": "MULBERRY32",
     "technicalCriteria": [
