@@ -1,0 +1,47 @@
+{
+  "checkpoint": "IC5",
+  "domainSeparation": "C5-MEMORY-H-FINGERPRINT-V1",
+  "totalVectorsAudited": 5,
+  "totalChecks": 14,
+  "passedChecks": 14,
+  "verifications": [
+    {
+      "goldenId": "GV-I02",
+      "preimageMatch": true,
+      "digestMatch": true,
+      "preimage": "C5-MEMORY-H-FINGERPRINT-V1:0:",
+      "digest": "77a0ea80168e96d83782c03b08e6155078b3d9e7477b966afc95bda0bb1a93fa",
+      "status": "PASS"
+    },
+    {
+      "goldenId": "GV-I03",
+      "preimageMatch": true,
+      "digestMatch": true,
+      "preimage": "C5-MEMORY-H-FINGERPRINT-V1:2:01,02,03,04,05,06,07,08,09,10,11,12,13,14,15;01,02,03,04,05,06,07,08,09,10,16,17,18,19,20",
+      "digest": "6d68b02584a1c274a4c6ae2d555cfef573961bae4ccae88c261b88066e39273f",
+      "status": "PASS"
+    },
+    {
+      "goldenId": "GV-I04",
+      "preimageMatch": true,
+      "digestMatch": true,
+      "digestsEqual": true,
+      "status": "PASS"
+    },
+    {
+      "goldenId": "GV-I05",
+      "originalMatch": true,
+      "mutatedMatch": true,
+      "digestsDiffer": true,
+      "status": "PASS"
+    },
+    {
+      "goldenId": "GV-I06",
+      "singleMatch": true,
+      "doubleMatch": true,
+      "multiplicitiesDiffer": true,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

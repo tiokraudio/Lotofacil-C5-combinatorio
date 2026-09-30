@@ -1,0 +1,25 @@
+{
+  "checkpoint": "IC5",
+  "normalDigest": "6d68b02584a1c274a4c6ae2d555cfef573961bae4ccae88c261b88066e39273f",
+  "sabotageScenarios": [
+    {
+      "scenario": "NO_ZERO_PADDING",
+      "description": "Formatação de dezenas sem zero à esquerda ('1,2,...')",
+      "divergenceDetected": true,
+      "sabotagedDigest": "1f558dc0f0c18a39d888cdfbfa9bbff7a2638f0f07a523ba64e8a22a001bb624"
+    },
+    {
+      "scenario": "NO_MULTISET_SORT",
+      "description": "Concatenação direta de blocos sem ordenação lexicográfica",
+      "divergenceDetected": true,
+      "sabotagedDigest": "8895de51d50f9ff45c3296a74a0e8a17866136543f3f5aec7bdafd2de9f65ecc"
+    },
+    {
+      "scenario": "NO_DOMAIN_SEPARATION",
+      "description": "Omissão do prefixo C5-MEMORY-H-FINGERPRINT-V1",
+      "divergenceDetected": true,
+      "sabotagedDigest": "4e97233d8917a8a1dd657a94e5784ef56fdf69db8d99e69c10f0519a3562853d"
+    }
+  ],
+  "status": "PASS"
+}

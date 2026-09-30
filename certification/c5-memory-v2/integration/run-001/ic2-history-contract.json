@@ -1,7 +1,7 @@
 {
   "contractId": "C5M-HISTORY-CONTRACT-V1",
   "version": "1.0.0",
-  "frozenAt": "2026-09-29T14:57:42.083Z",
+  "frozenAt": "2026-09-30T14:46:24.491Z",
   "concepts": {
     "historyRevision": {
       "type": "uint32 monotonic sequence integer",

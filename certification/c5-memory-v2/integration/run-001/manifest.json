@@ -66,8 +66,8 @@
   },
 
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC4",
-  "status": "IC4_PASS",
+  "currentCheckpoint": "IC5",
+  "status": "IC5_PASS",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -361,6 +361,113 @@
     "verificationLog": {
       "path": "ic4-verification.log",
       "sha256": "2911635ea45fd48fcc06e8d58dfcc7b3bf864bd4eecca9b4703c1860d6cd9320"
+    }
+  },
+  "ic5Artifacts": {
+    "sourceCode": {
+      "history": {
+        "path": "src/c5-memory/history.ts",
+        "sha256": "e8d2f84e42aff81518eee9db083ac8ab9445069cd7f42e5aaee93b8ada982b9b"
+      },
+      "sha256": {
+        "path": "src/c5-memory/sha256.ts",
+        "sha256": "adebb6031ea12268526814f92d2ea6efe2b2b04a41c3d8b9933f674d01a2b165"
+      },
+      "unitTests": {
+        "path": "src/c5-memory/tests/history.test.ts",
+        "sha256": "334c5e8eaea2126b7c723a3aaf73c843f2ca759057642895aa108b5ab5739d63",
+        "assertionsPassed": 25,
+        "status": "PASS"
+      }
+    },
+    "verificationScript": {
+      "path": "run-ic5-verification.ts",
+      "sha256": "8a47386281c7d3521d3c9555b19662216576fb3a42d29c6ebca6a95769f1f635"
+    },
+    "historyGoldenResult": {
+      "path": "ic5-history-golden-result.json",
+      "sha256": "11e04bcaef3efe76a31f421f0bb525d559e76e901eefcacfa3edbe7a45b77733",
+      "vectorsVerified": 5,
+      "checksPassed": 14,
+      "status": "PASS"
+    },
+    "fingerprintGoldenResult": {
+      "path": "ic5-fingerprint-golden-result.json",
+      "sha256": "7df46ba839e8f8b09594914106da7bd38397aeb0f397e87c5854854c0e8f408d",
+      "status": "PASS"
+    },
+    "historyPermutationResult": {
+      "path": "ic5-history-permutation-result.json",
+      "sha256": "604071ce2a840aa585adb9aa9edf2468e41ffa7aae482619aeb7fc7516848267",
+      "permutationsTested": 20,
+      "fingerprintInvariant": true,
+      "maxLeximinSelectionInvariant": true,
+      "status": "PASS"
+    },
+    "historyMultiplicityResult": {
+      "path": "ic5-history-multiplicity-result.json",
+      "sha256": "4576f7f4624d93dd6103b7c059b717eb271faaf425e3650c8eb18cf00a63126e",
+      "multiplicityDistinguished": true,
+      "reorderingWithMultiplicityInvariant": true,
+      "distinctDistributionsDiverge": true,
+      "histogramMultiplicityReflected": true,
+      "status": "PASS"
+    },
+    "revisionFingerprintIndependence": {
+      "path": "ic5-revision-fingerprint-independence.json",
+      "sha256": "199bd983ddd6d92d4179842adfb58076a194ba66aab3d60cee574e945afbe676",
+      "orthogonalRelationsVerified": true,
+      "evolutionarySequenceVerified": true,
+      "status": "PASS"
+    },
+    "exogenousIsolationResult": {
+      "path": "ic5-exogenous-isolation-result.json",
+      "sha256": "71d3f623497b778f5ab9817baa22ad2e6155de99aa0bb01392545d90cd6cf4d8",
+      "draftsExcluded": true,
+      "caixaDataExcluded": true,
+      "legacyConfirmedIncluded": true,
+      "status": "PASS"
+    },
+    "negativeCanonicalizationControl": {
+      "path": "ic5-negative-canonicalization-control.json",
+      "sha256": "40435a82062c6623244bb95227cb4dd825a98a186c37fb6867ae7a5c07899279",
+      "sabotageScenariosAudited": 3,
+      "allDivergencesDetected": true,
+      "status": "PASS"
+    },
+    "nonmutationResult": {
+      "path": "ic5-nonmutation-result.json",
+      "sha256": "1fb44a7075bb1fb535088d476f9219b6e17580c15d6a29bb8df5b8cc1b81f909",
+      "recordsInputPreserved": true,
+      "historyArrayPreserved": true,
+      "status": "PASS"
+    },
+    "corpusValidationResult": {
+      "path": "ic5-corpus-validation-result.json",
+      "sha256": "6d38ea8055ac68bfe5a70538dd210bf4081f0b0da474b3fb24183cb0dd310256",
+      "allFingerprintsDeterministic": true,
+      "status": "PASS"
+    },
+    "regressionResult": {
+      "path": "ic5-regression-result.json",
+      "sha256": "8e69208be398f8bb16b0cf9006cb0257f4b8b9ead8deabfcf9a84cfa144b2b4f",
+      "ic3Math": "PASS",
+      "ic4Pool": "PASS",
+      "ic5History": "PASS",
+      "c5Golden": "PASS",
+      "c5Massive": "PASS",
+      "c5Exhaustive": "PASS",
+      "build": "PASS",
+      "lint": "PASS",
+      "status": "PASS"
+    },
+    "diffInventory": {
+      "path": "ic5-diff-inventory.json",
+      "sha256": "0df47b71eefa8d4f298fc27439bf76b57b7eaa90636368bf21244bb5829b74da"
+    },
+    "verificationLog": {
+      "path": "ic5-verification.log",
+      "sha256": "c591986c655b291eff1463b90e9d405e1e7863980ce156bcaf965a3acbb24481"
     }
   }
 }

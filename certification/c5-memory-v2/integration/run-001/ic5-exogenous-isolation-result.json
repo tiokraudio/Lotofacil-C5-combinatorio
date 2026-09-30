@@ -1,0 +1,10 @@
+{
+  "checkpoint": "IC5",
+  "totalRecordsEvaluated": 4,
+  "eligibleGamesExtracted": 10,
+  "draftsExcluded": true,
+  "caixaDataExcluded": true,
+  "legacyConfirmedIncluded": true,
+  "unconfirmedExcluded": true,
+  "status": "PASS"
+}

@@ -1,7 +1,7 @@
 {
   "corpusId": "C5M-INTEGRATION-CORPUS-IC9-V1",
   "version": "1.0",
-  "frozenAt": "2026-09-29T14:51:16.738Z",
+  "frozenAt": "2026-09-30T14:46:17.096Z",
   "totalCases": 1000,
   "distributionByClass": {
     "EMPTY_HISTORY": 50,

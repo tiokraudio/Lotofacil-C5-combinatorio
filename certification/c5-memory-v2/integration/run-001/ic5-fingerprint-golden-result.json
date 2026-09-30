@@ -1,0 +1,9 @@
+{
+  "checkpoint": "IC5",
+  "emptyHistoryDigest": "77a0ea80168e96d83782c03b08e6155078b3d9e7477b966afc95bda0bb1a93fa",
+  "twoGamesDigest": "6d68b02584a1c274a4c6ae2d555cfef573961bae4ccae88c261b88066e39273f",
+  "permutedThreeGamesDigest": "9a71864a594f4990302f9ba45a29c9f76bc02f834d8ee75f6caf8b918dd4c833",
+  "mutatedGameDigest": "81a1d5489210cfae4d9f777e74f2496923101d760f5157b37bc607b1789cae62",
+  "doubleSetDigest": "d0a1585e5653b8897d8f48fda97b87886dbaf40f1d870985d4d22056f1cb15e9",
+  "status": "PASS"
+}
