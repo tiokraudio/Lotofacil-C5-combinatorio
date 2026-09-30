@@ -1,0 +1,50 @@
+{
+  "checkpoint": "IC6",
+  "totalSeedsAudited": 6,
+  "allReplaysMatch": true,
+  "cases": [
+    {
+      "seed": 0,
+      "draftPoolIndex": 15,
+      "replayedPoolIndex": 15,
+      "poolMatches": true,
+      "gamesMatch": true
+    },
+    {
+      "seed": 1,
+      "draftPoolIndex": 84,
+      "replayedPoolIndex": 84,
+      "poolMatches": true,
+      "gamesMatch": true
+    },
+    {
+      "seed": 100001,
+      "draftPoolIndex": 86,
+      "replayedPoolIndex": 86,
+      "poolMatches": true,
+      "gamesMatch": true
+    },
+    {
+      "seed": 20260929,
+      "draftPoolIndex": 68,
+      "replayedPoolIndex": 68,
+      "poolMatches": true,
+      "gamesMatch": true
+    },
+    {
+      "seed": 2147483647,
+      "draftPoolIndex": 181,
+      "replayedPoolIndex": 181,
+      "poolMatches": true,
+      "gamesMatch": true
+    },
+    {
+      "seed": 4294967295,
+      "draftPoolIndex": 38,
+      "replayedPoolIndex": 38,
+      "poolMatches": true,
+      "gamesMatch": true
+    }
+  ],
+  "status": "PASS"
+}

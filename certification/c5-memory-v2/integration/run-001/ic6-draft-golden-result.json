@@ -1,0 +1,46 @@
+{
+  "checkpoint": "IC6",
+  "totalGoldensAudited": 5,
+  "checksTotal": 16,
+  "checksPassed": 16,
+  "results": [
+    {
+      "goldenId": "GV-I07",
+      "isStaleMatch": true,
+      "validationStatusMatch": true,
+      "actionMatch": true,
+      "status": "PASS"
+    },
+    {
+      "goldenId": "GV-I08",
+      "isStaleMatch": true,
+      "validationStatusMatch": true,
+      "actionMatch": true,
+      "silentRecomputeAllowedMatch": true,
+      "status": "PASS"
+    },
+    {
+      "goldenId": "GV-I09",
+      "isStaleMatch": true,
+      "validationStatusMatch": true,
+      "actionMatch": true,
+      "status": "PASS"
+    },
+    {
+      "goldenId": "GV-I10",
+      "rejectionReasonMatch": true,
+      "actionMatch": true,
+      "status": "PASS"
+    },
+    {
+      "goldenId": "GV-I18",
+      "canonicalPoolIndex": 96,
+      "replayedPoolIndex": 96,
+      "poolMatches": true,
+      "indexMatches": true,
+      "gamesMatch": true,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

@@ -1,0 +1,30 @@
+{
+  "checkpoint": "IC6",
+  "ic3Math": "PASS",
+  "ic4Pool": "PASS",
+  "ic5History": "PASS",
+  "ic6Draft": "PASS",
+  "c5Golden": {
+    "status": "PASS",
+    "log": "ic6-c5-golden.log"
+  },
+  "c5Massive": {
+    "status": "PASS",
+    "log": "ic6-c5-massive.log"
+  },
+  "c5Exhaustive": {
+    "status": "PASS",
+    "log": "ic6-c5-exhaustive.log"
+  },
+  "build": {
+    "status": "PASS",
+    "exitCode": 0,
+    "log": "ic6-build.log"
+  },
+  "lint": {
+    "status": "PASS",
+    "exitCode": 0,
+    "log": "ic6-lint.log"
+  },
+  "status": "PASS"
+}

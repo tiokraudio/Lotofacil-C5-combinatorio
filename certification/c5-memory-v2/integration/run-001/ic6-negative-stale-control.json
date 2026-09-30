@@ -1,0 +1,8 @@
+{
+  "checkpoint": "IC6",
+  "scenario": "same_revision_different_fingerprint",
+  "defectiveValidatorResult": "FALSE_FRESH",
+  "appValidatorResult": "STALE_REVISION_REJECTED",
+  "negativeControlDetected": true,
+  "status": "PASS"
+}

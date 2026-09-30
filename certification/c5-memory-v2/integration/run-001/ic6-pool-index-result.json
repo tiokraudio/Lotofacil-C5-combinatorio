@@ -1,0 +1,8 @@
+{
+  "checkpoint": "IC6",
+  "normalWinnerPoolIndex": 68,
+  "shuffledWinnerPoolIndex": 68,
+  "poolIndexInvariant": true,
+  "histogramInvariant": true,
+  "status": "PASS"
+}

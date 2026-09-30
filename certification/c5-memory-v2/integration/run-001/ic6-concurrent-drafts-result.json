@@ -1,0 +1,15 @@
+{
+  "checkpoint": "IC6",
+  "initialState": {
+    "revision": 10,
+    "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "committedState": {
+    "revision": 11,
+    "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "bothFreshInitially": true,
+  "draftBStaleAfterCommitA": true,
+  "draftBAction": "ABORT_PERSISTENCE_TRANSACTION",
+  "status": "PASS"
+}

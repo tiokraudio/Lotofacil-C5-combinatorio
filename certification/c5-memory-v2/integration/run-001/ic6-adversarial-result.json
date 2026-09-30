@@ -1,0 +1,40 @@
+{
+  "checkpoint": "IC6",
+  "attacksAudited": 5,
+  "allBlocked": true,
+  "details": [
+    {
+      "attackId": "ADV-01-TAMPERED-REVISION",
+      "description": "Alteração de revision com fingerprint mantido",
+      "expectedOutcome": "STALE_REVISION_REJECTED",
+      "outcome": "STALE_REVISION_REJECTED",
+      "blocked": true
+    },
+    {
+      "attackId": "ADV-02-TAMPERED-FINGERPRINT",
+      "description": "Alteração de fingerprint com revision mantida",
+      "expectedOutcome": "STALE_REVISION_REJECTED",
+      "outcome": "STALE_REVISION_REJECTED",
+      "blocked": true
+    },
+    {
+      "attackId": "ADV-03-SWAPPED-POOLINDEX",
+      "description": "Troca forçada de poolIndex após Preview",
+      "expectedOutcome": "REPLAY_MISMATCH",
+      "blocked": true
+    },
+    {
+      "attackId": "ADV-04-SWAPPED-SEED",
+      "description": "Troca forçada de poolMasterSeed após Preview",
+      "expectedOutcome": "REPLAY_MISMATCH",
+      "blocked": true
+    },
+    {
+      "attackId": "ADV-05-SILENT-AUTOREGENERATE",
+      "description": "Tentativa de confirmação automática com regeneração silenciosa de H",
+      "expectedOutcome": "REJECTED",
+      "blocked": true
+    }
+  ],
+  "status": "PASS"
+}

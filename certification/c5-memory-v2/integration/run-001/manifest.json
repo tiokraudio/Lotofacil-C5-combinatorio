@@ -66,8 +66,8 @@
   },
 
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC5",
-  "status": "IC5_PASS",
+  "currentCheckpoint": "IC6",
+  "status": "IC6_PASS",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -468,6 +468,122 @@
     "verificationLog": {
       "path": "ic5-verification.log",
       "sha256": "c591986c655b291eff1463b90e9d405e1e7863980ce156bcaf965a3acbb24481"
+    }
+  },
+  "ic6Artifacts": {
+    "sourceCode": {
+      "draft": {
+        "path": "src/c5-memory/draft.ts",
+        "sha256": "8adcc10b41b3048d0c1360e6e36d72f472b8aa26a4e34557af86bf8ba5cd1428"
+      },
+      "unitTests": {
+        "path": "src/c5-memory/tests/draft.test.ts",
+        "sha256": "46ce0044a1c83c3c1b1ec784f071894111b56530e8f2c101e0bcc2b49b4cb765",
+        "status": "PASS"
+      }
+    },
+    "verificationScript": {
+      "path": "run-ic6-verification.ts",
+      "sha256": "3275ccb99569536e4ba128756f2be908c8aa4c74034aab8e3d65021880adb2c9"
+    },
+    "draftGoldenResult": {
+      "path": "ic6-draft-golden-result.json",
+      "sha256": "12b38942bfaac96abe0c955d6bcd739f1e2185bf43c8ab2b901c6e3cd89aa68a",
+      "totalGoldensAudited": 5,
+      "checksPassed": 16,
+      "status": "PASS"
+    },
+    "freshnessMatrixResult": {
+      "path": "ic6-freshness-matrix-result.json",
+      "sha256": "3a103d76155a63ad8a3555d1cbf4301c9d8b6d125cda0d202aba956c3e8f63c1",
+      "status": "PASS"
+    },
+    "staleRejectionResult": {
+      "path": "ic6-stale-rejection-result.json",
+      "sha256": "b3c0a4db840ccf63b1a06ad8f080e0fd1183bfc82b9bd664cdf7c39f1a8a8a1b",
+      "canonicalCode": "STALE_REVISION_REJECTED",
+      "status": "PASS"
+    },
+    "concurrentDraftsResult": {
+      "path": "ic6-concurrent-drafts-result.json",
+      "sha256": "46b349abbcd30fcbe85316f22e9439b59e1d325c2d4cf57def1f2264549771ed",
+      "status": "PASS"
+    },
+    "multiTabLogicalResult": {
+      "path": "ic6-multi-tab-logical-result.json",
+      "sha256": "90707a22a0e61ec22712ea13e0458c9d3947881ce71727aa7346acc302d0afa5",
+      "status": "PASS"
+    },
+    "previewImmutabilityResult": {
+      "path": "ic6-preview-immutability-result.json",
+      "sha256": "cce0da53499d7f77151412cd6fb43815f2873cf0ae2fa5003820c5666a5575a9",
+      "status": "PASS"
+    },
+    "replayResult": {
+      "path": "ic6-replay-result.json",
+      "sha256": "4e3cd5c42f5af87f37a48291178465ce14842a081ea13e1f63bd37a4fc7a2f73",
+      "status": "PASS"
+    },
+    "poolIndexResult": {
+      "path": "ic6-pool-index-result.json",
+      "sha256": "ef9d448c742a82ad80c0f67f72d41a9c6ac96f5f2d2c9eea1c3e6ecb31bd68df",
+      "status": "PASS"
+    },
+    "exogenousIsolationResult": {
+      "path": "ic6-exogenous-isolation-result.json",
+      "sha256": "830eda861b76d9b89a145e7db11068d74acf04cef89d73393ffcc3b4fc3d4627",
+      "status": "PASS"
+    },
+    "negativeStaleControl": {
+      "path": "ic6-negative-stale-control.json",
+      "sha256": "12b5e707ca24c882f7f6b0489d24f45adbcc607e8e017a5cb498b3bf2f1ae493",
+      "negativeControlDetected": true,
+      "status": "PASS"
+    },
+    "negativeAutoregenerateControl": {
+      "path": "ic6-negative-autoregenerate-control.json",
+      "sha256": "5ce17a2adf964500fc2ece9b2a8972d82c85b534a9a485584967396c788a8461",
+      "violationDetected": true,
+      "status": "PASS"
+    },
+    "nonmutationResult": {
+      "path": "ic6-nonmutation-result.json",
+      "sha256": "b6df13e900c77724e12f87369ec4acc1563734d1908c3d609085d293bd04762e",
+      "status": "PASS"
+    },
+    "hiddenStateResult": {
+      "path": "ic6-hidden-state-result.json",
+      "sha256": "b0408b55df0893cf9b52925ac32f88687841dd5f2bd48fc35f19e2c2bceff00a",
+      "status": "PASS"
+    },
+    "adversarialResult": {
+      "path": "ic6-adversarial-result.json",
+      "sha256": "82dedb975428f7e9245d9844bcd0fce563441bade2237b038468a6f0074321eb",
+      "attacksAudited": 5,
+      "allBlocked": true,
+      "status": "PASS"
+    },
+    "regressionResult": {
+      "path": "ic6-regression-result.json",
+      "sha256": "2aff510f722808f2a3b1582b3db21af2af182138a66f5401242fa80767f0c656",
+      "ic3Math": "PASS",
+      "ic4Pool": "PASS",
+      "ic5History": "PASS",
+      "ic6Draft": "PASS",
+      "c5Golden": "PASS",
+      "c5Massive": "PASS",
+      "c5Exhaustive": "PASS",
+      "build": "PASS",
+      "lint": "PASS",
+      "status": "PASS"
+    },
+    "diffInventory": {
+      "path": "ic6-diff-inventory.json",
+      "sha256": "7731e29e29ac1d8218de5ef236e3f7ee7c36b57a9fef2424e610250b56335502"
+    },
+    "verificationLog": {
+      "path": "ic6-verification.log",
+      "sha256": "1ed47a369dfbbb171c33616dabb16a5407ffb4526e6db0879d98f1f8be6f6ddd"
     }
   }
 }
