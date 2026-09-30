@@ -1,0 +1,58 @@
+{
+  "checkpoint": "IC7",
+  "database": {
+    "defaultDbName": "c5-official-generator",
+    "dbVersion": 1,
+    "objectStores": [
+      "contestRecords"
+    ],
+    "primaryKey": "contestNumber",
+    "indexes": [
+      "status",
+      "generatedAt",
+      "frozenAt",
+      "scoredAt"
+    ]
+  },
+  "singleCanonicalSource": {
+    "confirmedBetStore": "contestRecords",
+    "shadowStoreCreated": false,
+    "parallelStoreCreated": false,
+    "status": "PASS"
+  },
+  "transactionalBoundary": {
+    "mode": "readwrite",
+    "store": "contestRecords",
+    "pattern": "VALIDATE + WRITE = ONE STORAGE TRANSACTION",
+    "atomicGuarantee": "IndexedDB transaction locks object store exclusively; zero observable window between check and commit."
+  },
+  "deepCloneImplementation": {
+    "location": "src/storage/contestRepository.ts",
+    "defensiveSchemaProtection": true
+  },
+  "multiTabSyncMechanism": {
+    "mechanism": "BroadcastChannel ('c5_local_sync')",
+    "protocolVersion": 1,
+    "role": "Notificação reativa de UI / propagação de estado; NÃO substitui e NÃO atua como lock de correção."
+  },
+  "readWriteTouchpoints": {
+    "reads": [
+      "getContestRecord",
+      "getAllContestRecords",
+      "listContestRecords",
+      "verifyStoredContest",
+      "getMemoryHistoryState"
+    ],
+    "writes": [
+      "saveDraft",
+      "freezeStoredContest",
+      "confirmDraftBet",
+      "scoreStoredContest",
+      "confirmBetPlaced",
+      "recordPrize",
+      "confirmMemoryBetAtomic"
+    ]
+  },
+  "feasibilityAssessment": "100% VIÁVEL nativamente no IndexedDB através de transação readwrite única.",
+  "status": "PASS"
+}

@@ -1,0 +1,17 @@
+{
+  "checkpoint": "IC7",
+  "confirmationFunction": "confirmMemoryBetAtomic(params)",
+  "participatingStores": [
+    "contestRecords"
+  ],
+  "transactionMode": "readwrite",
+  "whereRevisionRead": "Dentro da transação: store.getAll() lê atomicamente todos os registros.",
+  "whereRevisionChecked": "Dentro do callback onsuccess de readRequest, antes de qualquer escrita.",
+  "whereFingerprintRead": "Cálculo síncrono a partir de buildHistoryFromRecords(allRecords) dentro da transação.",
+  "whereFingerprintChecked": "Verificação conjunta: expectedRev === currentRev && expectedFp === currentFp.",
+  "whereRecordWritten": "store.put(clone) no mesmo tick da validação, dentro da mesma transação ativa.",
+  "whereRevisionAdvances": "Com o commit definitivo de tx; a próxima transação lerá o novo registro.",
+  "commitBoundary": "await waitForTransaction(tx) / tx.oncomplete.",
+  "abortBehavior": "tx.abort() em qualquer divergência de revision/fingerprint ou falha; rollback total.",
+  "status": "PASS"
+}

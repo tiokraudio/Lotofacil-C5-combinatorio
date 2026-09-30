@@ -66,8 +66,8 @@
   },
 
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC6",
-  "status": "IC6_PASS",
+  "currentCheckpoint": "IC7",
+  "status": "IC7_PASS",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -584,6 +584,174 @@
     "verificationLog": {
       "path": "ic6-verification.log",
       "sha256": "1ed47a369dfbbb171c33616dabb16a5407ffb4526e6db0879d98f1f8be6f6ddd"
+    }
+  },
+  "ic7Artifacts": {
+    "sourceCode": {
+      "memoryTransaction": {
+        "path": "src/storage/memoryTransaction.ts",
+        "sha256": "30cef4a72ee327775d9309c1dc371538acc70cdba30c66a2b5914ba72237125e"
+      },
+      "storageIndex": {
+        "path": "src/storage/index.ts",
+        "sha256": "41dad99403161f1be4cb034263bedb720016bcd283085fd1f5a5b9733a94ab3b"
+      },
+      "unitTests": {
+        "path": "src/storage/tests/memoryTransaction.test.ts",
+        "sha256": "ec3e87dd7febe313131c50ff0ae99c656348504b743420d036e4842b6fe6acd6",
+        "status": "PASS"
+      }
+    },
+    "verificationScript": {
+      "path": "run-ic7-verification.ts",
+      "sha256": "068decae95f5019639753bbc1374dea6bfe2eee078f3800e84f5f2bc7e8d7680"
+    },
+    "storageAudit": {
+      "path": "ic7-storage-audit.json",
+      "sha256": "9b5aeebaaf1e839faefed85520479f3c3fb61a6e3a97fa274d77981633114506",
+      "singleCanonicalSource": true,
+      "status": "PASS"
+    },
+    "transactionBoundary": {
+      "path": "ic7-transaction-boundary-result.json",
+      "sha256": "6bc97889fc0549edf32b4c83e298b6f668494acdbc17c004a21def1f41148c8a",
+      "singleTransactionReadValidateWrite": true,
+      "status": "PASS"
+    },
+    "freshCommitResult": {
+      "path": "ic7-fresh-commit-result.json",
+      "sha256": "70229c722b21d70a2568cfac9342fb8e66868cf2e46a78f404d556a34a3032da",
+      "status": "PASS"
+    },
+    "staleRevisionResult": {
+      "path": "ic7-stale-revision-result.json",
+      "sha256": "8d925c864fcc911c4166c1802dc96ac3bba67215c7412b83eb845c8c7ee4806e",
+      "status": "PASS"
+    },
+    "staleFingerprintResult": {
+      "path": "ic7-stale-fingerprint-result.json",
+      "sha256": "8ba58b6f60bd9231d6d785e9ee668e266ef38e481d02d88cc3b5a68e679f2c63",
+      "status": "PASS"
+    },
+    "staleBothResult": {
+      "path": "ic7-stale-both-result.json",
+      "sha256": "5aad4d9f6b977b112b43d208ee9367292a13b7e0540d97f078c7c78f3c38cb0e",
+      "status": "PASS"
+    },
+    "concurrentCommitResult": {
+      "path": "ic7-concurrent-commit-result.json",
+      "sha256": "10b522a1df1e275150fe810d912ab7b84649a75a5180f4d25d141d276a28b7fa",
+      "status": "PASS"
+    },
+    "toctouResult": {
+      "path": "ic7-toctou-result.json",
+      "sha256": "10b522a1df1e275150fe810d912ab7b84649a75a5180f4d25d141d276a28b7fa",
+      "status": "PASS"
+    },
+    "negativeToctouControl": {
+      "path": "ic7-negative-toctou-control.json",
+      "sha256": "1de157860186e68dfedc6bb9caa5ade253ae2c69e76a6903ddcef80257fa5e71",
+      "negativeControlDetected": true,
+      "status": "PASS"
+    },
+    "abortZeroEffectsResult": {
+      "path": "ic7-abort-zero-effects-result.json",
+      "sha256": "4e183f03052ac29fcdbe596a84bd8846c37763a40476cf79ceb62a17f1144d49",
+      "status": "PASS"
+    },
+    "injectedWriteFailureResult": {
+      "path": "ic7-injected-write-failure-result.json",
+      "sha256": "7b9b40fd538b7e02b95d02bbfd8815ec4d1500706c0c9a3fc789efc584fa6334",
+      "status": "PASS"
+    },
+    "doubleConfirmationResult": {
+      "path": "ic7-double-confirmation-result.json",
+      "sha256": "0b54ab9b2717b17aac76dbd83efc6998b1d5e21dd8232ccad8638056684be150",
+      "status": "PASS"
+    },
+    "multitabResult": {
+      "path": "ic7-multitab-result.json",
+      "sha256": "bff09ee0058ae288deedddccefd14dc5028147b15083c94ddb3f43065715eb4b",
+      "status": "PASS"
+    },
+    "delayedSyncResult": {
+      "path": "ic7-delayed-sync-result.json",
+      "sha256": "56a7e256a58b54506bc82438eb4e0c6b3a40e190e220f4f371f4c97e7e7a78e5",
+      "status": "PASS"
+    },
+    "historyRevisionResult": {
+      "path": "ic7-history-revision-result.json",
+      "sha256": "b4b693bf9d7f21d763a82c071bae422f8e78ae6bdf8c2875f45f861fa8fce244",
+      "status": "PASS"
+    },
+    "historyFingerprintResult": {
+      "path": "ic7-history-fingerprint-result.json",
+      "sha256": "7eb9bc9b58f1b26ebbeddd71aece0b252a1d825025f9c80146f66cc5441afb33",
+      "status": "PASS"
+    },
+    "legacyCoexistenceResult": {
+      "path": "ic7-legacy-coexistence-result.json",
+      "sha256": "98d0e2a9699256b352a26edf919b5399fa8416fe826bf79ff40b15a515dd69bd",
+      "status": "PASS"
+    },
+    "legacyNonrewriteResult": {
+      "path": "ic7-legacy-nonrewrite-result.json",
+      "sha256": "1a517ed495207446cfd9dfc70e5be16055e75f5ea034a693625268742f38a441",
+      "status": "PASS"
+    },
+    "concurrencyStressResult": {
+      "path": "ic7-concurrency-stress-result.json",
+      "sha256": "4f49717b649982a1a927d7c90f033c088cc3415e847bfc41a316915b3f407cff",
+      "totalRuns": 100,
+      "commits": 100,
+      "staleRejections": 100,
+      "doubleCommits": 0,
+      "lostCommits": 0,
+      "status": "PASS"
+    },
+    "reopenResult": {
+      "path": "ic7-reopen-result.json",
+      "sha256": "3dde610ab5b2c3ecb0cc86c98a7c600afcaada96717d9eb9a08f98597b5deea0",
+      "status": "PASS"
+    },
+    "goldenResult": {
+      "path": "ic7-golden-result.json",
+      "sha256": "8d4293f2a2401fef5a0da50f042d0434be037b30f0dad984b7c205f3653e3f33",
+      "gvI07": "PASS",
+      "gvI08": "PASS",
+      "gvI09": "PASS",
+      "gvI10": "PASS",
+      "status": "PASS"
+    },
+    "adversarialResult": {
+      "path": "ic7-adversarial-result.json",
+      "sha256": "68ce91f90c73cc8854487a7bc3af65811b32656e561286719c6b11630a57952c",
+      "attacksAudited": 6,
+      "allBlocked": true,
+      "status": "PASS"
+    },
+    "regressionResult": {
+      "path": "ic7-regression-result.json",
+      "sha256": "fa5381c4573a355e2ed059303afd599e33272e3bdbde1c5a13bf67b5f7a4096d",
+      "ic3Math": "PASS",
+      "ic4Pool": "PASS",
+      "ic5History": "PASS",
+      "ic6Draft": "PASS",
+      "ic7Transaction": "PASS",
+      "c5Golden": "PASS",
+      "c5Massive": "PASS",
+      "c5Exhaustive": "PASS",
+      "build": "PASS",
+      "lint": "PASS",
+      "status": "PASS"
+    },
+    "diffInventory": {
+      "path": "ic7-diff-inventory.json",
+      "sha256": "6700d339e8e25849f3db7ccf5da75ad81c3aa0a238496d5431e2b8ae1402c402"
+    },
+    "verificationLog": {
+      "path": "ic7-verification.log",
+      "sha256": "eae28db5e7d312c306494fb001fb347960d28717f92fb71aea32f763842731f5"
     }
   }
 }

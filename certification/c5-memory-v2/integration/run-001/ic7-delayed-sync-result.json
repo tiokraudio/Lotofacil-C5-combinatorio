@@ -1,0 +1,8 @@
+{
+  "checkpoint": "IC7",
+  "syncProtocolVersion": 1,
+  "broadcastChannelBypassed": true,
+  "storageAuthoritative": true,
+  "correctnessWithoutNotifications": true,
+  "status": "PASS"
+}

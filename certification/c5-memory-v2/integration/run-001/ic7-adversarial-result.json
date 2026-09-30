@@ -1,0 +1,38 @@
+{
+  "checkpoint": "IC7",
+  "attacksAudited": 6,
+  "allBlocked": true,
+  "details": [
+    {
+      "attackId": "ADV-01-RACE-TAB",
+      "description": "Corrida entre abas com commit simultâneo",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-02-STALE-REVISION",
+      "description": "Injeção de revision stale no commit",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-03-STALE-FINGERPRINT",
+      "description": "Injeção de fingerprint stale no commit",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-04-TOCTOU-RACE",
+      "description": "Tentativa de escrita com verificação defasada",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-05-DOUBLE-CONFIRMATION",
+      "description": "Confirmação repetida da mesma aposta",
+      "outcome": "BLOCKED"
+    },
+    {
+      "attackId": "ADV-06-WRITE-FAILURE-ROLLBACK",
+      "description": "Injeção de erro de gravação para testar rollback",
+      "outcome": "BLOCKED"
+    }
+  ],
+  "status": "PASS"
+}
