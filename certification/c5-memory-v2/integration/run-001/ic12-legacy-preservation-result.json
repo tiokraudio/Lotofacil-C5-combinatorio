@@ -1,0 +1,27 @@
+{
+  "checkpoint": "IC12",
+  "constants": {
+    "APP_VERSION": "1.13.0",
+    "C5_ALGORITHM_VERSION": "C5-1.0.0",
+    "BACKUP_SCHEMA_VERSION": 3,
+    "LOCAL_SYNC_PROTOCOL_VERSION": 1
+  },
+  "tests": {
+    "c5Golden": {
+      "status": "PASS",
+      "durationSeconds": 0.64
+    },
+    "c5Massive": {
+      "status": "PASS",
+      "durationSeconds": 8.18,
+      "generationsCount": 100000
+    },
+    "c5Exhaustive": {
+      "status": "PASS",
+      "durationSeconds": 1.19,
+      "combinationsAudited": 16343800
+    }
+  },
+  "legacyFilesIntact": true,
+  "status": "PASS"
+}

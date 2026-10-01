@@ -1,0 +1,109 @@
+{
+  "integrationRunId": "C5M-INTEGRATION-RUN-001",
+  "protocolVersion": "1.0",
+  "canonicalMatrixVersion": "1.0",
+  "c5MemoryAlgorithmVersion": "C5-Memory-2.0.0",
+  "c5LegacyAlgorithmVersion": "C5-1.0.0",
+  "appVersion": "1.13.0",
+  "baselineCommit": "9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388",
+  "branch": "integration/c5-memory-2.0.0",
+  "finalHead": "acffed2275aad2bc4b3b71657c330c0fbed61750",
+  "certificationChain": {
+    "IC0": "PASS",
+    "IC1": "PASS",
+    "IC2": "PASS",
+    "IC3": "PASS",
+    "IC4": "PASS",
+    "IC5": "PASS",
+    "IC6": "PASS",
+    "IC7": "PASS",
+    "IC8": "PASS",
+    "IC9": "PASS",
+    "IC10": "PASS",
+    "IC11": "PASS",
+    "IC11_BROWSER_REAL": "PASS",
+    "IC12": "PASS"
+  },
+  "normativeHashesVerified": {
+    "canonicalMatrixSha256": "ab46afab43ee62d706fcb9711c450ea964b20fed7c9792d7cf93125a332033f9",
+    "refEvaluatorSha256": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+    "optEvaluatorSha256": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+    "goldenVectorsSha256": "e892153893b1fa2b671b733d6531374cb1568d05210f25c22e1c9551d07c0773",
+    "allNormativeHashesMatch": true
+  },
+  "productionDiff": {
+    "filesAdded": 8,
+    "filesModified": 5,
+    "filesUnchanged": 15,
+    "unexpectedFiles": 0,
+    "zeroUnexpectedDiff": true
+  },
+  "legacyPreservation": {
+    "c5Golden": "PASS",
+    "c5Massive": "PASS",
+    "c5Exhaustive": "PASS",
+    "appVersion": "1.13.0",
+    "c5AlgorithmVersion": "C5-1.0.0",
+    "backupSchemaVersion": 3,
+    "localSyncProtocolVersion": 1,
+    "status": "PASS"
+  },
+  "equivalenceProof": {
+    "corpusCases": 1000,
+    "candidatesEvaluated": 500000,
+    "coordinatesEvaluated": 5000000,
+    "coordinateMismatches": 0,
+    "winnerMismatches": 0,
+    "status": "PASS"
+  },
+  "canonicalMatrixExecution": {
+    "scenariosCount": 96,
+    "passedCount": 96,
+    "failedCount": 0,
+    "status": "PASS"
+  },
+  "adversarialAttacksExecution": {
+    "attacksExecuted": 12,
+    "attacksBlocked": 12,
+    "attacksFailed": 0,
+    "status": "PASS"
+  },
+  "realBrowserCertification": {
+    "browser": "Chromium",
+    "version": "154.0.8037.92",
+    "engine": "V8 15.4.80.19",
+    "nativeIndexedDB": true,
+    "testsExecuted": 16,
+    "testsPassed": 16,
+    "deterministicMismatches": 0,
+    "status": "PASS"
+  },
+  "atomicTransactions": {
+    "toctouCollisionDetection": "PASS",
+    "staleRevisionRejection": "PASS",
+    "zeroSideEffectsOnAbort": "PASS",
+    "status": "PASS"
+  },
+  "backupRestoreRoundtrip": {
+    "schemaVersion": 3,
+    "roundtripStatePreservation": "PASS",
+    "status": "PASS"
+  },
+  "buildAndLint": {
+    "buildStatus": "PASS",
+    "lintStatus": "PASS"
+  },
+  "negativeControls": {
+    "totalControlsExecuted": 7,
+    "allDetected": true,
+    "status": "PASS"
+  },
+  "finalLedger": {
+    "totalCatalogedArtifacts": 178,
+    "finalHashLedgerSha256": "4141122ba4d7a50d7a27b4c11cf46418c21eba4117be265ead2b67d58ac3e0c6",
+    "integrityAudit": "100% OK"
+  },
+  "blockingReservationsCount": 0,
+  "finalDecision": "CERTIFIED",
+  "certifiedAt": "2026-10-01T13:54:45.656Z"
+}

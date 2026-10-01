@@ -1,0 +1,105 @@
+{
+  "checkpoint": "IC12",
+  "totalAudited": 14,
+  "allMatch": true,
+  "artifacts": [
+    {
+      "name": "REF Evaluator",
+      "path": "certification/c5-memory-v2/run-003/reference-evaluator.ts",
+      "expectedSha256": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+      "observedSha256": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+      "status": "PASS"
+    },
+    {
+      "name": "OPT Evaluator",
+      "path": "certification/c5-memory-v2/run-003/optimized-evaluator.ts",
+      "expectedSha256": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+      "observedSha256": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+      "status": "PASS"
+    },
+    {
+      "name": "Golden Matemático Run-003",
+      "path": "certification/c5-memory-v2/run-003/golden-vectors.json",
+      "expectedSha256": "e892153893b1fa2b671b733d6531374cb1568d05210f25c22e1c9551d07c0773",
+      "observedSha256": "e892153893b1fa2b671b733d6531374cb1568d05210f25c22e1c9551d07c0773",
+      "status": "PASS"
+    },
+    {
+      "name": "Matriz Canônica v1.0",
+      "path": "certification/c5-memory-v2/run-003/canonical-matrix-results.json",
+      "expectedSha256": "ab46afab43ee62d706fcb9711c450ea964b20fed7c9792d7cf93125a332033f9",
+      "observedSha256": "ab46afab43ee62d706fcb9711c450ea964b20fed7c9792d7cf93125a332033f9",
+      "status": "PASS"
+    },
+    {
+      "name": "Corpus IC1",
+      "path": "certification/c5-memory-v2/integration/run-001/ic1-equivalence-corpus.json",
+      "expectedSha256": "a15465e8a4306e6790a4a2327902d3c3ffcc20af95d2a5430ca5052e0eff39cd",
+      "observedSha256": "a15465e8a4306e6790a4a2327902d3c3ffcc20af95d2a5430ca5052e0eff39cd",
+      "status": "PASS"
+    },
+    {
+      "name": "Corpus Resolvido IC2",
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-equivalence-corpus-resolved.json",
+      "expectedSha256": "450d94978f93a566b4bbe6f2c50a22a01dfe7a4c1b3507cb844e7bcafea72616",
+      "observedSha256": "450d94978f93a566b4bbe6f2c50a22a01dfe7a4c1b3507cb844e7bcafea72616",
+      "status": "PASS"
+    },
+    {
+      "name": "Contrato PRNG IC2",
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-canonical-pool-prng-contract.json",
+      "expectedSha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "observedSha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "status": "PASS"
+    },
+    {
+      "name": "Contrato History IC2",
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-history-contract.json",
+      "expectedSha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5",
+      "observedSha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5",
+      "status": "PASS"
+    },
+    {
+      "name": "Contrato Fingerprint IC2",
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-fingerprint-contract.json",
+      "expectedSha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b",
+      "observedSha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b",
+      "status": "PASS"
+    },
+    {
+      "name": "Contrato Draft/Stale IC2",
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-draft-stale-contract.json",
+      "expectedSha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8",
+      "observedSha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8",
+      "status": "PASS"
+    },
+    {
+      "name": "Contrato PoolIndex IC2",
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-pool-index-contract.json",
+      "expectedSha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368",
+      "observedSha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368",
+      "status": "PASS"
+    },
+    {
+      "name": "Resultados Equivalência IC9",
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-equivalence-result.json",
+      "expectedSha256": "735a61ae8b685d65f78ba20a07d3384c87a36a6bb6d17fd8399eb3dc18cb9184",
+      "observedSha256": "735a61ae8b685d65f78ba20a07d3384c87a36a6bb6d17fd8399eb3dc18cb9184",
+      "status": "PASS"
+    },
+    {
+      "name": "Resultados Matriz IC10",
+      "path": "certification/c5-memory-v2/integration/run-001/ic10-canonical-matrix-results.json",
+      "expectedSha256": "d3a52cb1483576ef8c6d62809cea26cb6c4ec74eb2981207fc0be1f72eda906d",
+      "observedSha256": "d3a52cb1483576ef8c6d62809cea26cb6c4ec74eb2981207fc0be1f72eda906d",
+      "status": "PASS"
+    },
+    {
+      "name": "Resultado Browser Real IC11",
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-browser-real-result.json",
+      "expectedSha256": "64f29ef1b64af60a53bcaa2033410754ce38a5c895dd6f058eb222e704418aba",
+      "observedSha256": "64f29ef1b64af60a53bcaa2033410754ce38a5c895dd6f058eb222e704418aba",
+      "status": "PASS"
+    }
+  ]
+}

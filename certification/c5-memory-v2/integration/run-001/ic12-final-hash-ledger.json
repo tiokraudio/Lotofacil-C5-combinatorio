@@ -1,0 +1,1432 @@
+{
+  "integrationRunId": "C5M-INTEGRATION-RUN-001",
+  "checkpoint": "IC12",
+  "normativeMatrixVersion": "1.0",
+  "totalEntries": 178,
+  "entries": [
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/build-ic2-contracts.ts",
+      "sha256": "bee3596464d9ca2bd6ab508de8d3bd73e13cde5ec38847c33ae519a13738126b",
+      "sizeBytes": 18928,
+      "category": "CERTIFICATION",
+      "checkpoint": "BUILD",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/checksums.sha256",
+      "sha256": "3756009f44f2187a27a72d30bc2ce4261988a347cd13b93ba1002602365301b7",
+      "sizeBytes": 13918,
+      "category": "CERTIFICATION",
+      "checkpoint": "CHECKSUMS.SHA256",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/generate-ic1-artifacts.ts",
+      "sha256": "8773779d8c15f9470f638878dcd829559c7840fcf4de4c73670b92df9fc3ec09",
+      "sizeBytes": 29064,
+      "category": "CERTIFICATION",
+      "checkpoint": "GENERATE",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic0-baseline-diff.txt",
+      "sha256": "df83b21b5fb53de40767efd97aa520bf968e915e7c8ee2018c2bbe0c916eb87e",
+      "sizeBytes": 1388,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC0",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic0-build-result.json",
+      "sha256": "1a4ffc8e7151d931776180370de7c406ccdc3d3a183add9cc975f66878788683",
+      "sizeBytes": 225,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC0",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic0-environment.json",
+      "sha256": "222f84779d532a094221bd746c26e125bd00ea371ac2b702fc816e81c508e9b6",
+      "sizeBytes": 431,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC0",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic0-git-status-before.txt",
+      "sha256": "80c0038c53e5e01b23857bfde79fa6cb9b2adbee84462fc789fe81d0f6c228ee",
+      "sizeBytes": 2489,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC0",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic0-lint-result.json",
+      "sha256": "b6427972114d7abd9b7c229b86c0b160ecc9bdd474c1ed9d5a5fb3a326807394",
+      "sizeBytes": 221,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC0",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic1-equivalence-corpus-manifest.json",
+      "sha256": "ce798452332e933bf59542846d6c270499ce764d107c105da096261890759738",
+      "sizeBytes": 1088,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC1",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic1-equivalence-corpus.json",
+      "sha256": "a15465e8a4306e6790a4a2327902d3c3ffcc20af95d2a5430ca5052e0eff39cd",
+      "sizeBytes": 85674386,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC1",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic1-golden-vectors.json",
+      "sha256": "fc10df0c8322de562a96d08c3f9c0dbd74d66a85bd24629aa3496baea7e4399d",
+      "sizeBytes": 32021,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC1",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic1-verification-result.json",
+      "sha256": "1c813ac549353ff2f47791378285b092e18c5953ab864408f22c07afcbd50fe1",
+      "sizeBytes": 466,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC1",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic1-verify-artifacts.ts",
+      "sha256": "195e47df6544493864b2e8b2e067a590eabeb2236f84aa74d2e1b9276370b323",
+      "sizeBytes": 9540,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC1",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic10-adversarial-result.json",
+      "sha256": "a9a9440d80f117a78b5e32138c7df9825d08141d1460cf3f784606c86541bc3f",
+      "sizeBytes": 5223,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC10",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic10-canonical-matrix-results.json",
+      "sha256": "d3a52cb1483576ef8c6d62809cea26cb6c4ec74eb2981207fc0be1f72eda906d",
+      "sizeBytes": 23604,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC10",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic10-cardinality-controls-result.json",
+      "sha256": "6da9705b4852eccc67da65d8d4a23382581d359296b182fae8bc34a7bbe82a7f",
+      "sizeBytes": 220,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC10",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic10-diff-inventory.json",
+      "sha256": "3c3cf9545691d8f32a822fd5eb79ccf5cc0153a7255ed6f1e34eafcf76d816fb",
+      "sizeBytes": 500,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC10",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic10-negative-controls-result.json",
+      "sha256": "461997787e2cf22afc31ef7a31ed388ac195863cb843e618e89ab7913c2f9844",
+      "sizeBytes": 1073,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC10",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic10-regression-result.json",
+      "sha256": "1e19d5d59333a31e430bafe28797b68ed641bac11a531b66a35f6b26a081d942",
+      "sizeBytes": 327,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC10",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic10-verification.log",
+      "sha256": "2196b737e5fef9b34219f7df1fd78241c2fc65215c6d2d16d081eff32f7946fb",
+      "sizeBytes": 6516,
+      "category": "LOG",
+      "checkpoint": "IC10",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-barriers-result.json",
+      "sha256": "79164a0d6a1d52f00cd4e41ede0808e281f2ca1f3788c36e599bf6b759d5167f",
+      "sizeBytes": 2125,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-browser-real-result.json",
+      "sha256": "64f29ef1b64af60a53bcaa2033410754ce38a5c895dd6f058eb222e704418aba",
+      "sizeBytes": 1573,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-browser-real.log",
+      "sha256": "f73ad7728d8fefdbb43786603e6478fc7a82ee3ce7a6cb620d01943925bff624",
+      "sizeBytes": 7973,
+      "category": "LOG",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-browser-result.json",
+      "sha256": "116330c4c8c4081ae3b244888b0ba524afce70b87f050b3d91d785ee80734ba1",
+      "sizeBytes": 989,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-build.log",
+      "sha256": "f0e2fef8c77142de37d163b0a8993cd3920eff7b0c3a2376b109d06e25f28bac",
+      "sizeBytes": 398,
+      "category": "LOG",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-c5-regression-result.json",
+      "sha256": "9603906565b3991b18077f4bae4ec4132e67abcbb369b3073b0390a46bcab9f2",
+      "sizeBytes": 271,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-diff-inventory.json",
+      "sha256": "c4b05788128d4db70bb89cd8df5874002f63f580ec3b677a4874e37e0e97fc2b",
+      "sizeBytes": 566,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-lint.log",
+      "sha256": "c488861b13640556f04848e282b2e5e1f0d3c17df0880e99ec3b14e59383b5c0",
+      "sizeBytes": 46,
+      "category": "LOG",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-memory-regression-result.json",
+      "sha256": "2f614776ba195ac8dd1effe55c471a1bd294e937dfb0583b490aa611802a1c32",
+      "sizeBytes": 261,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-negative-controls-result.json",
+      "sha256": "d818185fd7ec51da7e8370a45f8042117542d4e58f9948111dec6a83c7a2405f",
+      "sizeBytes": 835,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-performance-result.json",
+      "sha256": "6bae8add9867215175d25a2ce0e636c230b688d732760d199fb23a1268131ad2",
+      "sizeBytes": 858,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic11-verification.log",
+      "sha256": "6a8c9a74693c49df456e485f44a6db6ab87f5ef2e804f521d3f72ea97c1d1ffd",
+      "sizeBytes": 7468,
+      "category": "LOG",
+      "checkpoint": "IC11",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic12-build.log",
+      "sha256": "efca6d965b9cd141d3325b4717a5058f3ca6f81bddd1e212cdb398f1dbb02b6e",
+      "sizeBytes": 458,
+      "category": "LOG",
+      "checkpoint": "IC12",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic12-checkpoint-audit.json",
+      "sha256": "5f8fb4be47d519768827c1aa71bef050b34578ce767412a49dad7699da9137ab",
+      "sizeBytes": 48309,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC12",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic12-final-regression-result.json",
+      "sha256": "228730bca4df409e803bdf47eca4554fa9917a217f50ad5cbbcb9105c278f07b",
+      "sizeBytes": 831,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC12",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic12-legacy-preservation-result.json",
+      "sha256": "8113896905284395c92b989f85a878e84403dc6a19d457ba4ea7f36d4e7497e5",
+      "sizeBytes": 568,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC12",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic12-lint.log",
+      "sha256": "a97166ac587d527ad7187a85335e0438d581036170cbe2ac948a6c978e86a553",
+      "sizeBytes": 105,
+      "category": "LOG",
+      "checkpoint": "IC12",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic12-normative-hash-audit.json",
+      "sha256": "2a0f01a0a09cc3d710ffdfe72713f2f18b028cf70f266955a5f4c1b1fa27213e",
+      "sizeBytes": 4964,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC12",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic12-production-diff-inventory.json",
+      "sha256": "71e4cbd0217922208bc80b215ccd1b0527cdb3e6268c983413f9fd97504afdb5",
+      "sizeBytes": 7756,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC12",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic12-production-diff.patch",
+      "sha256": "cf3ed8cc7e3901e9615e58eaebe0bfc90b46ff23dfc36371ace87ac2e1d37d8d",
+      "sizeBytes": 1214,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC12",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-canonical-pool-prng-contract.json",
+      "sha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "sizeBytes": 3486,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-canonical-pool-prng-contract.md",
+      "sha256": "b333f60c61657f6f1d15d1d0af4568d3c7efb29cf3a1fcb1bd72bc70638c97f1",
+      "sizeBytes": 1921,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-corpus-resolution-proof.json",
+      "sha256": "e768510804d58ad2efebf71ff5a1c40f63aca06d7daffff278fb7615ed15c7f6",
+      "sizeBytes": 542,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-draft-stale-contract.json",
+      "sha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8",
+      "sizeBytes": 841,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-equivalence-corpus-resolved.json",
+      "sha256": "450d94978f93a566b4bbe6f2c50a22a01dfe7a4c1b3507cb844e7bcafea72616",
+      "sizeBytes": 85797386,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-fingerprint-contract.json",
+      "sha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b",
+      "sizeBytes": 996,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-history-contract.json",
+      "sha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5",
+      "sizeBytes": 782,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-pool-index-contract.json",
+      "sha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368",
+      "sizeBytes": 765,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-prng-golden-vectors.json",
+      "sha256": "2288f0d6329af383caa635203bf550179b9005791a389c9164fc272be63f64b8",
+      "sizeBytes": 9385,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-prng-verification-result.json",
+      "sha256": "a5be95bfa3a43d47544c9c1dc6e9a5b34428aa6cd0cd42f3688087dac8ecbe82",
+      "sizeBytes": 435,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-schema-compatibility-audit.json",
+      "sha256": "751628897ffe63691897f7020a405a7cb10987c192f6f236be0a3fb3ccbaaf23",
+      "sizeBytes": 3826,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-schema-compatibility-audit.md",
+      "sha256": "e7d0edd50767758897ae892f68ebbe8187dc457cf52e8958402414ed4fc7779b",
+      "sizeBytes": 1143,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic2-verify-prng.ts",
+      "sha256": "9540f13b230fed533c82430eed5292863c062561d786d25886f531e1ea1d1de1",
+      "sizeBytes": 7621,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC2",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic3-app-math-golden-result.json",
+      "sha256": "5d55b36e2f657a234ed3afcf4ac89d99b5fadfb6a586ff1b452fd5b10af26ec3",
+      "sizeBytes": 207,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC3",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic3-app-ref-opt-result.json",
+      "sha256": "897bde052d251a63b4675117a5c2c6815a1489361b7bdd44cd9c894ceb9bfec6",
+      "sizeBytes": 408,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC3",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic3-diff-inventory.json",
+      "sha256": "2d166ef7141211acdd20626a6b8b286fd324b38dd6bd60834260417498ba6949",
+      "sizeBytes": 950,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC3",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic3-full-histogram-comparison.json",
+      "sha256": "063fc23289c58295372aacb56343253629fbbc16375915dcc4e78bc1f4cd79bc",
+      "sizeBytes": 231,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC3",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic3-performance-sanity.json",
+      "sha256": "51ad43379936aa74ed96b0ba30a852ad201709e61ed379045690f561d83301cb",
+      "sizeBytes": 222,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC3",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-async-order-result.json",
+      "sha256": "d1d687d557ba72a918b546fc15946433763c895b346334bba41fa8ddaf29f7ed",
+      "sizeBytes": 174,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-diff-inventory.json",
+      "sha256": "0a7994ae447869ff470d2b08f2368982595d390813efd23f4faf33fdc0219e15",
+      "sizeBytes": 1410,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-pool-golden-result.json",
+      "sha256": "a489a4629ef4f73d84afb96d1e4e155ef4fda717be14489ca7a2871a6f4470d7",
+      "sizeBytes": 1230,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-pool-golden-vectors.json",
+      "sha256": "ffd0b6c719d6d2c8a2536170e9e900553b67cbdb066ff6a5983080d0653bb9f1",
+      "sizeBytes": 22659,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-pool-validity-result.json",
+      "sha256": "b1d778a904622e1d63c195590ec3f874b3699f6056d4a18b38e5fbe4a2a32d47",
+      "sizeBytes": 230,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-prng-app-golden-result.json",
+      "sha256": "52da6ba5df84bc5042c33da8a88862ccd534cea288b91ac7e9d856aaed8e41f9",
+      "sizeBytes": 1067,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-reference-equivalence-result.json",
+      "sha256": "f9ef1bf3993a4ca17efb182e443a1f08e46947918c9486724ca30e5ed6e0cd43",
+      "sizeBytes": 123,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-regression-result.json",
+      "sha256": "7ebc017b19ea17b5628720dd259862a7f08c40f6fdcebe4bf99051d5f6b68f63",
+      "sizeBytes": 562,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-replay-result.json",
+      "sha256": "2940b1644a0fb595a9a74fa411a59ed14167dd7b33766722ba924626653332d1",
+      "sizeBytes": 263,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-rng-consumption-result.json",
+      "sha256": "a6fef2d247e4c25e62c5f52d306fce527bfeee51a43b27b1f139a547bd9775f8",
+      "sizeBytes": 1805,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-rng-shift-negative-control.json",
+      "sha256": "dd269181767950771cd60c3c0a2d9c9d100a7f0c8fc8c8eda85c64a98c6a4f44",
+      "sizeBytes": 841,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic4-seed-isolation-result.json",
+      "sha256": "a8f3a281db397518484de411a8d7cfc570fa6da1035ce3c01d9f6d2ae0e8a9bc",
+      "sizeBytes": 1278,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC4",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-corpus-validation-result.json",
+      "sha256": "6d38ea8055ac68bfe5a70538dd210bf4081f0b0da474b3fb24183cb0dd310256",
+      "sizeBytes": 221,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-diff-inventory.json",
+      "sha256": "0df47b71eefa8d4f298fc27439bf76b57b7eaa90636368bf21244bb5829b74da",
+      "sizeBytes": 1858,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-exogenous-isolation-result.json",
+      "sha256": "71d3f623497b778f5ab9817baa22ad2e6155de99aa0bb01392545d90cd6cf4d8",
+      "sizeBytes": 229,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-fingerprint-golden-result.json",
+      "sha256": "7df46ba839e8f8b09594914106da7bd38397aeb0f397e87c5854854c0e8f408d",
+      "sizeBytes": 504,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-history-golden-result.json",
+      "sha256": "11e04bcaef3efe76a31f421f0bb525d559e76e901eefcacfa3edbe7a45b77733",
+      "sizeBytes": 1245,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-history-multiplicity-result.json",
+      "sha256": "4576f7f4624d93dd6103b7c059b717eb271faaf425e3650c8eb18cf00a63126e",
+      "sizeBytes": 576,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-history-permutation-result.json",
+      "sha256": "604071ce2a840aa585adb9aa9edf2468e41ffa7aae482619aeb7fc7516848267",
+      "sizeBytes": 281,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-negative-canonicalization-control.json",
+      "sha256": "40435a82062c6623244bb95227cb4dd825a98a186c37fb6867ae7a5c07899279",
+      "sizeBytes": 934,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-nonmutation-result.json",
+      "sha256": "1fb44a7075bb1fb535088d476f9219b6e17580c15d6a29bb8df5b8cc1b81f909",
+      "sizeBytes": 112,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-regression-result.json",
+      "sha256": "8e69208be398f8bb16b0cf9006cb0257f4b8b9ead8deabfcf9a84cfa144b2b4f",
+      "sizeBytes": 633,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic5-revision-fingerprint-independence.json",
+      "sha256": "199bd983ddd6d92d4179842adfb58076a194ba66aab3d60cee574e945afbe676",
+      "sizeBytes": 649,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC5",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-adversarial-result.json",
+      "sha256": "82dedb975428f7e9245d9844bcd0fce563441bade2237b038468a6f0074321eb",
+      "sizeBytes": 1212,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-concurrent-drafts-result.json",
+      "sha256": "46b349abbcd30fcbe85316f22e9439b59e1d325c2d4cf57def1f2264549771ed",
+      "sizeBytes": 426,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-diff-inventory.json",
+      "sha256": "7731e29e29ac1d8218de5ef236e3f7ee7c36b57a9fef2424e610250b56335502",
+      "sizeBytes": 2302,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-draft-golden-result.json",
+      "sha256": "12b38942bfaac96abe0c955d6bcd739f1e2185bf43c8ab2b901c6e3cd89aa68a",
+      "sizeBytes": 982,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-exogenous-isolation-result.json",
+      "sha256": "830eda861b76d9b89a145e7db11068d74acf04cef89d73393ffcc3b4fc3d4627",
+      "sizeBytes": 129,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-freshness-matrix-result.json",
+      "sha256": "3a103d76155a63ad8a3555d1cbf4301c9d8b6d125cda0d202aba956c3e8f63c1",
+      "sizeBytes": 773,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-hidden-state-result.json",
+      "sha256": "b0408b55df0893cf9b52925ac32f88687841dd5f2bd48fc35f19e2c2bceff00a",
+      "sizeBytes": 131,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-multi-tab-logical-result.json",
+      "sha256": "90707a22a0e61ec22712ea13e0458c9d3947881ce71727aa7346acc302d0afa5",
+      "sizeBytes": 193,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-negative-autoregenerate-control.json",
+      "sha256": "5ce17a2adf964500fc2ece9b2a8972d82c85b534a9a485584967396c788a8461",
+      "sizeBytes": 113,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-negative-stale-control.json",
+      "sha256": "12b5e707ca24c882f7f6b0489d24f45adbcc607e8e017a5cb498b3bf2f1ae493",
+      "sizeBytes": 230,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-nonmutation-result.json",
+      "sha256": "b6df13e900c77724e12f87369ec4acc1563734d1908c3d609085d293bd04762e",
+      "sizeBytes": 111,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-pool-index-result.json",
+      "sha256": "ef9d448c742a82ad80c0f67f72d41a9c6ac96f5f2d2c9eea1c3e6ecb31bd68df",
+      "sizeBytes": 170,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-preview-immutability-result.json",
+      "sha256": "cce0da53499d7f77151412cd6fb43815f2873cf0ae2fa5003820c5666a5575a9",
+      "sizeBytes": 150,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-regression-result.json",
+      "sha256": "2aff510f722808f2a3b1582b3db21af2af182138a66f5401242fa80767f0c656",
+      "sizeBytes": 536,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-replay-result.json",
+      "sha256": "4e3cd5c42f5af87f37a48291178465ce14842a081ea13e1f63bd37a4fc7a2f73",
+      "sizeBytes": 994,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic6-stale-rejection-result.json",
+      "sha256": "b3c0a4db840ccf63b1a06ad8f080e0fd1183bfc82b9bd664cdf7c39f1a8a8a1b",
+      "sizeBytes": 279,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC6",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-abort-zero-effects-result.json",
+      "sha256": "4e183f03052ac29fcdbe596a84bd8846c37763a40476cf79ceb62a17f1144d49",
+      "sizeBytes": 117,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-adversarial-result.json",
+      "sha256": "68ce91f90c73cc8854487a7bc3af65811b32656e561286719c6b11630a57952c",
+      "sizeBytes": 1020,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-concurrency-stress-result.json",
+      "sha256": "4f49717b649982a1a927d7c90f033c088cc3415e847bfc41a316915b3f407cff",
+      "sizeBytes": 152,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-concurrent-commit-result.json",
+      "sha256": "10b522a1df1e275150fe810d912ab7b84649a75a5180f4d25d141d276a28b7fa",
+      "sizeBytes": 159,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-delayed-sync-result.json",
+      "sha256": "56a7e256a58b54506bc82438eb4e0c6b3a40e190e220f4f371f4c97e7e7a78e5",
+      "sizeBytes": 185,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-diff-inventory.json",
+      "sha256": "6700d339e8e25849f3db7ccf5da75ad81c3aa0a238496d5431e2b8ae1402c402",
+      "sizeBytes": 2366,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-double-confirmation-result.json",
+      "sha256": "0b54ab9b2717b17aac76dbd83efc6998b1d5e21dd8232ccad8638056684be150",
+      "sizeBytes": 146,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-fresh-commit-result.json",
+      "sha256": "70229c722b21d70a2568cfac9342fb8e66868cf2e46a78f404d556a34a3032da",
+      "sizeBytes": 161,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-golden-result.json",
+      "sha256": "8d4293f2a2401fef5a0da50f042d0434be037b30f0dad984b7c205f3653e3f33",
+      "sizeBytes": 122,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-history-fingerprint-result.json",
+      "sha256": "7eb9bc9b58f1b26ebbeddd71aece0b252a1d825025f9c80146f66cc5441afb33",
+      "sizeBytes": 156,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-history-revision-result.json",
+      "sha256": "b4b693bf9d7f21d763a82c071bae422f8e78ae6bdf8c2875f45f861fa8fce244",
+      "sizeBytes": 68,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-injected-write-failure-result.json",
+      "sha256": "7b9b40fd538b7e02b95d02bbfd8815ec4d1500706c0c9a3fc789efc584fa6334",
+      "sizeBytes": 99,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-legacy-coexistence-result.json",
+      "sha256": "98d0e2a9699256b352a26edf919b5399fa8416fe826bf79ff40b15a515dd69bd",
+      "sizeBytes": 122,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-legacy-nonrewrite-result.json",
+      "sha256": "1a517ed495207446cfd9dfc70e5be16055e75f5ea034a693625268742f38a441",
+      "sizeBytes": 120,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-multitab-result.json",
+      "sha256": "bff09ee0058ae288deedddccefd14dc5028147b15083c94ddb3f43065715eb4b",
+      "sizeBytes": 155,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-negative-toctou-control.json",
+      "sha256": "1de157860186e68dfedc6bb9caa5ade253ae2c69e76a6903ddcef80257fa5e71",
+      "sizeBytes": 164,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-regression-result.json",
+      "sha256": "fa5381c4573a355e2ed059303afd599e33272e3bdbde1c5a13bf67b5f7a4096d",
+      "sizeBytes": 564,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-reopen-result.json",
+      "sha256": "3dde610ab5b2c3ecb0cc86c98a7c600afcaada96717d9eb9a08f98597b5deea0",
+      "sizeBytes": 95,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-stale-both-result.json",
+      "sha256": "5aad4d9f6b977b112b43d208ee9367292a13b7e0540d97f078c7c78f3c38cb0e",
+      "sizeBytes": 197,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-stale-fingerprint-result.json",
+      "sha256": "8ba58b6f60bd9231d6d785e9ee668e266ef38e481d02d88cc3b5a68e679f2c63",
+      "sizeBytes": 197,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-stale-revision-result.json",
+      "sha256": "8d925c864fcc911c4166c1802dc96ac3bba67215c7412b83eb845c8c7ee4806e",
+      "sizeBytes": 152,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-storage-audit.json",
+      "sha256": "9b5aeebaaf1e839faefed85520479f3c3fb61a6e3a97fa274d77981633114506",
+      "sizeBytes": 1630,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-toctou-result.json",
+      "sha256": "10b522a1df1e275150fe810d912ab7b84649a75a5180f4d25d141d276a28b7fa",
+      "sizeBytes": 159,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic7-transaction-boundary-result.json",
+      "sha256": "6bc97889fc0549edf32b4c83e298b6f668494acdbc17c004a21def1f41148c8a",
+      "sizeBytes": 1019,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC7",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-adversarial-result.json",
+      "sha256": "8a2b970e93f16f4a4bc358a9fea15038be0691a716eb7f361e3144d6e41a59e8",
+      "sizeBytes": 1187,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-backup-restore-result.json",
+      "sha256": "055dfe8da1997e8a10a0bcac34852802d6b4767971d93fa0a470c2d79703d772",
+      "sizeBytes": 266,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-corruption-matrix-result.json",
+      "sha256": "0acd20730848b513e844c3d9c0dfb24bc9828420971ebe3ef930ebf2e961a65a",
+      "sizeBytes": 2039,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-diff-inventory.json",
+      "sha256": "0b3946de300194945608dfdf8edbb9dc8e7260385116052171b520fe98f4385b",
+      "sizeBytes": 2890,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-draft-payload-identity-result.json",
+      "sha256": "7651ac7d339cd3fbb39453d2db97e0c1474d50c1eec6aa013d280a1d9ba0b406",
+      "sizeBytes": 466,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-golden-result.json",
+      "sha256": "d170bffa2296395078435baf6678bcae2e7059eaa838da56d4334b831cfdddad",
+      "sizeBytes": 122,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-payload-contract-result.json",
+      "sha256": "47c7057a1b45a9180e085644156ed98e0103e9449767fc49ca37715e96e5ae1a",
+      "sizeBytes": 1559,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-persistence-path-audit.json",
+      "sha256": "63760a7c91a20d241e73c3fdec42fee2690aa0c93f4bd4d56f4cb3f63735753a",
+      "sizeBytes": 2791,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-post-restore-state-result.json",
+      "sha256": "1cff065c12e153603ac3d13b7927c4897b716c06b3fa25593ec2eb24e93259ab",
+      "sizeBytes": 318,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-regression-result.json",
+      "sha256": "f14aeb3c9a68b9ab2ce60ace308561eef7d382a1ef9e060a92ec81b2b6dbedb6",
+      "sizeBytes": 592,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-replay-result.json",
+      "sha256": "931b9e9b613901406798bc53f06828d7151aad9005065adb7cb498101fdd9bef",
+      "sizeBytes": 147,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-restore-atomicity-result.json",
+      "sha256": "3ee760522079182157c43492e754a06f333b7db8bf46acee041e08a3755ecbba",
+      "sizeBytes": 164,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-selected-c5-result.json",
+      "sha256": "88d38aa4285e308cf084eb9e06d1e9064104e3db50dffb306df30c60e3c35994",
+      "sizeBytes": 193,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic8-storage-roundtrip-result.json",
+      "sha256": "18026ba31418141f4c5e42db873a6e7d27a46ee54119ce609be476bd6308ba4f",
+      "sizeBytes": 292,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-cardinality-controls-result.json",
+      "sha256": "a7978d6d42a9e65648e3259b3cc0a94135feecba2c39f0bdd9beee7d8526d947",
+      "sizeBytes": 354,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC9",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-case-results.json",
+      "sha256": "6706428b0ef7d888759b4c05caf8e5396f25678bb4daa35fd544da2f59317bd3",
+      "sizeBytes": 371259,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC9",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-class-results.json",
+      "sha256": "fa7c94bb58b631708c5db5d4b88588366d8dd536681d109aa3b25de47c42d9bf",
+      "sizeBytes": 3410,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC9",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-diff-inventory.json",
+      "sha256": "16207db4b2c268add7a4f24dbb596b2626ffc99d8ea52089fc143c4c0183485a",
+      "sizeBytes": 3139,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC9",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-equivalence-result.json",
+      "sha256": "735a61ae8b685d65f78ba20a07d3384c87a36a6bb6d17fd8399eb3dc18cb9184",
+      "sizeBytes": 1468,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC9",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-histogram-comparison-result.json",
+      "sha256": "e1a844330c68464d4d0c2b8ca60521229464c34f4fcf8433940a1b703cc13780",
+      "sizeBytes": 317003,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC9",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-negative-control-result.json",
+      "sha256": "46c2b70bb6c15febcd6c3251741374cb6b96e2ab9149b15e6ea3ea53c0ea9dd9",
+      "sizeBytes": 276,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC9",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-performance-result.json",
+      "sha256": "88262c45f581987d6c76c1cbe8d1df65bb0089565923888b25e3ca46b3fc7e95",
+      "sizeBytes": 274,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC9",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/ic9-regression-result.json",
+      "sha256": "cdd670917a9579eb7c7ca2171877e546d645561eb06722d1d9ba98030d1a3d13",
+      "sizeBytes": 592,
+      "category": "CERTIFICATION",
+      "checkpoint": "IC9",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/manifest.json",
+      "sha256": "ff5da01588c88a56b12eaa5a9b694593bc9882b7b94cb207103b703c4bde70e3",
+      "sizeBytes": 37747,
+      "category": "MANIFEST",
+      "checkpoint": "MANIFEST.JSON",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic10-verification.ts",
+      "sha256": "478638b982de65aee6ae123e7b9f0cae7656076342db73fe1a12e9ffb115db95",
+      "sizeBytes": 57001,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic11-browser-real.ts",
+      "sha256": "0f1b2e0db06841e4b7e3bc0f163271e8d2a3d5bbe329cec01c3e00075e2f7b9d",
+      "sizeBytes": 49629,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic11-verification.ts",
+      "sha256": "dc7e12420c819436c963d5576e1e5a17ecc11cf198e6c74f6bcfcb853776ceef",
+      "sizeBytes": 35807,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic12-audit.ts",
+      "sha256": "666ccb8ca35eaa6927fa79976f6339b6e18bd473ce421dc9388002138cb75f03",
+      "sizeBytes": 62569,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic3-verification.ts",
+      "sha256": "7f9153ee41f9b20c094558703c1300fd7bcaad2274f8172fae1b76529b40a133",
+      "sizeBytes": 16474,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic4-verification.ts",
+      "sha256": "01ab8dd1df3f899c4132b636008fc182899fd451734987f84e139cf6b842002c",
+      "sizeBytes": 30529,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic5-verification.ts",
+      "sha256": "8a47386281c7d3521d3c9555b19662216576fb3a42d29c6ebca6a95769f1f635",
+      "sizeBytes": 30296,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic6-verification.ts",
+      "sha256": "3275ccb99569536e4ba128756f2be908c8aa4c74034aab8e3d65021880adb2c9",
+      "sizeBytes": 38104,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic7-verification.ts",
+      "sha256": "068decae95f5019639753bbc1374dea6bfe2eee078f3800e84f5f2bc7e8d7680",
+      "sizeBytes": 44027,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic8-verification.ts",
+      "sha256": "979b5c95cc8e2dfa734262ac56dfed75e8dbeada2e137f7495c762344c1084c4",
+      "sizeBytes": 42605,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-001/run-ic9-verification.ts",
+      "sha256": "92d6e303fc896c16e9abebeba252d69138821e5eeed674bdf9ef59e3e7bb8515",
+      "sizeBytes": 35520,
+      "category": "CERTIFICATION",
+      "checkpoint": "RUN",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/run-003/canonical-matrix-results.json",
+      "sha256": "ab46afab43ee62d706fcb9711c450ea964b20fed7c9792d7cf93125a332033f9",
+      "sizeBytes": 28980,
+      "category": "NORMATIVE",
+      "checkpoint": "IC0",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/run-003/golden-vectors.json",
+      "sha256": "e892153893b1fa2b671b733d6531374cb1568d05210f25c22e1c9551d07c0773",
+      "sizeBytes": 119756,
+      "category": "NORMATIVE",
+      "checkpoint": "IC0",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/run-003/optimized-evaluator.ts",
+      "sha256": "fc73455b1db99af40e0cdf1a4bf649d05371f2f7e34dc33ba39947107554de60",
+      "sizeBytes": 5480,
+      "category": "NORMATIVE",
+      "checkpoint": "IC0",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "certification/c5-memory-v2/run-003/reference-evaluator.ts",
+      "sha256": "7d82c5f37bdae52c80c7a9851a2a52348151b554565888c2036dfe61a46311f9",
+      "sizeBytes": 3878,
+      "category": "NORMATIVE",
+      "checkpoint": "IC0",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/c5-memory/draft.ts",
+      "sha256": "8adcc10b41b3048d0c1360e6e36d72f472b8aa26a4e34557af86bf8ba5cd1428",
+      "sizeBytes": 10507,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/c5-memory/history.ts",
+      "sha256": "e8d2f84e42aff81518eee9db083ac8ab9445069cd7f42e5aaee93b8ada982b9b",
+      "sizeBytes": 6917,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/c5-memory/math.ts",
+      "sha256": "d902810102c73fa6ccca2c234effee565ffb02160fcfad3b82fb2237ea0155d5",
+      "sizeBytes": 7318,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/c5-memory/pool.ts",
+      "sha256": "0211aac497f604bc77880bb9b843ba2ee90c5b79643fd48db93ffd6525bc16a8",
+      "sizeBytes": 3891,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/c5-memory/prng.ts",
+      "sha256": "de9df384897c676d6a5a7e07fc0c062c45e6e402dd16ebc1383fc561976d5d0b",
+      "sizeBytes": 2881,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/c5-memory/sha256.ts",
+      "sha256": "adebb6031ea12268526814f92d2ea6efe2b2b04a41c3d8b9933f674d01a2b165",
+      "sizeBytes": 5282,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/c5-memory/tests/math.test.ts",
+      "sha256": "29107752a94b6037ad73451cb1876f14ee33ad12a34d95a4091d0a8270abe86e",
+      "sizeBytes": 6835,
+      "category": "TEST",
+      "checkpoint": "IC3",
+      "normativeStatus": "ACTIVE"
+    },
+    {
+      "path": "src/c5-memory/types.ts",
+      "sha256": "e9c7c005cb66c3dc4b11d7e80ccc60ac25d1ed4f34f821b1c591b530b20d52ff",
+      "sizeBytes": 1639,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/c5/tests/exhaustive.test.ts",
+      "sha256": "10b72d5dc85f818662ce77457888938b1d158603700ff72de4c68a5872491090",
+      "sizeBytes": 9085,
+      "category": "TEST",
+      "checkpoint": "LEGACY",
+      "normativeStatus": "ACTIVE"
+    },
+    {
+      "path": "src/c5/tests/golden.test.ts",
+      "sha256": "b9739752908a4028883fa99ac171cfc1667d50103b3436d0f2ba30a4b96bf402",
+      "sizeBytes": 9966,
+      "category": "TEST",
+      "checkpoint": "LEGACY",
+      "normativeStatus": "ACTIVE"
+    },
+    {
+      "path": "src/c5/tests/massive.test.ts",
+      "sha256": "a56f74e7e652cbbad96c0661cac66052eeda36e3fdcef411f0ab5a67ea0bba2b",
+      "sizeBytes": 2928,
+      "category": "TEST",
+      "checkpoint": "LEGACY",
+      "normativeStatus": "ACTIVE"
+    },
+    {
+      "path": "src/c5/types.ts",
+      "sha256": "e960c0193248c0910998f5b0c07929e9d38aca712234ac01f7ba94796ea7f467",
+      "sizeBytes": 7419,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/storage/contestRepository.ts",
+      "sha256": "c81ee9efa6727610e307c29ff8588379cdb4b7a2ecbd2809ed8ae1fe4ab7d4cc",
+      "sizeBytes": 54180,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/storage/import.ts",
+      "sha256": "15178f3a12826f302ff5cd2b21e86c10e71ae6eebcdbe2431630fee086e09739",
+      "sizeBytes": 55255,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/storage/memoryTransaction.ts",
+      "sha256": "6f50a78ff4cad0a76268a79096ce8910a2ffe0cd605551a21999df50ab1b84d6",
+      "sizeBytes": 11582,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/storage/recordComparison.ts",
+      "sha256": "ff1f0c032d14d7adf7dc9eda522a5732122d42ee960cef4702b3d3190e03bfe8",
+      "sizeBytes": 6759,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    },
+    {
+      "path": "src/storage/tests/memoryPersistence.test.ts",
+      "sha256": "ce6397acd5486678d95296c9fd1f3bc34f9dfe0565f8f2479bc6f232e5bf35e9",
+      "sizeBytes": 24295,
+      "category": "TEST",
+      "checkpoint": "IC8",
+      "normativeStatus": "ACTIVE"
+    },
+    {
+      "path": "src/storage/types.ts",
+      "sha256": "19a3e94273049d4ef4f567e575183648f6a589a211222b85ba563f743be7d123",
+      "sizeBytes": 8092,
+      "category": "APP",
+      "checkpoint": "IC3-IC8",
+      "normativeStatus": "FROZEN"
+    }
+  ]
+}

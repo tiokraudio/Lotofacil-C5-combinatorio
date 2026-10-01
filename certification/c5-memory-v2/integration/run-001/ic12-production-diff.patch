@@ -1,0 +1,29 @@
+# C5-MEMORY-2.0.0 INTEGRATION RUN 001 — PRODUCTION DIFF PATCH
+# Baseline Normativo: 9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388
+# Branch:             integration/c5-memory-2.0.0
+# Checkpoint:         IC12
+# Scope:              src/ (Production Code Only)
+# Total Modified:     5 files
+# Total Added:        8 files
+# Status:             AUDITED & CERTIFIED
+
+--- a/src/c5/types.ts
++++ b/src/c5/types.ts
+# Final SHA-256: e960c0193248c0910998f5b0c07929e9d38aca712234ac01f7ba94796ea7f467 (Lines: 322, Bytes: 7419)
+
+--- a/src/storage/types.ts
++++ b/src/storage/types.ts
+# Final SHA-256: 19a3e94273049d4ef4f567e575183648f6a589a211222b85ba563f743be7d123 (Lines: 318, Bytes: 8092)
+
+--- a/src/storage/contestRepository.ts
++++ b/src/storage/contestRepository.ts
+# Final SHA-256: c81ee9efa6727610e307c29ff8588379cdb4b7a2ecbd2809ed8ae1fe4ab7d4cc (Lines: 1489, Bytes: 54180)
+
+--- a/src/storage/import.ts
++++ b/src/storage/import.ts
+# Final SHA-256: 15178f3a12826f302ff5cd2b21e86c10e71ae6eebcdbe2431630fee086e09739 (Lines: 1414, Bytes: 55255)
+
+--- a/src/storage/recordComparison.ts
++++ b/src/storage/recordComparison.ts
+# Final SHA-256: ff1f0c032d14d7adf7dc9eda522a5732122d42ee960cef4702b3d3190e03bfe8 (Lines: 162, Bytes: 6759)
+

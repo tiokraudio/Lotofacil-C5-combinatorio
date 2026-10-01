@@ -59,8 +59,8 @@
     }
   },
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC11",
-  "status": "IC11_PASS",
+  "currentCheckpoint": "IC12",
+  "status": "CERTIFIED",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -1034,6 +1034,74 @@
     "browserRealLog": {
       "path": "ic11-browser-real.log",
       "sha256": "f73ad7728d8fefdbb43786603e6478fc7a82ee3ce7a6cb620d01943925bff624"
+    }
+  },
+  "certifiedAt": "2026-10-01T13:54:45.657Z",
+  "finalDecision": "INTEGRATION_CERTIFIED",
+  "ic12Artifacts": {
+    "checkpointAudit": {
+      "path": "ic12-checkpoint-audit.json",
+      "sha256": "5f8fb4be47d519768827c1aa71bef050b34578ce767412a49dad7699da9137ab",
+      "status": "PASS"
+    },
+    "normativeHashAudit": {
+      "path": "ic12-normative-hash-audit.json",
+      "sha256": "2a0f01a0a09cc3d710ffdfe72713f2f18b028cf70f266955a5f4c1b1fa27213e",
+      "status": "PASS"
+    },
+    "productionDiffInventory": {
+      "path": "ic12-production-diff-inventory.json",
+      "sha256": "71e4cbd0217922208bc80b215ccd1b0527cdb3e6268c983413f9fd97504afdb5",
+      "status": "PASS"
+    },
+    "productionDiffPatch": {
+      "path": "ic12-production-diff.patch",
+      "sha256": "cf3ed8cc7e3901e9615e58eaebe0bfc90b46ff23dfc36371ace87ac2e1d37d8d"
+    },
+    "legacyPreservationResult": {
+      "path": "ic12-legacy-preservation-result.json",
+      "sha256": "8113896905284395c92b989f85a878e84403dc6a19d457ba4ea7f36d4e7497e5",
+      "status": "PASS"
+    },
+    "finalRegressionResult": {
+      "path": "ic12-final-regression-result.json",
+      "sha256": "228730bca4df409e803bdf47eca4554fa9917a217f50ad5cbbcb9105c278f07b",
+      "status": "PASS"
+    },
+    "buildLog": {
+      "path": "ic12-build.log",
+      "sha256": "efca6d965b9cd141d3325b4717a5058f3ca6f81bddd1e212cdb398f1dbb02b6e",
+      "status": "PASS"
+    },
+    "lintLog": {
+      "path": "ic12-lint.log",
+      "sha256": "a97166ac587d527ad7187a85335e0438d581036170cbe2ac948a6c978e86a553",
+      "status": "PASS"
+    },
+    "ledgerAudit": {
+      "path": "ic12-ledger-audit.json",
+      "sha256": "4bd93f7eeeff131bfa67ab17cb3b8b11402c44f2c87d9dd8ff3ac2b19cd344cc",
+      "status": "PASS"
+    },
+    "finalHashLedger": {
+      "path": "ic12-final-hash-ledger.json",
+      "sha256": "4141122ba4d7a50d7a27b4c11cf46418c21eba4117be265ead2b67d58ac3e0c6",
+      "status": "PASS"
+    },
+    "negativeControlsResult": {
+      "path": "ic12-negative-controls-result.json",
+      "sha256": "b275c7a81ba0e0788dc7990da28a6cf1fe66b4429a8a1369059d9b80db4243b6",
+      "status": "PASS"
+    },
+    "finalCertificationReportJson": {
+      "path": "ic12-final-certification-report.json",
+      "sha256": "950b6c471465f3b6af5f59f25327bde134a37eb6d40335819cd6c27f8a9dd108",
+      "status": "PASS"
+    },
+    "finalCertificationReportMd": {
+      "path": "ic12-final-certification-report.md",
+      "sha256": "e6c0982705d2fbff936395cbab0b47b8720d8d6de95eb1c7e656801809d4324b",
+      "status": "PASS"
     }
   }
 }
