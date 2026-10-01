@@ -1,0 +1,106 @@
+{
+  "checkpoint": "IC10",
+  "adversarialAttacks": 12,
+  "passedAttacks": 12,
+  "failedAttacks": 0,
+  "successfulAttacks": 0,
+  "attacks": [
+    {
+      "attackId": "A1",
+      "mechanism": "PRNG Mulberry32 Seed Normalization and uint32 Clamping",
+      "attackPayload": "Injeção de sementes out-of-bounds (negativas e > 4294967295)",
+      "observedResult": "BLOCKED — Sementes normalizadas estritamente no espaço uint32 sem crash",
+      "evidence": "Normalização defensiva: -100 -> 4294967196, 4294967300 -> 4",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A2",
+      "mechanism": "History Invariance & Canonical Preimage Generation",
+      "attackPayload": "Tentativa de alteração in-place de array de dezenas compartilhado",
+      "observedResult": "BLOCKED — Canonicalização gera representação isolada imutável",
+      "evidence": "Digest original preservado intacto: 429db719fc5efd701a93a119228c8857c1e4bc7bf6f4bb19d9403ba6fbdae875",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A3",
+      "mechanism": "Multiset Canonical Sorting and Permutation Invariance",
+      "attackPayload": "Reordenação de jogos em H para induzir digests divergentes",
+      "observedResult": "BLOCKED — Digest perfeitamente invariante a permutações de ordem",
+      "evidence": "Preimage ordenada canonicamente: 23f72e8e7efbd14bea55c846daf09612a93f460e23f1e106dab18bc1a3b270d6 === 23f72e8e7efbd14bea55c846daf09612a93f460e23f1e106dab18bc1a3b270d6",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A4",
+      "mechanism": "Strict Coordinate-by-Coordinate MAX-LEXIMIN",
+      "attackPayload": "Candidato com maior soma de distâncias tentando desbancar leximin ótimo n0=0",
+      "observedResult": "BLOCKED — Avaliação lexicográfica estrita prioriza minimização de n0",
+      "evidence": "histA (n0=0) vence histB (n0=1): comp = -1",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A5",
+      "mechanism": "Deterministic MIN(poolIndex) Tie-Breaking Rule",
+      "attackPayload": "Perfis de distância integralmente idênticos entre dois candidatos",
+      "observedResult": "BLOCKED — Comparador retorna empate absoluto exigindo MIN(poolIndex)",
+      "evidence": "comp === 0 assegura aplicação incondicional da regra canônica MIN(poolIndex)",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A6",
+      "mechanism": "Draft Freshness Barrier & Stale Rejection",
+      "attackPayload": "Submissão de rascunho com revisão defasada (10 vs 11)",
+      "observedResult": "BLOCKED — Exceção disparada e confirmação sumariamente recusada",
+      "evidence": "assertDraftFreshness lançou exceção com sucesso",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A7",
+      "mechanism": "Atomic Commit Serialization and Revision Invalidation",
+      "attackPayload": "Tentativa de escrita simultânea por duas abas com o mesmo snapshot",
+      "observedResult": "BLOCKED — O segundo commit foi abortado mantendo consistência",
+      "evidence": "Segundo commit barrado por conflito de transação e revisão",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A8",
+      "mechanism": "IndexedDB Transactional Abort and Zero Side-Effects",
+      "attackPayload": "Injeção de abort() explícito no meio da transação de persistência",
+      "observedResult": "BLOCKED — Transação abortada sem resíduos ou corrupção no banco",
+      "evidence": "Rollback limpo confirmado; zero registros órfãos gravados",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A9",
+      "mechanism": "Audit & Validation of FrozenMemoryPayload in Storage",
+      "attackPayload": "Tentativa de armazenar aposta C5-Memory sem memoryPayload",
+      "observedResult": "BLOCKED — verifyStoredContest rejeita sumariamente o registro",
+      "evidence": "Erro detectado: Campo 'generation' ausente ou inválido.; FROZEN deve possuir frozenAt com timestamp ISO 8601 válido; FROZEN deve possuir integrityHash SHA-256 válido (64 caracteres hexadecimais)",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A10",
+      "mechanism": "Prototype Pollution Defense in Backup Deserialization",
+      "attackPayload": "Injeção de chaves __proto__ e constructor no JSON de backup",
+      "observedResult": "BLOCKED — Object.prototype permanece estritamente despoluído",
+      "evidence": "Object.prototype.polluted === undefined",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A11",
+      "mechanism": "Cryptographic Tampering Detection via SHA-256 Integrity Hash",
+      "attackPayload": "Adulteração do integrityHash de aposta persistida",
+      "observedResult": "BLOCKED — verifyStoredContest identifica mismatch criptográfico",
+      "evidence": "Recusa estrita com erro de hash de integridade",
+      "status": "PASS"
+    },
+    {
+      "attackId": "A12",
+      "mechanism": "Replay Audit Verification Against Persisted Metadata",
+      "attackPayload": "Injeção de selectedPoolIndex forjado (99 em vez de 0)",
+      "observedResult": "BLOCKED — Auditoria de replay recalcula e detecta discrepância",
+      "evidence": "Replay determinístico elege índice 0 !== índice forjado 99",
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

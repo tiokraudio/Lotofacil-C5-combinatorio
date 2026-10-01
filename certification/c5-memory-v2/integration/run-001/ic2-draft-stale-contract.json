@@ -1,7 +1,7 @@
 {
   "contractId": "C5M-DRAFT-STALE-CONTRACT-V1",
   "version": "1.0.0",
-  "frozenAt": "2026-09-30T18:39:44.354Z",
+  "frozenAt": "2026-10-01T11:45:37.058Z",
   "draftMetadata": {
     "requiredFields": [
       "draftHistoryRevision",

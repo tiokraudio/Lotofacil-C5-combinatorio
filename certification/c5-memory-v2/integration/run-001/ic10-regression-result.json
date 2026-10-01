@@ -1,0 +1,16 @@
+{
+  "checkpoint": "IC10",
+  "ic3Math": "PASS",
+  "ic4Pool": "PASS",
+  "ic5History": "PASS",
+  "ic6Draft": "PASS",
+  "ic7Transaction": "PASS",
+  "ic8Persistence": "PASS",
+  "ic9Equivalence": "PASS",
+  "c5Golden": "PASS",
+  "c5Massive": "PASS",
+  "c5Exhaustive": "PASS",
+  "build": "PASS",
+  "lint": "PASS",
+  "status": "PASS"
+}

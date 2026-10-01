@@ -59,8 +59,8 @@
     }
   },
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC9",
-  "status": "IC9_PASS",
+  "currentCheckpoint": "IC10",
+  "status": "IC10_PASS",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -910,6 +910,57 @@
     "verificationLog": {
       "path": "ic9-verification.log",
       "sha256": "a893d9c7d3f174d264562aca3ee527872df0b17e26409a6ce10829ea80fcc047"
+    }
+  },
+  "ic10Artifacts": {
+    "canonicalMatrixResults": {
+      "path": "ic10-canonical-matrix-results.json",
+      "sha256": "d3a52cb1483576ef8c6d62809cea26cb6c4ec74eb2981207fc0be1f72eda906d",
+      "totalScenarios": 96,
+      "passedScenarios": 96,
+      "status": "PASS"
+    },
+    "cardinalityControlsResult": {
+      "path": "ic10-cardinality-controls-result.json",
+      "sha256": "6da9705b4852eccc67da65d8d4a23382581d359296b182fae8bc34a7bbe82a7f",
+      "expectedScenarioCount": 96,
+      "actualScenarioCount": 96,
+      "uniqueScenarioIds": 96,
+      "status": "PASS"
+    },
+    "adversarialResult": {
+      "path": "ic10-adversarial-result.json",
+      "sha256": "a9a9440d80f117a78b5e32138c7df9825d08141d1460cf3f784606c86541bc3f",
+      "adversarialAttacks": 12,
+      "passedAttacks": 12,
+      "failedAttacks": 0,
+      "status": "PASS"
+    },
+    "negativeControlsResult": {
+      "path": "ic10-negative-controls-result.json",
+      "sha256": "461997787e2cf22afc31ef7a31ed388ac195863cb843e618e89ab7913c2f9844",
+      "totalControls": 5,
+      "allPassed": true,
+      "status": "PASS"
+    },
+    "regressionResult": {
+      "path": "ic10-regression-result.json",
+      "sha256": "1e19d5d59333a31e430bafe28797b68ed641bac11a531b66a35f6b26a081d942",
+      "ic3ToIc9": "PASS",
+      "c5Golden": "PASS",
+      "c5Massive": "PASS",
+      "c5Exhaustive": "PASS",
+      "build": "PASS",
+      "lint": "PASS",
+      "status": "PASS"
+    },
+    "diffInventory": {
+      "path": "ic10-diff-inventory.json",
+      "sha256": "3c3cf9545691d8f32a822fd5eb79ccf5cc0153a7255ed6f1e34eafcf76d816fb"
+    },
+    "verificationLog": {
+      "path": "ic10-verification.log",
+      "sha256": "2196b737e5fef9b34219f7df1fd78241c2fc65215c6d2d16d081eff32f7946fb"
     }
   }
 }

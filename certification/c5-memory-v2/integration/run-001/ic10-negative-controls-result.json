@@ -1,0 +1,38 @@
+{
+  "checkpoint": "IC10",
+  "totalControls": 5,
+  "allControlsDetected": true,
+  "controls": [
+    {
+      "controlId": "NEG-01-MISSING-SCENARIO",
+      "description": "Detectar remoção de cenário (95 cenários na cópia isolada)",
+      "detected": true,
+      "status": "PASS"
+    },
+    {
+      "controlId": "NEG-02-DUPLICATE-SCENARIO-ID",
+      "description": "Detectar injeção de scenarioId duplicado",
+      "detected": true,
+      "status": "PASS"
+    },
+    {
+      "controlId": "NEG-03-UNEXPECTED-SCENARIO-ID",
+      "description": "Detectar inclusão de cenário com ID fora do conjunto canônico",
+      "detected": true,
+      "status": "PASS"
+    },
+    {
+      "controlId": "NEG-04-STATUS-NOT-PASS",
+      "description": "Detectar cenário com status diferente de PASS",
+      "detected": true,
+      "status": "PASS"
+    },
+    {
+      "controlId": "NEG-05-EXPECTATION-TAMPERING",
+      "description": "Detectar adulteração de valor esperado em asserção combinatória",
+      "detected": true,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

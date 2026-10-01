@@ -1,0 +1,17 @@
+{
+  "checkpoint": "IC10",
+  "scope": "certification/c5-memory-v2/integration/run-001/",
+  "productionFilesModified": [],
+  "certificationFilesAdded": [
+    "run-ic10-verification.ts",
+    "ic10-canonical-matrix-results.json",
+    "ic10-cardinality-controls-result.json",
+    "ic10-adversarial-result.json",
+    "ic10-negative-controls-result.json",
+    "ic10-regression-result.json",
+    "ic10-diff-inventory.json",
+    "ic10-verification.log"
+  ],
+  "zeroProductionDiff": true,
+  "status": "PASS"
+}

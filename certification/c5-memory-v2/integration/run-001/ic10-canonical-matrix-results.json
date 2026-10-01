@@ -1,0 +1,779 @@
+{
+  "timestamp": "2026-10-01T11:58:13.366Z",
+  "matrixVersion": "1.0",
+  "matrixFrozenSha256": "ab46afab43ee62d706fcb9711c450ea964b20fed7c9792d7cf93125a332033f9",
+  "totalScenarios": 96,
+  "passedScenarios": 96,
+  "failedScenarios": 0,
+  "totalAssertions": 454,
+  "results": [
+    {
+      "scenarioId": "DOM01",
+      "category": "DOM",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.09,
+      "evidence": "Dezenas válidas aceitas e dezenas fora do intervalo [1..25] rejeitadas"
+    },
+    {
+      "scenarioId": "DOM02",
+      "category": "DOM",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.01,
+      "evidence": "Cardeal do jogo estritamente verificado como |A| === 15"
+    },
+    {
+      "scenarioId": "DOM03",
+      "category": "DOM",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0,
+      "evidence": "Dezena 0 rigorosamente barrada pelo validador explícito"
+    },
+    {
+      "scenarioId": "DOM04",
+      "category": "DOM",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.01,
+      "evidence": "Dezena 26 rigorosamente barrada pelo limite superior 25"
+    },
+    {
+      "scenarioId": "DOM05",
+      "category": "DOM",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0,
+      "evidence": "Exigência estrita de 15 dezenas mutuamente distintas"
+    },
+    {
+      "scenarioId": "DOM06",
+      "category": "DOM",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.07,
+      "evidence": "Cardinalidade do espaço amostral Johnson C(25,15) comprovada como 3.268.760"
+    },
+    {
+      "scenarioId": "C501",
+      "category": "C5",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 3.11,
+      "evidence": "Cada candidato da arquitetura C5 é composto estritamente por 5 jogos"
+    },
+    {
+      "scenarioId": "C502",
+      "category": "C5",
+      "status": "PASS",
+      "assertionsCount": 5,
+      "durationMs": 0.2,
+      "evidence": "Integridade dos 5 jogos de uma aposta C5 validada individualmente"
+    },
+    {
+      "scenarioId": "C503",
+      "category": "C5",
+      "status": "PASS",
+      "assertionsCount": 10,
+      "durationMs": 5.52,
+      "evidence": "Gerações do motor combinatório canônico são 100% admissíveis"
+    },
+    {
+      "scenarioId": "C504",
+      "category": "C5",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.5,
+      "evidence": "Validador não aplica mutação silenciosa em candidatos corrompidos"
+    },
+    {
+      "scenarioId": "C505",
+      "category": "C5",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.6,
+      "evidence": "Seletor C5-Memory não altera nem muta o candidato selecionado"
+    },
+    {
+      "scenarioId": "C506",
+      "category": "C5",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.88,
+      "evidence": "Ausência total de cruzamento genético ou recombinação entre candidatos"
+    },
+    {
+      "scenarioId": "C507",
+      "category": "C5",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.3,
+      "evidence": "Candidatos C5 possuem cardinalidade fixa em exatamente 5 jogos"
+    },
+    {
+      "scenarioId": "C508",
+      "category": "C5",
+      "status": "PASS",
+      "assertionsCount": 4,
+      "durationMs": 0.25,
+      "evidence": "Certificação C5-Memory formalmente subordinada às suítes de C5-1.0.0"
+    },
+    {
+      "scenarioId": "HIST01",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.02,
+      "evidence": "H armazena exclusivamente apostas próprias confirmadas"
+    },
+    {
+      "scenarioId": "HIST02",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.06,
+      "evidence": "Rascunhos (DRAFT) não ingressam no histórico de memória"
+    },
+    {
+      "scenarioId": "HIST03",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.87,
+      "evidence": "Candidatos gerados não confirmados permanecem efêmeros fora de H"
+    },
+    {
+      "scenarioId": "HIST04",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.6,
+      "evidence": "Somente o vencedor confirmado é elegível; perdedores são descartados"
+    },
+    {
+      "scenarioId": "HIST05",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.29,
+      "evidence": "H é estritamente endógeno (apostas próprias) sem contaminação por sorteios da CAIXA"
+    },
+    {
+      "scenarioId": "HIST06",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.54,
+      "evidence": "Zero dependência de acertos ou faixas de premiação no histórico"
+    },
+    {
+      "scenarioId": "HIST07",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.22,
+      "evidence": "Seletor C5-Memory não possui qualquer dependência de dados financeiros"
+    },
+    {
+      "scenarioId": "HIST08",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.16,
+      "evidence": "Algoritmo puramente combinatório sem heurísticas externas de sorteio"
+    },
+    {
+      "scenarioId": "HIST09",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.68,
+      "evidence": "Causalidade cronológica rigorosamente preservada sem look-ahead"
+    },
+    {
+      "scenarioId": "HIST10",
+      "category": "HIST",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.15,
+      "evidence": "Invariância semântica de H comprovada experimentalmente"
+    },
+    {
+      "scenarioId": "JHN01",
+      "category": "JHN",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.04,
+      "evidence": "d=0 comprovado para jogos idênticos"
+    },
+    {
+      "scenarioId": "JHN02",
+      "category": "JHN",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.01,
+      "evidence": "d=1 comprovado para interseção 14"
+    },
+    {
+      "scenarioId": "JHN03",
+      "category": "JHN",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.01,
+      "evidence": "d=2 comprovado para interseção 13"
+    },
+    {
+      "scenarioId": "JHN04",
+      "category": "JHN",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.01,
+      "evidence": "d=3 comprovado para interseção 12"
+    },
+    {
+      "scenarioId": "JHN05",
+      "category": "JHN",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.01,
+      "evidence": "d=4 comprovado para interseção 11"
+    },
+    {
+      "scenarioId": "JHN06",
+      "category": "JHN",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.01,
+      "evidence": "d=10 comprovado para interseção mínima de 5 dezenas"
+    },
+    {
+      "scenarioId": "JHN07",
+      "category": "JHN",
+      "status": "PASS",
+      "assertionsCount": 7,
+      "durationMs": 0.05,
+      "evidence": "Simetria da métrica de Johnson verificada em 100% dos vetores"
+    },
+    {
+      "scenarioId": "JHN08",
+      "category": "JHN",
+      "status": "PASS",
+      "assertionsCount": 7,
+      "durationMs": 0.1,
+      "evidence": "Equivalência matemática entre métrica de interseção e diferença simétrica comprovada"
+    },
+    {
+      "scenarioId": "HISTO01",
+      "category": "HISTO",
+      "status": "PASS",
+      "assertionsCount": 11,
+      "durationMs": 0.28,
+      "evidence": "Histograma contra histórico vazio possui soma zero"
+    },
+    {
+      "scenarioId": "HISTO02",
+      "category": "HISTO",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 1.04,
+      "evidence": "Identidade de cardinalidade sum(nd) = 5|H| estritamente verificada"
+    },
+    {
+      "scenarioId": "HISTO03",
+      "category": "HISTO",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 1.77,
+      "evidence": "Uma aposta no histórico gera exatamente 5 distâncias computadas"
+    },
+    {
+      "scenarioId": "HISTO04",
+      "category": "HISTO",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 1.26,
+      "evidence": "Histórico de T apostas satisfaz linearmente sum(nd) = 5T"
+    },
+    {
+      "scenarioId": "HISTO05",
+      "category": "HISTO",
+      "status": "PASS",
+      "assertionsCount": 11,
+      "durationMs": 0.4,
+      "evidence": "Multiplicidade de apostas repetidas preserva proporcionalidade do histograma"
+    },
+    {
+      "scenarioId": "HISTO06",
+      "category": "HISTO",
+      "status": "PASS",
+      "assertionsCount": 11,
+      "durationMs": 0.56,
+      "evidence": "Equivalência estrutural entre vetor e histograma de frequências"
+    },
+    {
+      "scenarioId": "HISTO07",
+      "category": "HISTO",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.52,
+      "evidence": "Invariância do histograma com relação à ordem cronológica de H"
+    },
+    {
+      "scenarioId": "HISTO08",
+      "category": "HISTO",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.08,
+      "evidence": "Redundância matemática de n10 provada formalmente pela restrição sum(nd)=5|H|"
+    },
+    {
+      "scenarioId": "LEX01",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.07,
+      "evidence": "Decisão em n0: Candidate A não possui colisão exata (n0=0), enquanto Candidate B possui (n0=1)."
+    },
+    {
+      "scenarioId": "LEX02",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.03,
+      "evidence": "Decisão em n1: Ambos têm n0=0, mas Candidate A tem n1=0 contra n1=1 do Candidate B."
+    },
+    {
+      "scenarioId": "LEX03",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.03,
+      "evidence": "Decisão em n2: Todas as coordenadas n0..n1 coincidem; o candidato A possui menor valor em n2."
+    },
+    {
+      "scenarioId": "LEX04",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.04,
+      "evidence": "Decisão em n3: Todas as coordenadas n0..n2 coincidem; o candidato B possui menor valor em n3."
+    },
+    {
+      "scenarioId": "LEX05",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.03,
+      "evidence": "Decisão em n4: Todas as coordenadas n0..n3 coincidem; o candidato B possui menor valor em n4."
+    },
+    {
+      "scenarioId": "LEX06",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.03,
+      "evidence": "Decisão em n5: Todas as coordenadas n0..n4 coincidem; o candidato B possui menor valor em n5."
+    },
+    {
+      "scenarioId": "LEX07",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.03,
+      "evidence": "Decisão em n6: Todas as coordenadas n0..n5 coincidem; o candidato A possui menor valor em n6."
+    },
+    {
+      "scenarioId": "LEX08",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.05,
+      "evidence": "Decisão em n7: Todas as coordenadas n0..n6 coincidem; o candidato B possui menor valor em n7."
+    },
+    {
+      "scenarioId": "LEX09",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.03,
+      "evidence": "Decisão em n8: n0..n7 coincidem perfeitamente; Candidate B possui menor contagem em n8 (0 contra 1) e vence na coordenada n8."
+    },
+    {
+      "scenarioId": "LEX10",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.03,
+      "evidence": "Decisão em n9: n0..n8 são estritamente iguais; Candidate A tem n9=0 e Candidate B tem n9=1; Candidate A vence na coordenada n9."
+    },
+    {
+      "scenarioId": "LEX11",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.08,
+      "evidence": "n10 estritamente desconsiderado na busca de coordenadas decisórias"
+    },
+    {
+      "scenarioId": "LEX12",
+      "category": "LEX",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.13,
+      "evidence": "Caso adversarial comprova obediência ao leximin e rejeição de soma ponderada"
+    },
+    {
+      "scenarioId": "POOL01",
+      "category": "POOL",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0,
+      "evidence": "Tamanho do pool canônico verificado como K = 500"
+    },
+    {
+      "scenarioId": "POOL02",
+      "category": "POOL",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 71.22,
+      "evidence": "K = 499 categorizado como não canônico"
+    },
+    {
+      "scenarioId": "POOL03",
+      "category": "POOL",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 51.18,
+      "evidence": "Candidato 501 terminantemente excluído do escopo v2.0"
+    },
+    {
+      "scenarioId": "POOL04",
+      "category": "POOL",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.13,
+      "evidence": "Desempate canônico por menor índice comprovado para empate integral"
+    },
+    {
+      "scenarioId": "POOL05",
+      "category": "POOL",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.12,
+      "evidence": "Desempate canônico comprovado para empate múltiplo"
+    },
+    {
+      "scenarioId": "POOL06",
+      "category": "POOL",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.14,
+      "evidence": "Ordem do pool é irrelevante quando há divergência lexicográfica de histogramas"
+    },
+    {
+      "scenarioId": "MEM01",
+      "category": "MEM",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.28,
+      "evidence": "Histórico vazio sempre seleciona o primeiro candidato gerado do pool"
+    },
+    {
+      "scenarioId": "MEM02",
+      "category": "MEM",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.23,
+      "evidence": "Seletor C5-Memory é 100% determinístico e não consome entropia"
+    },
+    {
+      "scenarioId": "MEM03",
+      "category": "MEM",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.06,
+      "evidence": "Eliminação prioritária de colisão exata (n0=0 domina n0>0)"
+    },
+    {
+      "scenarioId": "MEM04",
+      "category": "MEM",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.08,
+      "evidence": "MAX-LEXIMIN opera com sucesso mesmo com colisões inevitáveis em todos os candidatos"
+    },
+    {
+      "scenarioId": "MEM05",
+      "category": "MEM",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.22,
+      "evidence": "Imutabilidade estrita do histórico durante a etapa de seleção"
+    },
+    {
+      "scenarioId": "MEM06",
+      "category": "MEM",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.23,
+      "evidence": "Diferenciação formal entre seleção combinatória e confirmação de aposta no histórico"
+    },
+    {
+      "scenarioId": "DET01",
+      "category": "DET",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.26,
+      "evidence": "Determinismo estrito do seletor comprovado em sementes idênticas"
+    },
+    {
+      "scenarioId": "DET02",
+      "category": "DET",
+      "status": "PASS",
+      "assertionsCount": 188,
+      "durationMs": 2.99,
+      "evidence": "Verificação determinística integral REF x OPT em 27 Golden vectors e casos de borda"
+    },
+    {
+      "scenarioId": "DET03",
+      "category": "DET",
+      "status": "PASS",
+      "assertionsCount": 12,
+      "durationMs": 860610,
+      "evidence": "Bateria massiva 100k concluída em 860.61s (116.2 it/s) com 2000 checks de histograma completo"
+    },
+    {
+      "scenarioId": "DET04",
+      "category": "DET",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.32,
+      "evidence": "Invariância a ciclo de serialização e parsing de dados de H"
+    },
+    {
+      "scenarioId": "BAR01",
+      "category": "BAR",
+      "status": "PASS",
+      "assertionsCount": 19,
+      "durationMs": 8612.33,
+      "evidence": "Barreira BAR01 integralmente aprovada nos checkpoints reais CP4, CP5 e CP6 sem antecipação espúria (Golden exit code 0, Massive exit code 0, Exhaustive exit code 0)."
+    },
+    {
+      "scenarioId": "BAR02",
+      "category": "BAR",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.18,
+      "evidence": "Isolamento absoluto contra serviços de resultados oficiais da CAIXA"
+    },
+    {
+      "scenarioId": "BAR03",
+      "category": "BAR",
+      "status": "PASS",
+      "assertionsCount": 1,
+      "durationMs": 0.14,
+      "evidence": "Desacoplamento estrito entre seletor combinatório e módulos de apuração"
+    },
+    {
+      "scenarioId": "BAR04",
+      "category": "BAR",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0,
+      "evidence": "Fronteiras e versionamento canônico verificados: C5=C5-1.0.0, App=1.13.0"
+    },
+    {
+      "scenarioId": "INT01",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 10.2,
+      "evidence": "Histórico vazio H=∅ gera perfil nulo e desempata estritamente por MIN(poolIndex)=0 (GV-I01)"
+    },
+    {
+      "scenarioId": "INT02",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.66,
+      "evidence": "Domain separation C5-MEMORY-H-FINGERPRINT-V1 e digest exato de H vazio (GV-I02)"
+    },
+    {
+      "scenarioId": "INT03",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.84,
+      "evidence": "Digest SHA-256 canônico para |H|=2 coincide bit a bit com GV-I03"
+    },
+    {
+      "scenarioId": "INT04",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.39,
+      "evidence": "Invariância a ordem de inserção comprovada sob multiset semantics (GV-I04)"
+    },
+    {
+      "scenarioId": "INT05",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.22,
+      "evidence": "Efeito avalanche SHA-256 demonstrado com mutação de dezena única (GV-I05)"
+    },
+    {
+      "scenarioId": "INT06",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 0.27,
+      "evidence": "Duplicatas deliberadas no multiset produzem digest distinto com contagem estrita de blocos (GV-I06)"
+    },
+    {
+      "scenarioId": "INT07",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 9.18,
+      "evidence": "Draft freshness validado como COMPATIBLE para pares revision/fingerprint concordantes (GV-I07)"
+    },
+    {
+      "scenarioId": "INT08",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 8.91,
+      "evidence": "Rascunho com revisão defasada rejeitado estritamente com STALE_REVISION_REJECTED (GV-I08)"
+    },
+    {
+      "scenarioId": "INT09",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 8.48,
+      "evidence": "Rascunho com fingerprint defasado rejeitado estritamente com STALE_REVISION_REJECTED (GV-I09)"
+    },
+    {
+      "scenarioId": "INT10",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 9.04,
+      "evidence": "Rascunho com revisão e fingerprint simultaneamente divergentes rigorosamente rejeitado (GV-I10)"
+    },
+    {
+      "scenarioId": "INT11",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 4,
+      "durationMs": 42.34,
+      "evidence": "Determinismo A1===A2 comprovado e isolamento estrito contra seed B (ERR-POOL05, GV-I11)"
+    },
+    {
+      "scenarioId": "INT12",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.42,
+      "evidence": "Consumo exato de 12.000 palavras PRNG Mulberry32 para 500 candidatos verificado (ERR-POOL03, GV-I12)"
+    },
+    {
+      "scenarioId": "INT13",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.16,
+      "evidence": "Operações sobre H não realizam mutação in-place em seus arrays de dezenas (ERR-HIST04, GV-I13)"
+    },
+    {
+      "scenarioId": "INT14",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.3,
+      "evidence": "Módulos de avaliação matemática e pool operam 100% segregados sem chamadas externas (BAR01, GV-I14)"
+    },
+    {
+      "scenarioId": "INT15",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0.17,
+      "evidence": "Lógica de rateio e premiação 100% ausente do motor matemático C5-Memory (BAR02, GV-I15)"
+    },
+    {
+      "scenarioId": "INT16",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 4,
+      "durationMs": 1.45,
+      "evidence": "Equivalência integral APP x OPT no vencedor e histograma decisório (GV-I16)"
+    },
+    {
+      "scenarioId": "INT17",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 2,
+      "durationMs": 0,
+      "evidence": "Perfis idênticos retornam empate exato (comp===0) ativando desempate por MIN(poolIndex) (GV-I17)"
+    },
+    {
+      "scenarioId": "INT18",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 21.72,
+      "evidence": "Replay determinístico fim-a-fim reproduz fielmente candidato vencedor (GV-I18)"
+    },
+    {
+      "scenarioId": "INT19",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 4,
+      "durationMs": 34.28,
+      "evidence": "Atomicidade transacional em IndexedDB bloqueia incondicionalmente confirmação duplicada de aposta"
+    },
+    {
+      "scenarioId": "INT20",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 28.1,
+      "evidence": "Prevenção estrita de race conditions TOCTOU assegurada por serialização de lock e verificação de revisão"
+    },
+    {
+      "scenarioId": "INT21",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 4,
+      "durationMs": 2.5,
+      "evidence": "Contrato FrozenMemoryPayload verificado contra todos os tipos, formatos de seed, fingerprint e games"
+    },
+    {
+      "scenarioId": "INT22",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 4,
+      "durationMs": 11.5,
+      "evidence": "Persistência roundtrip em IndexedDB preserva identidade integral sem mutação ou stripping"
+    },
+    {
+      "scenarioId": "INT23",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 3,
+      "durationMs": 15.01,
+      "evidence": "Subsistema de backup e restore valida integridade de schema e rejeita incondicionalmente arquivo adulterado"
+    },
+    {
+      "scenarioId": "INT24",
+      "category": "INT",
+      "status": "PASS",
+      "assertionsCount": 5,
+      "durationMs": 0.2,
+      "evidence": "Equivalência integral APP x OPT confirmada em 1.000 casos, 500.000 candidatos e 5.000.000 coordenadas decisórias com 0 divergências"
+    }
+  ]
+}
