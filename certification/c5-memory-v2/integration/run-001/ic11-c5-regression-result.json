@@ -1,0 +1,12 @@
+{
+  "checkpoint": "IC11",
+  "c5Golden": "PASS",
+  "c5Massive": "PASS",
+  "c5Exhaustive": "PASS",
+  "c5AlgorithmVersion": "C5-1.0.0",
+  "appVersion": "1.13.0",
+  "backupSchemaVersion": 3,
+  "localSyncProtocolVersion": 1,
+  "constantsPreserved": true,
+  "status": "PASS"
+}

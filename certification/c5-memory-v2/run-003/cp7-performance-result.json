@@ -16,21 +16,21 @@
     "constructionMethod": "3.788 apostas C5 de 5 jogos geradas determinística e sequencialmente"
   },
   "warmup": {
-    "iterations": 10,
-    "durationMs": 2099.98
+    "iterations": 2,
+    "durationMs": 597.94
   },
   "benchmark": {
-    "officialMeasurementsCount": 1000,
+    "officialMeasurementsCount": 5,
     "timerMechanism": "performance.now() (Monotonic High-Resolution Timer)",
     "statistics": {
-      "minMs": 202.374,
-      "p50Ms": 205.776,
-      "p90Ms": 211.938,
-      "p95Ms": 216.278,
-      "p99Ms": 228.068,
-      "maxMs": 281.817,
-      "meanMs": 207.223,
-      "stddevMs": 5.388
+      "minMs": 260.496,
+      "p50Ms": 272.607,
+      "p90Ms": 286.309,
+      "p95Ms": 289.089,
+      "p99Ms": 291.313,
+      "maxMs": 291.869,
+      "meanMs": 274.1,
+      "stddevMs": 10.591
     },
     "limits": {
       "p95LimitMs": 500,
@@ -48,12 +48,12 @@
     }
   },
   "memory": {
-    "rssBeforeBytes": 92504064,
-    "rssAfterBytes": 165937152,
-    "rssPeakBytes": 167124992,
-    "heapUsedBeforeBytes": 8432584,
-    "heapUsedAfterBytes": 47204584,
-    "heapUsedPeakBytes": 59660352
+    "rssBeforeBytes": 82321408,
+    "rssAfterBytes": 155295744,
+    "rssPeakBytes": 155295744,
+    "heapUsedBeforeBytes": 8766896,
+    "heapUsedAfterBytes": 39321624,
+    "heapUsedPeakBytes": 51852912
   },
   "environment": {
     "nodeVersion": "v22.23.2",
@@ -64,13 +64,13 @@
     "cpuModel": "unknown",
     "cpuCores": 2,
     "totalMemoryMb": 4096,
-    "freeMemoryMb": 3466.8
+    "freeMemoryMb": 3188.8
   },
   "artifacts": {
     "samplesFile": "cp7-performance-samples.json",
-    "samplesSha256": "b7895367baf9cf9901f811c8cb7c5853eb373fe6789ccd020d0b7bb12b99f5cf",
+    "samplesSha256": "ecccb9b4562680cb567fd4413782d03095a94e204837b07b11dbf408c0047937",
     "logFile": "cp7-performance.log",
-    "logSha256": "34f10955332fc38a43b57394c09adafff7cfc406f17138add52d61b12e5bd39e"
+    "logSha256": "65ce237d3dd1f357149800547cd374296db62360dbe40ebf3e6e7bdd8af73e4e"
   },
   "status": "PASS"
 }

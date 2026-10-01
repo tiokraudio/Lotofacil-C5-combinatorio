@@ -1,0 +1,46 @@
+{
+  "checkpoint": "IC11",
+  "barriersExpected": 4,
+  "barriersExecuted": 4,
+  "barriersPassed": 4,
+  "barriersFailed": 0,
+  "barriers": [
+    {
+      "barrierId": "BAR-A",
+      "normativeSource": "Matriz Canônica v1.0 — Sec. 10 (BAR01); Especificação de Integração v1.0 — Sec. 4.2",
+      "preconditions": "Motor C5-1.0.0 compilado e congelado em src/c5/",
+      "checksExecuted": 3,
+      "assertionsCount": 19,
+      "status": "PASS",
+      "evidence": "Motor C5-1.0.0 integralmente aprovado e preservado: Golden (13/13 PASS), Massive (100.000/100.000 válidas), Exhaustive (16.343.800/16.343.800 avaliações sem violações)"
+    },
+    {
+      "barrierId": "BAR-B",
+      "normativeSource": "Matriz Canônica v1.0 — Sec. 10 (BAR02); Especificação de Integração v1.0 — Sec. 4.3",
+      "preconditions": "Módulos puros de domínio C5-Memory em src/c5-memory/",
+      "checksExecuted": 7,
+      "assertionsCount": 7,
+      "status": "PASS",
+      "evidence": "Zero imports de serviços de rede, chamadas fetch/axios ou acoplamentos a APIs da CAIXA em todos os 7 módulos C5-Memory"
+    },
+    {
+      "barrierId": "BAR-C",
+      "normativeSource": "Matriz Canônica v1.0 — Sec. 10 (BAR03); Especificação de Integração v1.0 — Sec. 4.4",
+      "preconditions": "Módulo seletor puro MAX-LEXIMIN em src/c5-memory/math.ts",
+      "checksExecuted": 2,
+      "assertionsCount": 5,
+      "status": "PASS",
+      "evidence": "Lógica de apuração, rateio e premiação 100% ausente do seletor combinatório MAX-LEXIMIN e geração de pool"
+    },
+    {
+      "barrierId": "BAR-D",
+      "normativeSource": "Matriz Canônica v1.0 — Sec. 10 (BAR04); Protocolo de Integração v1.0 — Sec. 3",
+      "preconditions": "Declaração canônica de versão nas fronteiras do sistema",
+      "checksExecuted": 5,
+      "assertionsCount": 5,
+      "status": "PASS",
+      "evidence": "Constantes normativas confirmadas: C5_ALGORITHM_VERSION='C5-1.0.0', APP_VERSION='1.13.0', C5_MEMORY_ALGORITHM_VERSION='C5-Memory-2.0.0', BACKUP_SCHEMA_VERSION=3, LOCAL_SYNC_PROTOCOL_VERSION=1"
+    }
+  ],
+  "status": "PASS"
+}
