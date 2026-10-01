@@ -59,8 +59,8 @@
     }
   },
   "startedAt": "2026-09-29T14:41:37.000Z",
-  "currentCheckpoint": "IC10",
-  "status": "IC10_PASS",
+  "currentCheckpoint": "IC11",
+  "status": "IC11_PASS",
   "ic1Artifacts": {
     "goldenVectors": {
       "path": "ic1-golden-vectors.json",
@@ -961,6 +961,79 @@
     "verificationLog": {
       "path": "ic10-verification.log",
       "sha256": "2196b737e5fef9b34219f7df1fd78241c2fc65215c6d2d16d081eff32f7946fb"
+    }
+  },
+  "ic11Artifacts": {
+    "barriersResult": {
+      "path": "ic11-barriers-result.json",
+      "sha256": "79164a0d6a1d52f00cd4e41ede0808e281f2ca1f3788c36e599bf6b759d5167f",
+      "barriersExpected": 4,
+      "barriersExecuted": 4,
+      "barriersPassed": 4,
+      "status": "PASS"
+    },
+    "c5RegressionResult": {
+      "path": "ic11-c5-regression-result.json",
+      "sha256": "9603906565b3991b18077f4bae4ec4132e67abcbb369b3073b0390a46bcab9f2",
+      "c5Golden": "PASS",
+      "c5Massive": "PASS",
+      "c5Exhaustive": "PASS",
+      "status": "PASS"
+    },
+    "memoryRegressionResult": {
+      "path": "ic11-memory-regression-result.json",
+      "sha256": "2f614776ba195ac8dd1effe55c471a1bd294e937dfb0583b490aa611802a1c32",
+      "status": "PASS"
+    },
+    "performanceResult": {
+      "path": "ic11-performance-result.json",
+      "sha256": "6bae8add9867215175d25a2ce0e636c230b688d732760d199fb23a1268131ad2",
+      "p95Ms": 232.709,
+      "p95LimitMs": 500,
+      "maxMs": 273.84,
+      "maxLimitMs": 2000,
+      "status": "PASS"
+    },
+    "browserResult": {
+      "path": "ic11-browser-result.json",
+      "sha256": "116330c4c8c4081ae3b244888b0ba524afce70b87f050b3d91d785ee80734ba1",
+      "status": "PASS"
+    },
+    "negativeControlsResult": {
+      "path": "ic11-negative-controls-result.json",
+      "sha256": "d818185fd7ec51da7e8370a45f8042117542d4e58f9948111dec6a83c7a2405f",
+      "status": "PASS"
+    },
+    "buildLog": {
+      "path": "ic11-build.log",
+      "sha256": "f0e2fef8c77142de37d163b0a8993cd3920eff7b0c3a2376b109d06e25f28bac"
+    },
+    "lintLog": {
+      "path": "ic11-lint.log",
+      "sha256": "c488861b13640556f04848e282b2e5e1f0d3c17df0880e99ec3b14e59383b5c0"
+    },
+    "diffInventory": {
+      "path": "ic11-diff-inventory.json",
+      "sha256": "c4b05788128d4db70bb89cd8df5874002f63f580ec3b677a4874e37e0e97fc2b"
+    },
+    "verificationLog": {
+      "path": "ic11-verification.log",
+      "sha256": "6a8c9a74693c49df456e485f44a6db6ab87f5ef2e804f521d3f72ea97c1d1ffd"
+    },
+    "browserRealResult": {
+      "path": "ic11-browser-real-result.json",
+      "sha256": "64f29ef1b64af60a53bcaa2033410754ce38a5c895dd6f058eb222e704418aba",
+      "browser": "Chromium 154.0.8037.92",
+      "nativeIndexedDB": true,
+      "testsExecuted": 16,
+      "testsPassed": 16,
+      "testsFailed": 0,
+      "deterministicMismatches": 0,
+      "status": "PASS"
+    },
+    "browserRealLog": {
+      "path": "ic11-browser-real.log",
+      "sha256": "f73ad7728d8fefdbb43786603e6478fc7a82ee3ce7a6cb620d01943925bff624"
     }
   }
 }
