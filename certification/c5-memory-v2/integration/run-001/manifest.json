@@ -1157,5 +1157,24 @@
     "semanticImpact": "ic2-semantic-impact-audit.json (zero semantic impact, T0_CONTENT_NOT_FULLY_RECONSTRUCTIBLE)",
     "disposition": "CERTIFIED_WITH_ERRATA",
     "recordedAt": "2026-10-01T16:54:20.255Z"
+  },
+  "runStatus": "SEALED",
+  "certificationStatus": "CERTIFIED_WITH_ERRATA",
+  "errataCount": 1,
+  "activeErrata": [
+    "NONDETERMINISTIC_FROZEN_AT_REGENERATION"
+  ],
+  "sealedAt": "2026-10-02T12:07:16.835Z",
+  "finalDisposition": "CERTIFIED_WITH_ERRATA",
+  "sealGovernance": {
+    "ic2HistoricalManifestConsistency": "FAIL",
+    "ic2PhysicalIntegrity": "PASS",
+    "rootCauseProven": "YES",
+    "ic3Ic12MaterializedLineage": "PROVEN",
+    "semanticEquivalence": "PROVEN",
+    "historicalArtifactsModified": 0,
+    "productionFilesModified": 0,
+    "negativeControlsPassed": "6/6 errata + 3/3 seal",
+    "sealDocument": "run-001-formal-seal.json"
   }
 }

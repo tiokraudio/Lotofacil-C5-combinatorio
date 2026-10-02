@@ -1,0 +1,111 @@
+{
+  "sealTitle": "DOCUMENTO FORMAL DE ENCERRAMENTO E SELAMENTO — INTEGRATION RUN 001",
+  "sealTimestamp": "2026-10-02T12:07:16.835Z",
+  "runIdentification": {
+    "runId": "C5M-INTEGRATION-RUN-001",
+    "protocolVersion": "1.0",
+    "c5MemoryAlgorithmVersion": "C5-Memory-2.0.0",
+    "c5LegacyAlgorithmVersion": "C5-1.0.0",
+    "appVersion": "1.13.0",
+    "backupSchemaVersion": 3,
+    "localSyncProtocolVersion": 1,
+    "baselineCommit": "9a0bd3c36baa16b838c3fa4faf1baeaf4e49b388",
+    "integrationBranch": "integration/c5-memory-2.0.0",
+    "finalHead": "acffed2275aad2bc4b3b71657c330c0fbed61750"
+  },
+  "certificationChain": {
+    "IC0": "PASS",
+    "IC1": "PASS",
+    "IC2": "PASS",
+    "IC3": "PASS",
+    "IC4": "PASS",
+    "IC5": "PASS",
+    "IC6": "PASS",
+    "IC7": "PASS",
+    "IC8": "PASS",
+    "IC9": "PASS",
+    "IC10": "PASS",
+    "IC11": "PASS",
+    "IC11_BROWSER_REAL": "PASS",
+    "IC12": "PASS"
+  },
+  "originalIc12Decision": "INTEGRATION_CERTIFIED",
+  "errataIc2": {
+    "errataDocument": "ic2-immutable-errata.json",
+    "causeCode": "NONDETERMINISTIC_FROZEN_AT_REGENERATION",
+    "rootCauseSummary": "O script build-ic2-contracts.ts utilizou 'frozenAt: new Date().toISOString()', gerando novos hashes na materialização em disco às 11:45:33-11:45:37Z que foram selados no checksums.sha256, enquanto manifest.json manteve os hashes pré-materialização T0.",
+    "rootCauseProven": true,
+    "t0ContentStatus": "T0_CONTENT_NOT_FULLY_RECONSTRUCTIBLE",
+    "t0Declaration": "Como a versão preliminar T0 não teve seu timestamp ISO gravado no manifest, declara-se T0_CONTENT_NOT_FULLY_RECONSTRUCTIBLE byte a byte. A equivalência semântica e normativa das regras e fórmulas técnicas foi integralmente comprovada.",
+    "preservedDeclaredT0Hashes": [
+      {
+        "contract": "ic2-canonical-pool-prng-contract.json",
+        "declaredT0Sha256": "68954cc71222efff5a236924a1e893d0de9396026fd18c2f2038c5456668edc3"
+      },
+      {
+        "contract": "ic2-history-contract.json",
+        "declaredT0Sha256": "7a9522a135d575b56b7b9fa9b1e195faf2bc08088d64dd19c3e3b867be5a2576"
+      },
+      {
+        "contract": "ic2-fingerprint-contract.json",
+        "declaredT0Sha256": "d925aa72d056e9097a7effe54d8b9534c86d95b61034dad9c564e9cc6d923fb2"
+      },
+      {
+        "contract": "ic2-draft-stale-contract.json",
+        "declaredT0Sha256": "fcb690614bc9eaf41e173cf0e21fc4ca8070de50ec5284e981b693fe9d4486a6"
+      },
+      {
+        "contract": "ic2-pool-index-contract.json",
+        "declaredT0Sha256": "2b41878815c6d8275e2f73ca6827835f8e0fe968b00385c74307ad9b430b38bb"
+      }
+    ],
+    "preservedMaterializedHashes": [
+      {
+        "contract": "ic2-canonical-pool-prng-contract.json",
+        "materializedSha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3"
+      },
+      {
+        "contract": "ic2-history-contract.json",
+        "materializedSha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5"
+      },
+      {
+        "contract": "ic2-fingerprint-contract.json",
+        "materializedSha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b"
+      },
+      {
+        "contract": "ic2-draft-stale-contract.json",
+        "materializedSha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8"
+      },
+      {
+        "contract": "ic2-pool-index-contract.json",
+        "materializedSha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368"
+      }
+    ],
+    "downstreamLineage": {
+      "lineageStatus": "PROVEN",
+      "summary": "100% dos checkpoints IC3 a IC12 foram executados única e exclusivamente contra os contratos materializados selados no ledger. Zero checkpoints dependem da versão T0 não materializada."
+    }
+  },
+  "sealDecision": {
+    "runStatus": "SEALED",
+    "certificationStatus": "CERTIFIED_WITH_ERRATA",
+    "errataCount": 1,
+    "activeErrata": [
+      "NONDETERMINISTIC_FROZEN_AT_REGENERATION"
+    ],
+    "ic2HistoricalManifestConsistency": "FAIL",
+    "ic2PhysicalIntegrity": "PASS",
+    "rootCauseProven": "YES",
+    "ic3Ic12MaterializedLineage": "PROVEN",
+    "semanticEquivalence": "PROVEN",
+    "historicalArtifactsModified": 0,
+    "productionFilesModified": 0,
+    "finalDisposition": "CERTIFIED_WITH_ERRATA"
+  },
+  "governanceChecks": {
+    "buildCheck": "npm run build -> PASS (exitCode 0)",
+    "lintCheck": "npm run lint -> PASS (exitCode 0)",
+    "productionDiffOutsideCertification": "0 files (zero diff outside certification/)",
+    "ledgerIntegrity": "100% verified via sha256sum -c checksums.sha256"
+  }
+}
