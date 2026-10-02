@@ -10,7 +10,12 @@
  */
 
 import { repository as defaultRepository, ContestRepository } from "../../storage/contestRepository.ts";
-import { getMemoryHistoryState, confirmMemoryBetAtomic } from "../../storage/memoryTransaction.ts";
+import {
+  getMemoryHistoryState,
+  confirmMemoryBetAtomic,
+  ExactHistoryDuplicateBlockedError,
+  EXACT_HISTORY_DUPLICATE_BLOCKED,
+} from "../../storage/memoryTransaction.ts";
 import { createDraft, type C5MemoryDraft, StaleRevisionRejectedError } from "../draft.ts";
 import { canonicalizeGame } from "../history.ts";
 import { gameToBitmask } from "../math.ts";
@@ -233,7 +238,10 @@ export async function confirmMemoryDraft(
   const currentState = await getMemoryHistoryState(options);
   const dupCheck = detectDuplicateGames(draft.selectedC5, currentState.H);
   if (dupCheck.hasDuplicates) {
-    throw new Error(
+    const conflictingIndices = dupCheck.conflictingGames.map((g) => g.gameIndex);
+    throw new ExactHistoryDuplicateBlockedError(
+      dupCheck.duplicateCount,
+      conflictingIndices,
       `EXACT_HISTORY_DUPLICATE_BLOCKED: Aposta não pode ser confirmada porque ${dupCheck.duplicateCount} jogo(s) já pertencem ao histórico de apostas confirmadas.`
     );
   }
@@ -281,3 +289,9 @@ export function getMemoryAuditDetails(record: ContestRecord): MemoryAuditDetails
     winnerHistogram: [...mp.winnerHistogram],
   };
 }
+
+export {
+  ExactHistoryDuplicateBlockedError,
+  EXACT_HISTORY_DUPLICATE_BLOCKED,
+};
+

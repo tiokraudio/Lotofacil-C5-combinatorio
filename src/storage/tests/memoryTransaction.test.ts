@@ -6,10 +6,13 @@ import { IDBFactory } from "fake-indexeddb";
 import {
   confirmMemoryBetAtomic,
   getMemoryHistoryState,
+  ExactHistoryDuplicateBlockedError,
+  EXACT_HISTORY_DUPLICATE_BLOCKED,
 } from "../memoryTransaction.ts";
 import { openDatabase, closeDatabase, promisifyRequest, CONTEST_STORE_NAME } from "../db.ts";
 import { createDraft, StaleRevisionRejectedError } from "../../c5-memory/draft.ts";
 import { computeHistoryFingerprint } from "../../c5-memory/history.ts";
+import { gameToBitmask } from "../../c5-memory/math.ts";
 import type { ContestRecord } from "../../c5/types.ts";
 
 function assert(condition: boolean, message: string) {
@@ -196,6 +199,515 @@ async function runTests() {
     assert(injectedErr !== null, "Falha simulada capturada com sucesso");
     const stateRollback = await getMemoryHistoryState(opts);
     assert(stateRollback.recordsCount === 0, "Rollback total confirmado: zero registros gravados");
+  }
+
+  // =========================================================================
+  // TESTES AUTORITATIVOS OBRIGATÓRIOS (POST_CERT_EXTENSION: UI-1A.1)
+  // =========================================================================
+  console.log("\n--- TESTES AUTORITATIVOS DA EXTENSÃO ATÔMICA (T1 - T10) ---");
+
+  // Helper para base com concurso 3001 confirmado
+  async function setupBaseWithContest3001(opts: any) {
+    const state0 = await getMemoryHistoryState(opts);
+    const draft1 = createDraft({
+      H: state0.H,
+      historyRevision: state0.historyRevision,
+      historyFingerprint: state0.historyFingerprint,
+      poolMasterSeed: 10001,
+    });
+    const res1 = await confirmMemoryBetAtomic({
+      contestNumber: 3001,
+      draft: draft1,
+      options: opts,
+    });
+    return { draft1, res1 };
+  }
+
+  // -------------------------------------------------------------------------
+  // T1 — chamada direta maliciosa
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T1: Chamada direta maliciosa com jogo duplicado");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+    const { draft1 } = await setupBaseWithContest3001(opts);
+    const state1 = await getMemoryHistoryState(opts);
+
+    // Draft criado com OCC fresco mas adulterado com jogo de draft1
+    const freshDraft = createDraft({
+      H: state1.H,
+      historyRevision: state1.historyRevision,
+      historyFingerprint: state1.historyFingerprint,
+      poolMasterSeed: 20002,
+    });
+    const maliciousDraft = {
+      ...freshDraft,
+      selectedC5: [
+        [...draft1.selectedC5[0]], // Jogo duplicado
+        freshDraft.selectedC5[1],
+        freshDraft.selectedC5[2],
+        freshDraft.selectedC5[3],
+        freshDraft.selectedC5[4],
+      ],
+    };
+
+    let caught: any = null;
+    try {
+      await confirmMemoryBetAtomic({
+        contestNumber: 3002,
+        draft: maliciousDraft as any,
+        options: opts,
+      });
+    } catch (err: any) {
+      caught = err;
+    }
+
+    assert(caught instanceof ExactHistoryDuplicateBlockedError, "T1: Lançou ExactHistoryDuplicateBlockedError");
+    assert(caught.code === EXACT_HISTORY_DUPLICATE_BLOCKED, "T1: Código do erro é EXACT_HISTORY_DUPLICATE_BLOCKED");
+    assert(caught.duplicateCount === 1, "T1: duplicateCount é 1");
+    assert(caught.conflictingIndices.includes(0), "T1: conflictingIndices inclui índice 0");
+
+    const stateAfter = await getMemoryHistoryState(opts);
+    assert(stateAfter.recordsCount === 1, "T1: Zero persistência adicional (store manteve cardinalidade 1)");
+  }
+
+  // -------------------------------------------------------------------------
+  // T2 — rollback integral
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T2: Rollback integral após rejeição por duplicidade");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+    const { draft1, res1 } = await setupBaseWithContest3001(opts);
+
+    const stateBefore = await getMemoryHistoryState(opts);
+
+    const freshDraft = createDraft({
+      H: stateBefore.H,
+      historyRevision: stateBefore.historyRevision,
+      historyFingerprint: stateBefore.historyFingerprint,
+      poolMasterSeed: 30003,
+    });
+    const dupDraft = {
+      ...freshDraft,
+      selectedC5: [
+        freshDraft.selectedC5[0],
+        [...draft1.selectedC5[2]], // Jogo duplicado
+        freshDraft.selectedC5[2],
+        freshDraft.selectedC5[3],
+        freshDraft.selectedC5[4],
+      ],
+    };
+
+    try {
+      await confirmMemoryBetAtomic({
+        contestNumber: 3002,
+        draft: dupDraft as any,
+        options: opts,
+      });
+    } catch {}
+
+    const stateAfter = await getMemoryHistoryState(opts);
+    assert(stateAfter.recordsCount === stateBefore.recordsCount, "T2: Cardinalidade do store idêntica (1)");
+    assert(stateAfter.historyRevision === stateBefore.historyRevision, "T2: Revision idêntica (1)");
+    assert(stateAfter.historyFingerprint === stateBefore.historyFingerprint, "T2: Fingerprint idêntico");
+    assert(stateAfter.H.length === stateBefore.H.length, "T2: H sem contaminação");
+
+    const db = await openDatabase(opts);
+    try {
+      const tx = db.transaction(CONTEST_STORE_NAME, "readonly");
+      const record3002 = await promisifyRequest(tx.objectStore(CONTEST_STORE_NAME).get(3002));
+      assert(!record3002, "T2: Nenhum registro parcial para o concurso 3002");
+    } finally {
+      closeDatabase(db);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // T3 — cinco duplicatas
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T3: Cinco duplicatas (todos os 5 jogos já existentes)");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+    const { draft1 } = await setupBaseWithContest3001(opts);
+    const state1 = await getMemoryHistoryState(opts);
+
+    const allDupDraft = {
+      ...draft1,
+      expectedHistoryRevision: state1.historyRevision,
+      expectedHistoryFingerprint: state1.historyFingerprint,
+      draftHistoryRevision: state1.historyRevision,
+      draftHistoryFingerprint: state1.historyFingerprint,
+    };
+
+    let caught: any = null;
+    try {
+      await confirmMemoryBetAtomic({
+        contestNumber: 3002,
+        draft: allDupDraft as any,
+        options: opts,
+      });
+    } catch (err: any) {
+      caught = err;
+    }
+
+    assert(caught instanceof ExactHistoryDuplicateBlockedError, "T3: Rejeição com ExactHistoryDuplicateBlockedError");
+    assert(caught.duplicateCount === 5, "T3: duplicateCount é 5");
+    assert(caught.conflictingIndices.length === 5, "T3: 5 índices conflitantes");
+  }
+
+  // -------------------------------------------------------------------------
+  // T4 — permutação (mesmo jogo com dezenas em ordem diferente)
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T4: Permutação de dezenas dentro do jogo duplicado");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+    const { draft1 } = await setupBaseWithContest3001(opts);
+    const state1 = await getMemoryHistoryState(opts);
+
+    // Inverte ordem das dezenas
+    const permutedGame = [...draft1.selectedC5[0]].reverse();
+    const freshDraft = createDraft({
+      H: state1.H,
+      historyRevision: state1.historyRevision,
+      historyFingerprint: state1.historyFingerprint,
+      poolMasterSeed: 40004,
+    });
+    const permutedDraft = {
+      ...freshDraft,
+      selectedC5: [
+        freshDraft.selectedC5[0],
+        permutedGame,
+        freshDraft.selectedC5[2],
+        freshDraft.selectedC5[3],
+        freshDraft.selectedC5[4],
+      ],
+    };
+
+    let caught: any = null;
+    try {
+      await confirmMemoryBetAtomic({
+        contestNumber: 3002,
+        draft: permutedDraft as any,
+        options: opts,
+      });
+    } catch (err: any) {
+      caught = err;
+    }
+
+    assert(caught instanceof ExactHistoryDuplicateBlockedError, "T4: Rejeitado por duplicidade mesmo com dezenas permutadas");
+    assert(caught.conflictingIndices.includes(1), "T4: Índice conflitante é 1");
+  }
+
+  // -------------------------------------------------------------------------
+  // T5 — não duplicado (confirmação legítima normal)
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T5: Não duplicado confirma normalmente");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+    const { res1 } = await setupBaseWithContest3001(opts);
+    const state1 = await getMemoryHistoryState(opts);
+
+    const freshDraft = createDraft({
+      H: state1.H,
+      historyRevision: state1.historyRevision,
+      historyFingerprint: state1.historyFingerprint,
+      poolMasterSeed: 50005,
+    });
+
+    const res2 = await confirmMemoryBetAtomic({
+      contestNumber: 3002,
+      draft: freshDraft,
+      options: opts,
+    });
+
+    assert(res2.record.status === "FROZEN", "T5: Concurso 3002 confirmado como FROZEN");
+    assert(res2.newRevision === 2, "T5: Revisão avançou para 2");
+    assert(res2.record.memoryPayload?.confirmedRevision === 2, "T5: memoryPayload.confirmedRevision é 2");
+  }
+
+  // -------------------------------------------------------------------------
+  // T6 — stale continua prioritariamente protegido
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T6: Proteção stale continua prioritária sobre histórico modificado");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+    const { draft1 } = await setupBaseWithContest3001(opts);
+
+    // Draft criado contra revisão 0 (está desatualizado em relação à base que já está na rev 1)
+    // E propositalmente contém jogo duplicado
+    const staleAndDuplicateDraft = {
+      ...draft1,
+      expectedHistoryRevision: 0, // Stale!
+      expectedHistoryFingerprint: computeHistoryFingerprint([]), // Stale!
+    };
+
+    let caught: any = null;
+    try {
+      await confirmMemoryBetAtomic({
+        contestNumber: 3002,
+        draft: staleAndDuplicateDraft as any,
+        options: opts,
+      });
+    } catch (err: any) {
+      caught = err;
+    }
+
+    assert(caught instanceof StaleRevisionRejectedError, "T6: OCC rejeitou com StaleRevisionRejectedError prioritariamente");
+    assert(caught.code === "STALE_REVISION_REJECTED", "T6: Código é STALE_REVISION_REJECTED");
+  }
+
+  // -------------------------------------------------------------------------
+  // T7 — concorrência A × B
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T7: Concorrência A x B (duas confirmações concorrentes)");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+    const state0 = await getMemoryHistoryState(opts);
+
+    const draftA = createDraft({
+      H: state0.H,
+      historyRevision: 0,
+      historyFingerprint: state0.historyFingerprint,
+      poolMasterSeed: 70001,
+    });
+    const draftB = createDraft({
+      H: state0.H,
+      historyRevision: 0,
+      historyFingerprint: state0.historyFingerprint,
+      poolMasterSeed: 70002,
+    });
+
+    const [resA, resB] = await Promise.allSettled([
+      confirmMemoryBetAtomic({ contestNumber: 3001, draft: draftA, options: opts }),
+      confirmMemoryBetAtomic({ contestNumber: 3002, draft: draftB, options: opts }),
+    ]);
+
+    const successes = [resA, resB].filter((r) => r.status === "fulfilled");
+    const rejections = [resA, resB].filter((r) => r.status === "rejected");
+
+    assert(successes.length === 1, "T7: Exatamente uma das transações concorrentes prevaleceu");
+    assert(rejections.length === 1, "T7: A transação concorrente que perdeu a corrida foi rejeitada");
+    const stateFinal = await getMemoryHistoryState(opts);
+    assert(stateFinal.recordsCount === 1, "T7: Estado final consistente com 1 registro");
+  }
+
+  // -------------------------------------------------------------------------
+  // T8 — bypass da Application Layer
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T8: Hard Block atômico funciona com bypass total da Application Layer");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+    const { draft1 } = await setupBaseWithContest3001(opts);
+    const state1 = await getMemoryHistoryState(opts);
+
+    // Chamador não importa nem toca em memoryBetOrchestrator, chama direto confirmMemoryBetAtomic
+    const freshDraft = createDraft({
+      H: state1.H,
+      historyRevision: state1.historyRevision,
+      historyFingerprint: state1.historyFingerprint,
+      poolMasterSeed: 88888,
+    });
+    const rawInjectedDraft = {
+      ...freshDraft,
+      selectedC5: [
+        freshDraft.selectedC5[0],
+        freshDraft.selectedC5[1],
+        freshDraft.selectedC5[2],
+        freshDraft.selectedC5[3],
+        [...draft1.selectedC5[4]], // Duplicado direto
+      ],
+    };
+
+    let caught: any = null;
+    try {
+      await confirmMemoryBetAtomic({
+        contestNumber: 3002,
+        draft: rawInjectedDraft as any,
+        options: opts,
+      });
+    } catch (err: any) {
+      caught = err;
+    }
+
+    assert(caught?.code === EXACT_HISTORY_DUPLICATE_BLOCKED, "T8: Rejeitado pelo storage autoritativo sem orquestrador");
+  }
+
+  // -------------------------------------------------------------------------
+  // T9 — isolamento exógeno (CAIXA, score, prêmio não interferem)
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T9: Isolamento exógeno (dados CAIXA/score não alteram detecção)");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+
+    // Inserir registro SCORED com dados exógenos de conferência CAIXA
+    const db = await openDatabase(opts);
+    const gameExog = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    const scoredRecord: ContestRecord = {
+      status: "SCORED",
+      contestNumber: 3000,
+      generationId: "c5-3000-scored",
+      algorithmVersion: "C5-1.0.0",
+      generatedAt: new Date().toISOString(),
+      frozenAt: new Date().toISOString(),
+      betPlacedAt: new Date().toISOString(),
+      generation: {
+        permutation: [],
+        slotAssignments: {},
+        games: [gameExog, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]],
+      },
+      integrityHash: "exogenous-test-hash",
+      officialResult: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      scoredAt: new Date().toISOString(),
+    };
+
+    try {
+      const tx = db.transaction(CONTEST_STORE_NAME, "readwrite");
+      await promisifyRequest(tx.objectStore(CONTEST_STORE_NAME).put(scoredRecord));
+    } finally {
+      closeDatabase(db);
+    }
+
+    const stateScored = await getMemoryHistoryState(opts);
+    const freshDraft = createDraft({
+      H: stateScored.H,
+      historyRevision: stateScored.historyRevision,
+      historyFingerprint: stateScored.historyFingerprint,
+      poolMasterSeed: 99999,
+    });
+
+    // Injeta gameExog no draft
+    const colExogDraft = {
+      ...freshDraft,
+      selectedC5: [
+        [...gameExog],
+        freshDraft.selectedC5[1],
+        freshDraft.selectedC5[2],
+        freshDraft.selectedC5[3],
+        freshDraft.selectedC5[4],
+      ],
+    };
+
+    let caught: any = null;
+    try {
+      await confirmMemoryBetAtomic({
+        contestNumber: 3001,
+        draft: colExogDraft as any,
+        options: opts,
+      });
+    } catch (err: any) {
+      caught = err;
+    }
+
+    assert(caught?.code === EXACT_HISTORY_DUPLICATE_BLOCKED, "T9: Jogo de concurso SCORED com dados CAIXA é bloqueado por pertencer a H");
+  }
+
+  // -------------------------------------------------------------------------
+  // T10 — controle negativo
+  // -------------------------------------------------------------------------
+  {
+    console.log("▶ T10: Controle negativo (sem o Passo 4.5, jogo duplicado entra na base)");
+    const idb = new IDBFactory();
+    const opts = { idbFactory: idb };
+    const { draft1 } = await setupBaseWithContest3001(opts);
+    const state1 = await getMemoryHistoryState(opts);
+
+    const dupGame = [...draft1.selectedC5[0]];
+    const freshDraft = createDraft({
+      H: state1.H,
+      historyRevision: state1.historyRevision,
+      historyFingerprint: state1.historyFingerprint,
+      poolMasterSeed: 10101,
+    });
+    const dupDraft = {
+      ...freshDraft,
+      selectedC5: [
+        dupGame,
+        freshDraft.selectedC5[1],
+        freshDraft.selectedC5[2],
+        freshDraft.selectedC5[3],
+        freshDraft.selectedC5[4],
+      ],
+    };
+
+    // 1. COM o guard: confirmMemoryBetAtomic bloqueia
+    let blockedWithGuard = false;
+    try {
+      await confirmMemoryBetAtomic({
+        contestNumber: 3002,
+        draft: dupDraft as any,
+        options: opts,
+      });
+    } catch (e: any) {
+      if (e.code === EXACT_HISTORY_DUPLICATE_BLOCKED) {
+        blockedWithGuard = true;
+      }
+    }
+    assert(blockedWithGuard, "T10: COM o guard atômico, a operação é estritamente bloqueada");
+
+    // 2. SEM o guard (simulação proposital de transação sem o Passo 4.5):
+    const db = await openDatabase(opts);
+    try {
+      const tx = db.transaction(CONTEST_STORE_NAME, "readwrite");
+      const store = tx.objectStore(CONTEST_STORE_NAME);
+      const nowIso = new Date().toISOString();
+      const mockRecord: ContestRecord = {
+        status: "FROZEN",
+        contestNumber: 3002,
+        generationId: "mock-3002",
+        algorithmVersion: dupDraft.algorithmVersion,
+        generatedAt: nowIso,
+        frozenAt: nowIso,
+        betPlacedAt: nowIso,
+        generation: {
+          permutation: [],
+          slotAssignments: {},
+          games: [
+            [...dupDraft.selectedC5[0]],
+            [...dupDraft.selectedC5[1]],
+            [...dupDraft.selectedC5[2]],
+            [...dupDraft.selectedC5[3]],
+            [...dupDraft.selectedC5[4]],
+          ],
+        },
+        integrityHash: "mock-hash",
+        memoryPayload: {
+          algorithmVersion: dupDraft.algorithmVersion,
+          poolMasterSeed: dupDraft.poolMasterSeed,
+          poolIndex: dupDraft.poolIndex,
+          selectedC5: [
+            [...dupDraft.selectedC5[0]],
+            [...dupDraft.selectedC5[1]],
+            [...dupDraft.selectedC5[2]],
+            [...dupDraft.selectedC5[3]],
+            [...dupDraft.selectedC5[4]],
+          ],
+          historyRevision: dupDraft.expectedHistoryRevision,
+          historyFingerprint: dupDraft.expectedHistoryFingerprint,
+          winnerHistogram: [...dupDraft.winnerHistogram],
+          confirmedRevision: 2,
+          confirmedAt: nowIso,
+        },
+      };
+      await promisifyRequest(store.put(mockRecord));
+    } finally {
+      closeDatabase(db);
+    }
+
+    const stateWithout = await getMemoryHistoryState(opts);
+    const copiesInH = stateWithout.H.filter(
+      (g) => gameToBitmask(g) === gameToBitmask(dupGame)
+    ).length;
+
+    assert(copiesInH === 2, "T10: SEM o guard, a duplicata entra em H (cópias = 2)");
+    console.log("  ✓ T10 PASS: Eficácia causal comprovada.");
   }
 
   console.log("🎉 Todos os testes unitários de fronteira transacional passaram com SUCESSO!");

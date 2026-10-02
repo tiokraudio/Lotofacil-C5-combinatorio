@@ -27,6 +27,7 @@ import {
   STALE_REVISION_REJECTED,
   type C5MemoryDraft,
 } from "../c5-memory/draft.ts";
+import { gameToBitmask } from "../c5-memory/math.ts";
 import {
   buildCanonicalPayload,
   serializeCanonicalPayload,
@@ -34,6 +35,33 @@ import {
 import { sha256 } from "../c5-memory/sha256.ts";
 import type { ContestRecord, C5Generation, FrozenMemoryPayload } from "../c5/types.ts";
 import type { StorageOptions } from "./types.ts";
+
+export const EXACT_HISTORY_DUPLICATE_BLOCKED = "EXACT_HISTORY_DUPLICATE_BLOCKED" as const;
+
+/**
+ * Erro canônico lançado quando uma aposta é rejeitada na transação atômica
+ * por conter qualquer jogo de 15 dezenas já existente no histórico canônico H.
+ */
+export class ExactHistoryDuplicateBlockedError extends Error {
+  public readonly code = EXACT_HISTORY_DUPLICATE_BLOCKED;
+  public readonly duplicateCount: number;
+  public readonly conflictingIndices: readonly number[];
+
+  constructor(
+    duplicateCount: number,
+    conflictingIndices: readonly number[],
+    message?: string
+  ) {
+    super(
+      message ||
+        `EXACT_HISTORY_DUPLICATE_BLOCKED: Aposta rejeitada por conter ${duplicateCount} jogo(s) já existente(s) no histórico canônico H.`
+    );
+    this.name = "ExactHistoryDuplicateBlockedError";
+    this.duplicateCount = duplicateCount;
+    this.conflictingIndices = Object.freeze([...conflictingIndices]);
+    Object.setPrototypeOf(this, ExactHistoryDuplicateBlockedError.prototype);
+  }
+}
 
 export interface ConfirmMemoryBetParams {
   contestNumber: number;
@@ -218,6 +246,34 @@ export async function confirmMemoryBetAtomic(
               `Colisão: Concurso ${contestNumber} já possui registro em estado '${existing.status}'. Confirmação duplicada rejeitada.`
             );
             safeReject(collisionErr);
+            tx.abort();
+            return;
+          }
+
+          // 4.5. HARD BLOCK ATÔMICO DE REPETIÇÃO EXATA (POST_CERT_EXTENSION: C5_MEMORY_ATOMIC_EXACT_DUPLICATE_GUARD)
+          // Invariante autoritativa: Nenhum ContestRecord C5-Memory pode ser confirmado se qualquer
+          // jogo de draft.selectedC5 já existir no histórico canônico H observado pela própria transação.
+          const historyMasks = new Set<number>();
+          for (const hGame of H) {
+            historyMasks.add(gameToBitmask(hGame));
+          }
+
+          const conflictingIndices: number[] = [];
+          for (let i = 0; i < draft.selectedC5.length; i++) {
+            const game = draft.selectedC5[i];
+            const mask = gameToBitmask(game);
+            if (historyMasks.has(mask)) {
+              conflictingIndices.push(i);
+            }
+          }
+
+          if (conflictingIndices.length > 0) {
+            const dupErr = new ExactHistoryDuplicateBlockedError(
+              conflictingIndices.length,
+              conflictingIndices,
+              `EXACT_HISTORY_DUPLICATE_BLOCKED: Aposta rejeitada dentro da transação atômica por conter ${conflictingIndices.length} jogo(s) já existente(s) no histórico canônico H (índice(s): ${conflictingIndices.join(", ")}).`
+            );
+            safeReject(dupErr);
             tx.abort();
             return;
           }

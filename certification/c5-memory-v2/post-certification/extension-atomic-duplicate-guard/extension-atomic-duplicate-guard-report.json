@@ -1,0 +1,54 @@
+{
+  "extensionName": "C5_MEMORY_ATOMIC_EXACT_DUPLICATE_GUARD",
+  "classification": "POST_CERT_EXTENSION",
+  "authorizedBy": "Executive Order UI-1A.1",
+  "timestamp": "2026-10-02T13:17:38.703Z",
+  "barrierStatus": {
+    "run001Status": "SEALED",
+    "run001Certification": "CERTIFIED_WITH_ERRATA",
+    "run001SealSha256": "166622d34d3a97fb066096f0ea620dc6e2b1b8e403a00a9484dd259b3ef38003",
+    "run001ChecksumsStatus": "175/175 OK",
+    "action001Status": "9/9 OK",
+    "coreCertifiedModulesFrozen": true
+  },
+  "invariantsEnforced": {
+    "exactDuplicateBlockedAtCommit": true,
+    "transactionAbortedOnCollision": true,
+    "zeroDatabaseSideEffectsOnAbort": true,
+    "permutedGameOrderProtected": true,
+    "all5GamesCollisionsHandled": true,
+    "errorCode": "EXACT_HISTORY_DUPLICATE_BLOCKED",
+    "errorClass": "ExactHistoryDuplicateBlockedError"
+  },
+  "testResults": {
+    "directAtomicBypassSingleDuplicate": "PASS",
+    "directAtomicBypassPermutedOrder": "PASS",
+    "directAtomicBypassAll5Duplicates": "PASS",
+    "legitimateFreshDraftConfirmation": "PASS",
+    "orchestratorDefenseInDepth": "PASS",
+    "negativeControl": "PASS"
+  },
+  "affectedFiles": [
+    {
+      "path": "src/storage/memoryTransaction.ts",
+      "sha256": "0840522b9924fbd2c60bd7cf96116d40e7f78ef9026f1b882302551ab3fa2855",
+      "justification": "Inserção do passo 4.5 de verificação atômica de duplicidade exata e classe ExactHistoryDuplicateBlockedError"
+    },
+    {
+      "path": "src/c5-memory/application/memoryBetOrchestrator.ts",
+      "sha256": "021c2eb7113c36991433524251a018d37355a1b0c9759fbf76d1e148af1e91a1",
+      "justification": "Ajuste em confirmMemoryDraft para lançar ExactHistoryDuplicateBlockedError na defesa de primeira camada"
+    },
+    {
+      "path": "src/c5-memory/application/types.ts",
+      "sha256": "cf67ee730dd73dc9ad9659bca42bb7727c11c7a2e7049e57f70bb923d27df069",
+      "justification": "Exportação de ExactHistoryDuplicateBlockedError e EXACT_HISTORY_DUPLICATE_BLOCKED"
+    },
+    {
+      "path": "src/storage/tests/memoryTransaction.test.ts",
+      "sha256": "083fa0b8d38a982d11d5f8910256cac5aab0b3ec9efe311c30f413a0df81c39f",
+      "justification": "Inclusão da suíte de testes autoritativos T1-T10 na fronteira transacional"
+    }
+  ],
+  "finalStatus": "PASS"
+}

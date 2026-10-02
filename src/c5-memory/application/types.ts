@@ -92,3 +92,9 @@ export interface MemoryAuditDetails {
   readonly confirmedAt?: string;
   readonly winnerHistogram: readonly number[];
 }
+
+export {
+  ExactHistoryDuplicateBlockedError,
+  EXACT_HISTORY_DUPLICATE_BLOCKED,
+} from "../../storage/memoryTransaction.ts";
+
