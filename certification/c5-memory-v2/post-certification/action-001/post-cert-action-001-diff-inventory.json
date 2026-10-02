@@ -5,14 +5,14 @@
     {
       "path": "certification/c5-memory-v2/post-certification/action-001/build-ic2-contracts-deterministic.ts",
       "classification": "TOOLING_NEW",
-      "reason": "Gerador determinístico corrigido sem chamada a relógio ou variáveis dinâmicas",
-      "sha256": "789465a729ffeeb0f9dad51ed4981475f6a26e3df5422d5f253267c43d95b01a"
+      "reason": "Gerador determinístico puro com suporte a timestamps explícitos por contrato",
+      "sha256": "f21cc108426c102cae5d05537131c9fd1ff48b60ee7465a775cc7bbc6e4cfaaf"
     },
     {
       "path": "certification/c5-memory-v2/post-certification/action-001/run-post-cert-action-001.ts",
       "classification": "TOOLING_TEST",
-      "reason": "Harness de verificação de determinismo, controle negativo e não-impacto",
-      "sha256": "4cde315854bbc1afd2130ada227228c504ad4213d90d7f6e21ea3184d2f67deb"
+      "reason": "Harness de verificação de determinismo, reprodução materializada, diff estrutural e não-impacto",
+      "sha256": "6d022f0ec40277062f43350b50d77efd45e8cdc3f42b438a6dad719b4c68fb0d"
     }
   ],
   "productionFunctionalFilesModified": [],

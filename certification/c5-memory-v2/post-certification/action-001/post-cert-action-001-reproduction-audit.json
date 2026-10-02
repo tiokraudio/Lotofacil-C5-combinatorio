@@ -1,0 +1,127 @@
+{
+  "auditTitle": "AUDITORIA DE REPRODUTIBILIDADE MATERIALIZADA E HISTÓRICA DOS CONTRATOS IC2",
+  "conductedAt": "2026-10-02T12:20:42.924Z",
+  "historicalInputsFrozen": {
+    "prngContract": "2026-10-01T11:45:33.661Z",
+    "historyContract": "2026-10-01T11:45:37.057Z",
+    "fingerprintContract": "2026-10-01T11:45:37.058Z",
+    "draftStaleContract": "2026-10-01T11:45:37.058Z",
+    "poolIndexContract": "2026-10-01T11:45:37.058Z"
+  },
+  "reproductionResults": [
+    {
+      "contractName": "Pool PRNG Contract",
+      "fileName": "ic2-canonical-pool-prng-contract.json",
+      "historicalSha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "generatedSha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "shaMatch": true,
+      "historicalByteLength": 3486,
+      "generatedByteLength": 3486,
+      "byteLengthMatch": true,
+      "byteForByteEqual": true,
+      "frozenAtUsed": "2026-10-01T11:45:33.661Z"
+    },
+    {
+      "contractName": "History Contract",
+      "fileName": "ic2-history-contract.json",
+      "historicalSha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5",
+      "generatedSha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5",
+      "shaMatch": true,
+      "historicalByteLength": 782,
+      "generatedByteLength": 782,
+      "byteLengthMatch": true,
+      "byteForByteEqual": true,
+      "frozenAtUsed": "2026-10-01T11:45:37.057Z"
+    },
+    {
+      "contractName": "Fingerprint Contract",
+      "fileName": "ic2-fingerprint-contract.json",
+      "historicalSha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b",
+      "generatedSha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b",
+      "shaMatch": true,
+      "historicalByteLength": 996,
+      "generatedByteLength": 996,
+      "byteLengthMatch": true,
+      "byteForByteEqual": true,
+      "frozenAtUsed": "2026-10-01T11:45:37.058Z"
+    },
+    {
+      "contractName": "Draft / Stale Contract",
+      "fileName": "ic2-draft-stale-contract.json",
+      "historicalSha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8",
+      "generatedSha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8",
+      "shaMatch": true,
+      "historicalByteLength": 841,
+      "generatedByteLength": 841,
+      "byteLengthMatch": true,
+      "byteForByteEqual": true,
+      "frozenAtUsed": "2026-10-01T11:45:37.058Z"
+    },
+    {
+      "contractName": "Pool Index Contract",
+      "fileName": "ic2-pool-index-contract.json",
+      "historicalSha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368",
+      "generatedSha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368",
+      "shaMatch": true,
+      "historicalByteLength": 765,
+      "generatedByteLength": 765,
+      "byteLengthMatch": true,
+      "byteForByteEqual": true,
+      "frozenAtUsed": "2026-10-01T11:45:37.058Z"
+    }
+  ],
+  "dualReproducibilityAudit": [
+    {
+      "fileName": "ic2-canonical-pool-prng-contract.json",
+      "run1Sha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "run2Sha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "historicalSha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "run1EqualsRun2": true,
+      "run1EqualsHistorical": true,
+      "byteLength": 3486
+    },
+    {
+      "fileName": "ic2-history-contract.json",
+      "run1Sha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5",
+      "run2Sha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5",
+      "historicalSha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5",
+      "run1EqualsRun2": true,
+      "run1EqualsHistorical": true,
+      "byteLength": 782
+    },
+    {
+      "fileName": "ic2-fingerprint-contract.json",
+      "run1Sha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b",
+      "run2Sha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b",
+      "historicalSha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b",
+      "run1EqualsRun2": true,
+      "run1EqualsHistorical": true,
+      "byteLength": 996
+    },
+    {
+      "fileName": "ic2-draft-stale-contract.json",
+      "run1Sha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8",
+      "run2Sha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8",
+      "historicalSha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8",
+      "run1EqualsRun2": true,
+      "run1EqualsHistorical": true,
+      "byteLength": 841
+    },
+    {
+      "fileName": "ic2-pool-index-contract.json",
+      "run1Sha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368",
+      "run2Sha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368",
+      "historicalSha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368",
+      "run1EqualsRun2": true,
+      "run1EqualsHistorical": true,
+      "byteLength": 765
+    }
+  ],
+  "metrics": {
+    "materializedReproduction": "5/5",
+    "reproducibility": "PASS",
+    "historicalReproducibility": "PASS",
+    "divergencesExcludingFrozenAt": 0,
+    "rootCauseOf4HashMismatches": "O teste preliminar aplicou um único timestamp congelado (11:45:33.661Z) aos 5 contratos, enquanto o gerador original não determinístico invocou new Date().toISOString() sequencialmente, produzindo 11:45:37.057Z para History e 11:45:37.058Z para Fingerprint, Draft/Stale e Pool Index. Quando os timestamps históricos são fornecidos individualmente como inputs congelados, a reprodução atinge 5/5 (100% byte a byte)."
+  }
+}

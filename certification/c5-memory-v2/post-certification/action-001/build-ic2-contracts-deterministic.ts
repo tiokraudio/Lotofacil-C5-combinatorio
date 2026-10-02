@@ -16,8 +16,15 @@ import crypto from "crypto";
  */
 
 export interface GeneratorFrozenInputs {
-  frozenTimestamp: string;
-  auditConductedTimestamp: string;
+  frozenTimestamp?: string;
+  auditConductedTimestamp?: string;
+  contractTimestamps?: {
+    prngContract?: string;
+    historyContract?: string;
+    fingerprintContract?: string;
+    draftStaleContract?: string;
+    poolIndexContract?: string;
+  };
 }
 
 export interface GeneratedContractOutput {
@@ -179,36 +186,47 @@ export function generateDeterministicContracts(
   inputs: GeneratorFrozenInputs,
   outDir?: string
 ): GeneratedContractOutput[] {
-  // Verificação estrita de ausência de falsos inputs
-  if (!inputs || typeof inputs.frozenTimestamp !== "string" || !inputs.frozenTimestamp.trim()) {
-    throw new Error("DETERMINISM_VIOLATION: frozenTimestamp explícito é obrigatório.");
+  const prngTime = inputs.contractTimestamps?.prngContract ?? inputs.frozenTimestamp;
+  const historyTime = inputs.contractTimestamps?.historyContract ?? inputs.frozenTimestamp;
+  const fingerprintTime = inputs.contractTimestamps?.fingerprintContract ?? inputs.frozenTimestamp;
+  const draftStaleTime = inputs.contractTimestamps?.draftStaleContract ?? inputs.frozenTimestamp;
+  const poolIndexTime = inputs.contractTimestamps?.poolIndexContract ?? inputs.frozenTimestamp;
+
+  if (
+    !prngTime || !prngTime.trim() ||
+    !historyTime || !historyTime.trim() ||
+    !fingerprintTime || !fingerprintTime.trim() ||
+    !draftStaleTime || !draftStaleTime.trim() ||
+    !poolIndexTime || !poolIndexTime.trim()
+  ) {
+    throw new Error("DETERMINISM_VIOLATION: timestamps explícitos para todos os 5 contratos são obrigatórios.");
   }
 
   const rawContracts = [
     {
       name: "Pool PRNG Contract",
       file: "ic2-canonical-pool-prng-contract.json",
-      obj: buildPrngContract(inputs.frozenTimestamp)
+      obj: buildPrngContract(prngTime)
     },
     {
       name: "History Contract",
       file: "ic2-history-contract.json",
-      obj: buildHistoryContract(inputs.frozenTimestamp)
+      obj: buildHistoryContract(historyTime)
     },
     {
       name: "Fingerprint Contract",
       file: "ic2-fingerprint-contract.json",
-      obj: buildFingerprintContract(inputs.frozenTimestamp)
+      obj: buildFingerprintContract(fingerprintTime)
     },
     {
       name: "Draft / Stale Contract",
       file: "ic2-draft-stale-contract.json",
-      obj: buildDraftStaleContract(inputs.frozenTimestamp)
+      obj: buildDraftStaleContract(draftStaleTime)
     },
     {
       name: "Pool Index Contract",
       file: "ic2-pool-index-contract.json",
-      obj: buildPoolIndexContract(inputs.frozenTimestamp)
+      obj: buildPoolIndexContract(poolIndexTime)
     }
   ];
 
