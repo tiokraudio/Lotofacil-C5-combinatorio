@@ -174,7 +174,7 @@ export default function App() {
       <footer className="border-t border-zinc-900 bg-zinc-950/60 py-6 text-center text-xs text-zinc-400">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>
-            C₅ LOTOFÁCIL • Gerador Combinatório Auditável • Algoritmo v1.0.0
+            C₅ LOTOFÁCIL • Gerador Combinatório Auditável • C5-Memory
           </p>
           <p className="font-mono text-[11px]">
             5 jogos de 15 dezenas (R$ 17,50) • Cobertura total das 25 dezenas

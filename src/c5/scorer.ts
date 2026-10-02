@@ -93,11 +93,23 @@ export function scoreC5(
   const resultSet = new Set(validatedResult);
 
   // 2. Validação da geração C₅ antes da pontuação
-  const genValidation = validateC5(generation);
-  if (!genValidation.valid) {
-    throw new Error(
-      `Geração C5 inválida fornecida para pontuação: ${genValidation.errors.join("; ")}`
-    );
+  if (generation.permutation && generation.permutation.length === 25) {
+    const genValidation = validateC5(generation);
+    if (!genValidation.valid) {
+      throw new Error(
+        `Geração C5 inválida fornecida para pontuação: ${genValidation.errors.join("; ")}`
+      );
+    }
+  } else {
+    if (!Array.isArray(generation.games) || generation.games.length !== 5) {
+      throw new Error("Geração C5 inválida: deve conter exatamente 5 jogos.");
+    }
+    for (let i = 0; i < 5; i++) {
+      const g = generation.games[i];
+      if (!Array.isArray(g) || g.length !== 15 || new Set(g).size !== 15) {
+        throw new Error(`Jogo J${i + 1} inválido: deve conter exatamente 15 dezenas distintas.`);
+      }
+    }
   }
 
   // 3. Pontuação de cada um dos 5 jogos

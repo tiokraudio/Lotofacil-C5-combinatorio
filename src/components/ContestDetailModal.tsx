@@ -10,6 +10,7 @@ import { OfficialPrizeReconciliationPanel } from "./OfficialPrizeReconciliationP
 import { OfficialResultAuditPanel } from "./OfficialResultAuditPanel.tsx";
 import { isEligibleForFinancialReconciliation } from "../sync/index.ts";
 import type { OfficialSnapshotCoordinator } from "../sync/officialSnapshotCoordinator.ts";
+import { C5MemoryAuditModal } from "./C5MemoryAuditModal.tsx";
 
 export interface ContestDetailModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
   coordinator,
 }) => {
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
   const modalRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -116,13 +118,36 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
                   <span>Integridade verificada</span>
                 </span>
               )}
+              {record.algorithmVersion === "C5-Memory-2.0.0" || record.memoryPayload ? (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 font-mono text-[10px]">
+                  C5-Memory
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 font-mono text-[10px]">
+                  C5 legado
+                </span>
+              )}
             </div>
             <p className="text-xs text-zinc-400 mt-1">
-              Registro auditável • Arquitetura {record.algorithmVersion}
+              Registro auditável • {record.algorithmVersion === "C5-Memory-2.0.0" || record.memoryPayload ? "C5-Memory" : "C5 legado (Somente leitura)"}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Botão Ver Auditoria C5 (se C5-Memory) */}
+            {(record.algorithmVersion === "C5-Memory-2.0.0" || record.memoryPayload) && (
+              <button
+                type="button"
+                id="btn-modal-c5-audit"
+                onClick={() => setIsAuditModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-emerald-300 border border-zinc-700 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                title="Ver metadados matemáticos e criptográficos de auditoria"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>AUDITORIA C5</span>
+              </button>
+            )}
+
             {/* Botão Copiar Jogos (V1.13) */}
             <button
               type="button"
@@ -368,6 +393,14 @@ export const ContestDetailModal: React.FC<ContestDetailModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Modal de Auditoria C5-Memory em caso de inspeção detalhada */}
+      <C5MemoryAuditModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        contestNumber={record.contestNumber}
+        record={record}
+      />
     </div>
   );
 };

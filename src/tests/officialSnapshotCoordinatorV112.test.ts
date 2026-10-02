@@ -1217,7 +1217,11 @@ async function runCanonicalV112Suite(): Promise<void> {
   console.log("===============================================================================");
 }
 
-runCanonicalV112Suite().catch((err) => {
-  console.error("ERRO FATAL NA EXECUÇÃO DA SUÍTE V1.12:", err);
-  process.exit(1);
-});
+runCanonicalV112Suite()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error("ERRO FATAL NA EXECUÇÃO DA SUÍTE V1.12:", err);
+    process.exit(1);
+  });

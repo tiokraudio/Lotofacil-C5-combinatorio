@@ -129,13 +129,38 @@ export async function verifyContestIntegrity(record: ContestRecord): Promise<Int
     }
   }
 
-  // 1. Validação estrutural das invariantes matemáticas C5
-  const genValidation = validateC5(record.generation);
-  const generationValid = genValidation.valid;
-  if (!generationValid) {
-    errors.push(
-      `Invariantes C5 violadas na geração auditada: ${genValidation.errors.join("; ")}`
-    );
+  // 1. Validação estrutural da geração C5
+  let generationValid = false;
+  const isMemory = record.algorithmVersion === "C5-Memory-2.0.0";
+
+  if (isMemory) {
+    if (!record.generation || !Array.isArray(record.generation.games) || record.generation.games.length !== 5) {
+      errors.push("Campo 'generation.games' deve conter exatamente 5 jogos.");
+    } else {
+      let gamesOk = true;
+      for (let i = 0; i < 5; i++) {
+        const game = record.generation.games[i];
+        if (!Array.isArray(game) || game.length !== 15) {
+          errors.push(`Jogo J${i + 1} deve conter exatamente 15 dezenas.`);
+          gamesOk = false;
+          continue;
+        }
+        const set = new Set(game);
+        if (set.size !== 15 || !game.every((n) => Number.isInteger(n) && n >= 1 && n <= 25)) {
+          errors.push(`Jogo J${i + 1} possui dezenas inválidas ou repetidas.`);
+          gamesOk = false;
+        }
+      }
+      generationValid = gamesOk;
+    }
+  } else {
+    const genValidation = validateC5(record.generation);
+    generationValid = genValidation.valid;
+    if (!generationValid) {
+      errors.push(
+        `Invariantes C5 violadas na geração auditada: ${genValidation.errors.join("; ")}`
+      );
+    }
   }
 
   // 2. Reconstituição canônica e recálculo de hash via Web Crypto

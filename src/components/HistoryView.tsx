@@ -375,6 +375,21 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ updateTrigger = 0 }) =
                             ? "CONGELADO"
                             : "CONFERIDO"}
                         </span>
+                        {rec.algorithmVersion === "C5-Memory-2.0.0" || rec.memoryPayload ? (
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 font-mono"
+                            title="Aposta gerada com o algoritmo C5-Memory"
+                          >
+                            C5-Memory
+                          </span>
+                        ) : (
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 bg-zinc-800/80 text-zinc-400 font-mono"
+                            title="Registro histórico legado (somente leitura)"
+                          >
+                            C5 legado
+                          </span>
+                        )}
                         {rec.betPlacedAt ? (
                           <span
                             id={`badge-bet-confirmed-${rec.contestNumber}`}

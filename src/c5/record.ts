@@ -260,6 +260,18 @@ export async function scoreFrozenContest(
     officialResult: [...validatedResult],
     scoredAt,
     score: deepCloneScore(calculatedScore),
+    ...(record.memoryPayload
+      ? {
+          memoryPayload: {
+            ...record.memoryPayload,
+            winnerHistogram: [...record.memoryPayload.winnerHistogram],
+            selectedC5: record.memoryPayload.selectedC5.map((g) => [...g]),
+            distanceVector: record.memoryPayload.distanceVector
+              ? [...record.memoryPayload.distanceVector]
+              : undefined,
+          },
+        }
+      : {}),
   };
 }
 
