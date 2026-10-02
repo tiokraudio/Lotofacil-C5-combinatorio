@@ -1,0 +1,109 @@
+{
+  "postCertAction": "IC2_GENERATOR_DETERMINISM_FIX",
+  "actionId": "POST-CERT-ACTION-001",
+  "conductedAt": "2026-10-02T12:15:56.159Z",
+  "rootCause": "NONDETERMINISTIC_FROZEN_AT_REGENERATION",
+  "rootCauseFixed": true,
+  "deterministicStrategy": {
+    "principle": "Eliminação total de chamadas a relógio (new Date(), Date.now(), performance.now()) e variáveis de ambiente na geração de contratos.",
+    "parameterization": "Valores temporais normativos são exigidos como entradas congeladas e imutáveis da função geradora.",
+    "purityGuarantee": "Para a mesma entrada congelada A, GEN(A) === GEN(A) é verdadeiro byte a byte com zero divergência."
+  },
+  "run1VsRun2Comparison": [
+    {
+      "contractName": "Pool PRNG Contract",
+      "fileName": "ic2-canonical-pool-prng-contract.json",
+      "run1Sha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "run2Sha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+      "byteLengthRun1": 3486,
+      "byteLengthRun2": 3486,
+      "byteLengthMatch": true,
+      "sha256Match": true,
+      "byteForByteEqual": true
+    },
+    {
+      "contractName": "History Contract",
+      "fileName": "ic2-history-contract.json",
+      "run1Sha256": "13e7d0a7719d4b3e5ce00f68584fa3a57c25664a0ffb5ac3fa84e8b1ff452f38",
+      "run2Sha256": "13e7d0a7719d4b3e5ce00f68584fa3a57c25664a0ffb5ac3fa84e8b1ff452f38",
+      "byteLengthRun1": 782,
+      "byteLengthRun2": 782,
+      "byteLengthMatch": true,
+      "sha256Match": true,
+      "byteForByteEqual": true
+    },
+    {
+      "contractName": "Fingerprint Contract",
+      "fileName": "ic2-fingerprint-contract.json",
+      "run1Sha256": "22a4b43a9e0e248cad8156bdbe268211a81754f0d8bc000357f2fe7135246c51",
+      "run2Sha256": "22a4b43a9e0e248cad8156bdbe268211a81754f0d8bc000357f2fe7135246c51",
+      "byteLengthRun1": 996,
+      "byteLengthRun2": 996,
+      "byteLengthMatch": true,
+      "sha256Match": true,
+      "byteForByteEqual": true
+    },
+    {
+      "contractName": "Draft / Stale Contract",
+      "fileName": "ic2-draft-stale-contract.json",
+      "run1Sha256": "f16789c7d2e3ef270bf206e977bc7164a2eec1838479161b04a8bd9197b2c3f8",
+      "run2Sha256": "f16789c7d2e3ef270bf206e977bc7164a2eec1838479161b04a8bd9197b2c3f8",
+      "byteLengthRun1": 841,
+      "byteLengthRun2": 841,
+      "byteLengthMatch": true,
+      "sha256Match": true,
+      "byteForByteEqual": true
+    },
+    {
+      "contractName": "Pool Index Contract",
+      "fileName": "ic2-pool-index-contract.json",
+      "run1Sha256": "b8c26c7f3980ac6bc28cd00d0f05b11d7605ba498a348fc4af8be433f4b15976",
+      "run2Sha256": "b8c26c7f3980ac6bc28cd00d0f05b11d7605ba498a348fc4af8be433f4b15976",
+      "byteLengthRun1": 765,
+      "byteLengthRun2": 765,
+      "byteLengthMatch": true,
+      "sha256Match": true,
+      "byteForByteEqual": true
+    }
+  ],
+  "negativeControl": {
+    "controlId": "POST-CERT-NEG-01",
+    "description": "Detecção de não determinismo em gerador que utiliza new Date().toISOString()",
+    "timestampRun1": "2026-10-02T12:15:49.796Z",
+    "timestampRun2": "2026-10-02T12:15:49.946Z",
+    "shaRun1": "0382f09803bd8f746fad29ef8dd99e5a7c95ddd408584b80b2a38ff6dc3063f7",
+    "shaRun2": "6e1f1bbd69e2cae1646ec4df03eb12e93490bf4ee06437a6d7b7bdafc9c5994a",
+    "divergenceDetected": true,
+    "status": "PASS",
+    "conclusion": "O teste de determinismo detecta com 100% de sensibilidade a falha que originou a errata da Run 001."
+  },
+  "run001IntegrityProof": {
+    "runStatus": "SEALED",
+    "certificationStatus": "CERTIFIED_WITH_ERRATA",
+    "sealSha256": "166622d34d3a97fb066096f0ea620dc6e2b1b8e403a00a9484dd259b3ef38003",
+    "ledgerVerification": "PASS (175/175 artefatos)",
+    "run001Modified": false
+  },
+  "productionImpactProof": {
+    "functionalFilesChecked": 15,
+    "functionalFilesMismatches": 0,
+    "build": "PASS",
+    "lint": "PASS",
+    "productionFunctionalCodeModified": false
+  },
+  "executiveOutputs": {
+    "POST_CERT_ACTION": "IC2_GENERATOR_DETERMINISM_FIX",
+    "ROOT_CAUSE": "NONDETERMINISTIC_FROZEN_AT_REGENERATION",
+    "ROOT_CAUSE_FIXED": "YES",
+    "DETERMINISTIC_REGENERATION": "PASS",
+    "CONTRACTS_TESTED": 5,
+    "BYTE_IDENTICAL": "5/5",
+    "SHA256_IDENTICAL": "5/5",
+    "NEGATIVE_CONTROL": "PASS",
+    "RUN_001_MODIFIED": "NO",
+    "PRODUCTION_FUNCTIONAL_CODE_MODIFIED": "NO",
+    "BUILD": "PASS",
+    "LINT": "PASS",
+    "FINAL_STATUS": "PASS"
+  }
+}

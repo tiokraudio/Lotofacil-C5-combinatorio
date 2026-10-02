@@ -1,0 +1,25 @@
+{
+  "actionId": "POST-CERT-ACTION-001",
+  "scope": "TOOLING_ONLY",
+  "toolingFilesAdded": [
+    {
+      "path": "certification/c5-memory-v2/post-certification/action-001/build-ic2-contracts-deterministic.ts",
+      "classification": "TOOLING_NEW",
+      "reason": "Gerador determinístico corrigido sem chamada a relógio ou variáveis dinâmicas",
+      "sha256": "789465a729ffeeb0f9dad51ed4981475f6a26e3df5422d5f253267c43d95b01a"
+    },
+    {
+      "path": "certification/c5-memory-v2/post-certification/action-001/run-post-cert-action-001.ts",
+      "classification": "TOOLING_TEST",
+      "reason": "Harness de verificação de determinismo, controle negativo e não-impacto",
+      "sha256": "4cde315854bbc1afd2130ada227228c504ad4213d90d7f6e21ea3184d2f67deb"
+    }
+  ],
+  "productionFunctionalFilesModified": [],
+  "run001ArtifactsModified": [],
+  "conclusion": {
+    "productionFilesModified": 0,
+    "run001FilesModified": 0,
+    "isolationPreserved": true
+  }
+}

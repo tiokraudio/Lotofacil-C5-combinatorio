@@ -1,0 +1,11 @@
+{
+  "controlId": "POST-CERT-NEG-01",
+  "description": "Detecção de não determinismo em gerador que utiliza new Date().toISOString()",
+  "timestampRun1": "2026-10-02T12:15:49.796Z",
+  "timestampRun2": "2026-10-02T12:15:49.946Z",
+  "shaRun1": "0382f09803bd8f746fad29ef8dd99e5a7c95ddd408584b80b2a38ff6dc3063f7",
+  "shaRun2": "6e1f1bbd69e2cae1646ec4df03eb12e93490bf4ee06437a6d7b7bdafc9c5994a",
+  "divergenceDetected": true,
+  "status": "PASS",
+  "conclusion": "O teste de determinismo detecta com 100% de sensibilidade a falha que originou a errata da Run 001."
+}
