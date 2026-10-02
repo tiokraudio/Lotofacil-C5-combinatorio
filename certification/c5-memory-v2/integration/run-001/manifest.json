@@ -1037,7 +1037,7 @@
     }
   },
   "certifiedAt": "2026-10-01T13:54:45.657Z",
-  "finalDecision": "INTEGRATION_CERTIFIED",
+  "finalDecision": "CERTIFIED_WITH_ERRATA",
   "ic12Artifacts": {
     "checkpointAudit": {
       "path": "ic12-checkpoint-audit.json",
@@ -1103,5 +1103,59 @@
       "sha256": "e6c0982705d2fbff936395cbab0b47b8720d8d6de95eb1c7e656801809d4324b",
       "status": "PASS"
     }
+  },
+  "ic2Errata": {
+    "checkpoint": "IC2",
+    "affectedArtifacts": 5,
+    "causeCode": "NONDETERMINISTIC_FROZEN_AT_REGENERATION",
+    "originalDeclaredHashes": [
+      {
+        "file": "ic2-canonical-pool-prng-contract.json",
+        "declaredT0Sha256": "68954cc71222efff5a236924a1e893d0de9396026fd18c2f2038c5456668edc3"
+      },
+      {
+        "file": "ic2-history-contract.json",
+        "declaredT0Sha256": "7a9522a135d575b56b7b9fa9b1e195faf2bc08088d64dd19c3e3b867be5a2576"
+      },
+      {
+        "file": "ic2-fingerprint-contract.json",
+        "declaredT0Sha256": "d925aa72d056e9097a7effe54d8b9534c86d95b61034dad9c564e9cc6d923fb2"
+      },
+      {
+        "file": "ic2-draft-stale-contract.json",
+        "declaredT0Sha256": "fcb690614bc9eaf41e173cf0e21fc4ca8070de50ec5284e981b693fe9d4486a6"
+      },
+      {
+        "file": "ic2-pool-index-contract.json",
+        "declaredT0Sha256": "2b41878815c6d8275e2f73ca6827835f8e0fe968b00385c74307ad9b430b38bb"
+      }
+    ],
+    "materializedHashes": [
+      {
+        "file": "ic2-canonical-pool-prng-contract.json",
+        "materializedSha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3"
+      },
+      {
+        "file": "ic2-history-contract.json",
+        "materializedSha256": "5e0b9a15ba6b602d48fd6401d5d94306cb4254c72f0335b97dededaa13fda5a5"
+      },
+      {
+        "file": "ic2-fingerprint-contract.json",
+        "materializedSha256": "70dd8840edacde3f02f0cd2707bba9c668057c8b4b5af4a065886c25a8cce72b"
+      },
+      {
+        "file": "ic2-draft-stale-contract.json",
+        "materializedSha256": "163ad22b662da2d8e1a33903a3a04b50a761dc9c3b8dbbce685296f50e7dd1e8"
+      },
+      {
+        "file": "ic2-pool-index-contract.json",
+        "materializedSha256": "bb266a135a23cfd48a1783a246b5ff28f63c4ed37e0fd4fd31ccad9145cb9368"
+      }
+    ],
+    "reconciliationEvidence": "ic2-immutable-errata.json e ic2-immutable-errata.md",
+    "downstreamLineageEvidence": "ic2-downstream-lineage-audit.json",
+    "semanticImpact": "ic2-semantic-impact-audit.json (zero semantic impact, T0_CONTENT_NOT_FULLY_RECONSTRUCTIBLE)",
+    "disposition": "CERTIFIED_WITH_ERRATA",
+    "recordedAt": "2026-10-01T16:54:20.255Z"
   }
 }

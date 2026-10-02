@@ -1,0 +1,66 @@
+{
+  "experimentName": "ISOLATED_DETERMINISM_CONTROL_RUN_A_VS_RUN_B",
+  "conductedAt": "2026-10-01T16:54:20.246Z",
+  "sourceFileAudited": "certification/c5-memory-v2/integration/run-001/build-ic2-contracts.ts",
+  "generatorCallsFound": 5,
+  "callSignature": "frozenAt: new Date().toISOString()",
+  "runA": {
+    "timestamp": "2026-10-01T11:44:09.123Z",
+    "sha256": "2fe51dfc5b793310c9660831b0375283c63c0e01d270e054badf725be284ba97",
+    "byteLength": 3486
+  },
+  "runB": {
+    "timestamp": "2026-10-01T11:45:33.661Z",
+    "sha256": "756e8d5d44d7bd8f616e220badf6131c8e630fa4e6ce4ab70528bac5d8ecd4f3",
+    "byteLength": 3486,
+    "matchesPhysicalDiskSha": true
+  },
+  "divergenceAnalysis": {
+    "shaMatch": false,
+    "totalDivergentBytes": 6,
+    "divergentBytesOffsetRange": {
+      "firstOffset": 109,
+      "lastOffset": 116
+    },
+    "divergentProperty": "frozenAt",
+    "divergenceSample": [
+      {
+        "byteOffset": 109,
+        "byteRunA": "4",
+        "byteRunB": "5"
+      },
+      {
+        "byteOffset": 111,
+        "byteRunA": "0",
+        "byteRunB": "3"
+      },
+      {
+        "byteOffset": 112,
+        "byteRunA": "9",
+        "byteRunB": "3"
+      },
+      {
+        "byteOffset": 114,
+        "byteRunA": "1",
+        "byteRunB": "6"
+      },
+      {
+        "byteOffset": 115,
+        "byteRunA": "2",
+        "byteRunB": "6"
+      },
+      {
+        "byteOffset": 116,
+        "byteRunA": "3",
+        "byteRunB": "1"
+      }
+    ],
+    "identicalExcludingFrozenAt": true
+  },
+  "conclusion": {
+    "isNondeterministicBetweenIndependentExecutions": true,
+    "causeCode": "NONDETERMINISTIC_FROZEN_AT_REGENERATION",
+    "isDivergenceExclusivelyAttributableToTemporalMetadata": true,
+    "rootCauseProven": true
+  }
+}

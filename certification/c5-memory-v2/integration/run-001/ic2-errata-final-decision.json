@@ -1,0 +1,26 @@
+{
+  "checkpoint": "IC2",
+  "runId": "C5M-INTEGRATION-RUN-001",
+  "evaluationDate": "2026-10-01T16:54:20.253Z",
+  "criteria": {
+    "criterion1_immutableSinceMaterialization": true,
+    "criterion2_ledgerPreservesArtifacts": true,
+    "criterion3_downstreamExclusivelyMaterialized": true,
+    "criterion4_rootCauseIdentifiedAndProven": true,
+    "criterion5_noSemanticOrNormativeImpact": true,
+    "criterion6_noConclusionDependsOnT0Hashes": true
+  },
+  "allCriteriaSatisfied": true,
+  "negativeControlsPassed": true,
+  "finalDisposition": "CERTIFIED_WITH_ERRATA",
+  "executiveOutputs": {
+    "IC2_PHYSICAL_INTEGRITY": "PASS",
+    "IC2_HISTORICAL_MANIFEST_CONSISTENCY": "FAIL",
+    "ROOT_CAUSE_PROVEN": "YES",
+    "IC3_IC12_MATERIALIZED_LINEAGE": "PROVEN",
+    "SEMANTIC_EQUIVALENCE": "PROVEN",
+    "HISTORICAL_ARTIFACTS_MODIFIED": 0,
+    "ERRATA_NEGATIVE_CONTROLS": "6/6",
+    "FINAL_DISPOSITION": "CERTIFIED_WITH_ERRATA"
+  }
+}
