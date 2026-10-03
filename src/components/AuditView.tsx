@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, Key, Database, Hash } from "lucide-react";
+import { ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, Database, Hash } from "lucide-react";
 import { ContestRecord, MemoryHistory } from "../c5-memory/types";
-import { syncSha256 } from "../c5-memory/sha256";
-import { formatGameCanonical } from "../c5-memory/history";
 import { getStoredMemoryHistory } from "../storage/db";
+import { getMemoryAuditDetails } from "../c5-memory/application/service";
 
 interface AuditViewProps {
   records: readonly ContestRecord[];
@@ -30,20 +29,18 @@ export const AuditView: React.FC<AuditViewProps> = ({ records }) => {
     const hist = await getStoredMemoryHistory();
     setHistory(hist);
 
-    const results = records
-      .filter(r => r.frozenPayload)
-      .map(r => {
-        const payload = r.frozenPayload!;
-        const gamesSerial = payload.games.map(formatGameCanonical).join("|");
-        const payloadToHash = `C5-FROZEN:${payload.contestNumber}:${payload.poolIndex}:${payload.poolMasterSeed}:${payload.historyFingerprint}:${payload.historyRevision}:${gamesSerial}`;
-        const computed = syncSha256(payloadToHash);
+    const frozenRecords = records.filter(r => r.frozenPayload);
+    const results = await Promise.all(
+      frozenRecords.map(async r => {
+        const audit = await getMemoryAuditDetails(r.contestNumber);
         return {
           contestNumber: r.contestNumber,
-          sha256Stored: payload.sha256,
-          sha256Computed: computed,
-          isValid: payload.sha256 === computed,
+          sha256Stored: audit.sha256 || "",
+          sha256Computed: audit.computedSha256 || "",
+          isValid: audit.isCryptographicallyValid,
         };
-      });
+      })
+    );
 
     setVerificationResults(results);
     setIsVerifying(false);

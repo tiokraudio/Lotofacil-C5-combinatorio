@@ -11,9 +11,13 @@ import {
   ShieldCheck,
   Layers,
 } from "lucide-react";
-import { ContestRecord, Draft, FrozenMemoryPayload, MemoryHistory } from "../c5-memory/types";
-import { generateC5Draft, freezeDraft } from "../c5-memory/draft";
-import { getStoredMemoryHistory, saveContestRecord, getContestRecord } from "../storage/db";
+import { ContestRecord, Draft } from "../c5-memory/types";
+import {
+  generateMemoryDraft,
+  confirmMemoryDraft,
+  discardMemoryDraft,
+  getMemoryOperationalState,
+} from "../c5-memory/application/service";
 import { Ball } from "./Ball";
 
 interface C5MemoryViewProps {
@@ -29,11 +33,11 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
 }) => {
   const [contestNumber, setContestNumber] = useState<number>(currentContestNumber);
   const [record, setRecord] = useState<ContestRecord | null>(null);
-  const [history, setHistory] = useState<MemoryHistory | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedHash, setCopiedHash] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [historyRevision, setHistoryRevision] = useState<number>(0);
 
   useEffect(() => {
     setContestNumber(currentContestNumber);
@@ -46,16 +50,30 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
   const loadContestData = async (cNum: number) => {
     setErrorMsg(null);
     try {
-      const hist = await getStoredMemoryHistory();
-      setHistory(hist);
-
-      const existingRecord = await getContestRecord(cNum);
-      if (existingRecord) {
-        setRecord(existingRecord);
-        setDraft(existingRecord.draft || null);
+      const state = await getMemoryOperationalState(cNum);
+      setHistoryRevision(state.historyRevision);
+      if (state.draft) {
+        setDraft(state.draft);
+      } else {
+        setDraft(null);
+      }
+      if (state.status !== "AVAILABLE" || state.draft) {
+        setRecord({
+          contestNumber: state.contestNumber,
+          contestDate: new Date().toISOString().split("T")[0],
+          status: state.status,
+          algorithmVersion: "C5-Memory-2.0.0",
+          games: state.games,
+          draft: state.draft,
+          frozenPayload: state.frozenPayload,
+          officialResult: state.officialResult,
+          gameHits: state.gameHits,
+          bestHits: state.bestHits,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
       } else {
         setRecord(null);
-        setDraft(null);
       }
     } catch (err: any) {
       setErrorMsg("Erro ao carregar dados do concurso: " + err.message);
@@ -63,40 +81,17 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
   };
 
   const handleGenerate = async () => {
-    if (!history) return;
     setIsGenerating(true);
     setErrorMsg(null);
 
     try {
-      // Pequeno timeout para permitir render do estado de loading
-      setTimeout(() => {
-        try {
-          const newDraft = generateC5Draft(contestNumber, history);
-          setDraft(newDraft);
-
-          const newRecord: ContestRecord = {
-            contestNumber,
-            contestDate: new Date().toISOString().split("T")[0],
-            status: "PREVIEW",
-            algorithmVersion: "C5-Memory-2.0.0",
-            games: newDraft.games,
-            draft: newDraft,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-
-          saveContestRecord(newRecord).then(() => {
-            setRecord(newRecord);
-            setIsGenerating(false);
-            onContestUpdated();
-          });
-        } catch (err: any) {
-          setErrorMsg("Erro na geração combinatória: " + err.message);
-          setIsGenerating(false);
-        }
-      }, 50);
+      const newDraft = await generateMemoryDraft(contestNumber);
+      setDraft(newDraft);
+      await loadContestData(contestNumber);
+      setIsGenerating(false);
+      onContestUpdated();
     } catch (err: any) {
-      setErrorMsg("Falha ao iniciar geração: " + err.message);
+      setErrorMsg(err.message || "Erro na geração combinatória.");
       setIsGenerating(false);
     }
   };
@@ -104,31 +99,23 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
   const handleConfirmAndFreeze = async () => {
     if (!draft) return;
     try {
-      const frozenPayload: FrozenMemoryPayload = freezeDraft(draft);
-      const updatedRecord: ContestRecord = {
-        contestNumber: draft.contestNumber,
-        contestDate: record?.contestDate || new Date().toISOString().split("T")[0],
-        status: "FROZEN",
-        algorithmVersion: "C5-Memory-2.0.0",
-        games: draft.games,
-        draft,
-        frozenPayload,
-        createdAt: record?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      await saveContestRecord(updatedRecord);
-      setRecord(updatedRecord);
+      const confirmed = await confirmMemoryDraft(draft.contestNumber, draft);
+      setRecord(confirmed);
       onContestUpdated();
     } catch (err: any) {
-      setErrorMsg("Erro ao congelar aposta: " + err.message);
+      setErrorMsg("Erro ao confirmar aposta atômica: " + err.message);
     }
   };
 
   const handleDiscardPreview = async () => {
-    setDraft(null);
-    setRecord(null);
-    onContestUpdated();
+    try {
+      await discardMemoryDraft(contestNumber);
+      setDraft(null);
+      setRecord(null);
+      onContestUpdated();
+    } catch (err: any) {
+      setErrorMsg("Erro ao descartar preview: " + err.message);
+    }
   };
 
   const handleCopySha = (sha: string) => {
@@ -224,7 +211,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
               Pronto para Gerar o Concurso {contestNumber}
             </h3>
             <p className="text-xs text-slate-400">
-              Serão avaliados K=500 candidatos pelo critério MAX-LEXIMIN em relação aos {history?.games.length || 0} jogos registrados na memória histórica canônica (Revisão {history?.revision || 0}).
+              Serão avaliados K=500 candidatos pelo critério MAX-LEXIMIN em relação aos {historyRevision * 5} jogos registrados na memória histórica canônica (Revisão {historyRevision}).
             </p>
           </div>
 

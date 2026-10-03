@@ -1,0 +1,132 @@
+{
+  "version": "POST_INCIDENT_GOLDEN_VECTORS_V2",
+  "status": "NORMATIVE_CANDIDATE_FROZEN",
+  "generatedAt": "2026-10-03T18:09:00.000Z",
+  "verification": {
+    "REFERENCE_A_EQ_REFERENCE_B": true,
+    "APP_A_EQ_APP_B": true,
+    "REFERENCE_EQ_APP": true,
+    "APP_EQ_BROWSER": true,
+    "totalEvaluatedCandidates": 3000,
+    "coordinateMismatches": 0,
+    "winnerMismatches": 0
+  },
+  "milestones": [
+    {
+      "milestone": "MILESTONE_H0_CONTEST_3500",
+      "contestNumber": 3500,
+      "historyRevision": 0,
+      "inputGamesCount": 0,
+      "fingerprintPreimage": "H0-REV0-EMPTY",
+      "historyFingerprint": "891c919bd55be4113c00d326cec187bbd43a9fa60f53fc7c330ee32590b09acb",
+      "seedDerivationPreimage": "C5-POOL-MASTER:3500:891c919bd55be4113c00d326cec187bbd43a9fa60f53fc7c330ee32590b09acb",
+      "poolMasterSeed": "cc77fb6a8f9080d09ccbb048ea1880810625c78b71e54b6b92de35d69b3d6be4",
+      "selectedPoolIndex": 0,
+      "leximinProfile": [15, 15, 15, 15, 15],
+      "selectedC5Games": [
+        [1, 3, 5, 6, 8, 10, 12, 13, 14, 15, 17, 18, 22, 24, 25],
+        [3, 4, 6, 7, 8, 9, 12, 13, 14, 18, 19, 21, 22, 23, 24],
+        [1, 2, 3, 6, 8, 9, 10, 11, 12, 13, 16, 19, 21, 23, 25],
+        [2, 4, 5, 6, 7, 8, 10, 12, 14, 16, 19, 20, 22, 24, 25],
+        [2, 3, 4, 5, 6, 9, 10, 13, 15, 17, 18, 21, 22, 23, 24]
+      ],
+      "frozenPayloadSha256": "0db67f3c47895434a64e183ee679a2cf2322336b196cd731de48db09a4824e5d"
+    },
+    {
+      "milestone": "MILESTONE_H1_CONTEST_3501",
+      "contestNumber": 3501,
+      "historyRevision": 1,
+      "inputGamesCount": 5,
+      "fingerprintPreimage": "H-REV1:01-03-05-06-08-10-12-13-14-15-17-18-22-24-25|03-04-06-07-08-09-12-13-14-18-19-21-22-23-24|01-02-03-06-08-09-10-11-12-13-16-19-21-23-25|02-04-05-06-07-08-10-12-14-16-19-20-22-24-25|02-03-04-05-06-09-10-13-15-17-18-21-22-23-24",
+      "historyFingerprint": "c20abee409f206879f42239a14563ad608a1c13d0ef87ad4f0611bde66579937",
+      "seedDerivationPreimage": "C5-POOL-MASTER:3501:c20abee409f206879f42239a14563ad608a1c13d0ef87ad4f0611bde66579937",
+      "poolMasterSeed": "f554aeb872f0034eebbbc6262a3573ba9bd3109dd8bfdd797753565c517560a1",
+      "selectedPoolIndex": 486,
+      "leximinProfile": [5, 6, 6, 6, 6],
+      "selectedC5Games": [
+        [1, 2, 3, 5, 9, 12, 13, 14, 15, 16, 17, 19, 20, 23, 24],
+        [1, 2, 3, 4, 5, 7, 9, 11, 12, 13, 14, 16, 17, 21, 25],
+        [2, 3, 4, 5, 7, 8, 10, 11, 14, 15, 16, 18, 20, 22, 24],
+        [1, 2, 5, 7, 9, 11, 12, 13, 15, 16, 17, 18, 20, 21, 23],
+        [1, 4, 5, 7, 8, 9, 10, 11, 13, 16, 18, 19, 20, 23, 25]
+      ],
+      "frozenPayloadSha256": "47d50ca9ac43ea1253a6b89694ff95b95e8eb950ecfe3b1a89f9293883f3e8ca"
+    },
+    {
+      "milestone": "MILESTONE_H2_CONTEST_3502",
+      "contestNumber": 3502,
+      "historyRevision": 2,
+      "inputGamesCount": 10,
+      "historyFingerprint": "e555e3e8ad028aba4ef4ceb52b217036a19f8ecf4a7c06ebecabfdfec979fe7b",
+      "seedDerivationPreimage": "C5-POOL-MASTER:3502:e555e3e8ad028aba4ef4ceb52b217036a19f8ecf4a7c06ebecabfdfec979fe7b",
+      "poolMasterSeed": "e31db488fc98569a9eb7ea4c34a36be57f6b2158869c3a0c5c4cf838706385d8",
+      "selectedPoolIndex": 242,
+      "leximinProfile": [4, 5, 5, 5, 6],
+      "selectedC5Games": [
+        [1, 3, 5, 6, 8, 9, 10, 13, 15, 18, 19, 21, 22, 23, 25],
+        [1, 2, 3, 4, 6, 7, 11, 12, 14, 15, 17, 19, 20, 21, 23],
+        [1, 3, 6, 7, 8, 10, 11, 12, 15, 17, 18, 19, 22, 24, 25],
+        [1, 2, 3, 5, 7, 8, 9, 10, 12, 15, 17, 18, 19, 21, 22],
+        [3, 4, 5, 6, 7, 8, 10, 11, 13, 14, 17, 21, 22, 23, 24]
+      ],
+      "frozenPayloadSha256": "a9a2c6cc87a801b4c3e86c06b2e1f584e03ba13462947190f7d5440623a6771e"
+    },
+    {
+      "milestone": "MILESTONE_H3_CONTEST_3503",
+      "contestNumber": 3503,
+      "historyRevision": 3,
+      "inputGamesCount": 15,
+      "historyFingerprint": "a475b893e1d9114526d1bf1e23a0774fc714392a549d4b0f924bcfe7d0ea3671",
+      "seedDerivationPreimage": "C5-POOL-MASTER:3503:a475b893e1d9114526d1bf1e23a0774fc714392a549d4b0f924bcfe7d0ea3671",
+      "poolMasterSeed": "278ec7777f5b3f4d6ee4f828efebff4f00494beec6b1e6e44b974558509c1fa6",
+      "selectedPoolIndex": 29,
+      "leximinProfile": [4, 4, 5, 5, 6],
+      "selectedC5Games": [
+        [1, 2, 3, 4, 7, 10, 11, 14, 16, 17, 18, 19, 21, 22, 23],
+        [1, 2, 3, 4, 5, 6, 9, 12, 13, 14, 15, 16, 17, 20, 24],
+        [1, 2, 5, 8, 9, 10, 13, 14, 15, 16, 17, 19, 20, 24, 25],
+        [2, 3, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 18, 19, 25],
+        [2, 4, 5, 7, 8, 9, 10, 11, 13, 15, 18, 20, 22, 24, 25]
+      ],
+      "frozenPayloadSha256": "de9bea70c7250f6797e88ca8c84852f6f4fa8172c7268d87a71e626e2e58e376"
+    },
+    {
+      "milestone": "MILESTONE_H4_CONTEST_3504",
+      "contestNumber": 3504,
+      "historyRevision": 4,
+      "inputGamesCount": 20,
+      "historyFingerprint": "07ea5187c93eddf13ff3411425176bc55ecdd93d0d82937740ef75f8f94d0392",
+      "seedDerivationPreimage": "C5-POOL-MASTER:3504:07ea5187c93eddf13ff3411425176bc55ecdd93d0d82937740ef75f8f94d0392",
+      "poolMasterSeed": "747a1f3a68e544da5cfa10bf5be927e1f4405d4d39e7ea81b0a884fe08b9b2c3",
+      "selectedPoolIndex": 76,
+      "leximinProfile": [4, 4, 4, 5, 5],
+      "selectedC5Games": [
+        [1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 16, 18, 21, 22, 23],
+        [2, 3, 5, 8, 9, 11, 13, 15, 17, 18, 19, 20, 21, 24, 25],
+        [1, 3, 4, 6, 8, 10, 11, 12, 13, 15, 16, 20, 22, 23, 24],
+        [1, 2, 6, 7, 8, 11, 12, 15, 16, 17, 18, 19, 20, 21, 24],
+        [1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 17, 18, 19, 21, 24]
+      ],
+      "frozenPayloadSha256": "99c68c82e5953c8e54737d2f4d6d3bc01bbf5443fa4df9fe6a94f57b60e42d7b"
+    },
+    {
+      "milestone": "MILESTONE_H5_CONTEST_3505",
+      "contestNumber": 3505,
+      "historyRevision": 5,
+      "inputGamesCount": 25,
+      "historyFingerprint": "e00ad04fe21c2c5aa8112e5f5fceb604597dffce5ae6ae4f3a2c5efc0715cbba",
+      "seedDerivationPreimage": "C5-POOL-MASTER:3505:e00ad04fe21c2c5aa8112e5f5fceb604597dffce5ae6ae4f3a2c5efc0715cbba",
+      "poolMasterSeed": "ffcf7c92289ac9a64fec1dfc2d0f507eead1f25e791d293235b2e9894e77372b",
+      "selectedPoolIndex": 211,
+      "leximinProfile": [4, 4, 4, 5, 5],
+      "selectedC5Games": [
+        [1, 4, 5, 6, 7, 8, 10, 11, 12, 13, 16, 18, 20, 22, 25],
+        [1, 2, 4, 6, 7, 9, 11, 12, 14, 15, 17, 19, 21, 22, 24],
+        [1, 2, 3, 5, 8, 9, 10, 13, 14, 15, 17, 20, 21, 23, 24],
+        [2, 3, 4, 5, 6, 9, 10, 12, 13, 14, 15, 17, 18, 22, 23],
+        [2, 3, 4, 6, 7, 8, 9, 11, 13, 16, 18, 20, 21, 23, 24]
+      ],
+      "frozenPayloadSha256": "7629c8c1d7e8852f8fe539ebf8539097e368149e917ad0267252f446059d4c2b"
+    }
+  ]
+}

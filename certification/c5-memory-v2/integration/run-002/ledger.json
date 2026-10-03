@@ -1,0 +1,116 @@
+{
+  "runId": "C5M-INTEGRATION-RUN-002",
+  "checkpoint": "IC0",
+  "baselineCommit": "35f361283579048b6f96ebadc31f9f79f8b9b445",
+  "baselineBundleSha256": "cada3233666836845f5c2f63027b22d53f97bd46b32285ef43b9eda3c690ea8d",
+  "canonicalStorageSource": "contests",
+  "memoryHistoryRole": "DERIVED_MATERIALIZED_READ_MODEL",
+  "totalNormativeArtifacts": 15,
+  "artifacts": [
+    {
+      "path": "src/c5-memory/types.ts",
+      "byteLength": 1796,
+      "sha256": "7e065b2af27d4a72c83dbecfa08cbd9cab9bc3f11ad8d510f21017c9dfd132bf",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "CORE_MATHEMATICAL_SPEC"
+    },
+    {
+      "path": "src/c5-memory/math.ts",
+      "byteLength": 2629,
+      "sha256": "3ebbefde8e9562082de4f99bf4450a0815bdd44b70f9c2459ab9db285096d9e9",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "CORE_MATHEMATICAL_SPEC"
+    },
+    {
+      "path": "src/c5-memory/prng.ts",
+      "byteLength": 1687,
+      "sha256": "8287bde3e01f1d545af9189d33f140920fe66d253a7c5e67b8f984ebd3c278f4",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "CORE_MATHEMATICAL_SPEC"
+    },
+    {
+      "path": "src/c5-memory/pool.ts",
+      "byteLength": 1479,
+      "sha256": "9455580b03ea24bad24155742c6b6c1a4f2474ede4fe006c03262b375234fbcc",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "CORE_MATHEMATICAL_SPEC"
+    },
+    {
+      "path": "src/c5-memory/sha256.ts",
+      "byteLength": 2953,
+      "sha256": "1bc79b3dd93db9382b6daeaf96d61414e6cc1439535a9996594122601e0ca054",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "CORE_MATHEMATICAL_SPEC"
+    },
+    {
+      "path": "src/c5-memory/history.ts",
+      "byteLength": 920,
+      "sha256": "095ad398f150cedb576498b795f5d802b3fd4e53d9698cefe5cb3af7996ec9e8",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "CORE_MATHEMATICAL_SPEC"
+    },
+    {
+      "path": "src/c5-memory/draft.ts",
+      "byteLength": 1833,
+      "sha256": "e69a67809d1fe882f0a75ceda4651c065486e8eca87f7ac7e957acb4e7588de1",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "CORE_MATHEMATICAL_SPEC"
+    },
+    {
+      "path": "src/c5-memory/application/types.ts",
+      "byteLength": 1010,
+      "sha256": "e1619a5c758809e3296190d01aeeee538d7dd809775b77f1540417d0926cce45",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "APPLICATION_LAYER_INTERFACE"
+    },
+    {
+      "path": "src/c5-memory/application/service.ts",
+      "byteLength": 4856,
+      "sha256": "0f94073bb7ed3ca440cafbf87f9ccecdf3e23aebedd55c4317334535e256dbe4",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "APPLICATION_LAYER_SERVICE"
+    },
+    {
+      "path": "src/storage/memoryTransaction.ts",
+      "byteLength": 6026,
+      "sha256": "4d8c4ef89f8993c346a5a3b012ceb49229556b41e19fd9d409cb3317286f15c9",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "STORAGE_ATOMIC_TRANSACTION"
+    },
+    {
+      "path": "src/storage/crossStoreAudit.ts",
+      "byteLength": 4465,
+      "sha256": "249881dd73d0170648f5b5576f7b905fdb3d0abeb01e9f2d684586985192ad6b",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "STORAGE_CANONICAL_AUDIT"
+    },
+    {
+      "path": "src/storage/db.ts",
+      "byteLength": 3766,
+      "sha256": "2af196b2d21e2dd71b37c4c36b821c5da1d222bea150f4fd79f7d3e0d7381ae7",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "STORAGE_INDEXEDDB_LAYER"
+    },
+    {
+      "path": "src/c5-memory/analytics/types.ts",
+      "byteLength": 3244,
+      "sha256": "c58b53ac7eadc7fa22d9d3bbd2e5305f8a87fa9cedbca67e71fa3ee06975011f",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "ANALYTICS_READ_DTO"
+    },
+    {
+      "path": "src/c5-memory/analytics/c5Analytics.ts",
+      "byteLength": 9599,
+      "sha256": "ae006bc971d919015a91a85492b4d13dff6a43e822c5c1dedc4c84a27e7c61ce",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "ANALYTICS_AGGREGATION_ENGINE"
+    },
+    {
+      "path": "certification/post-incident-golden-vectors-v2.json",
+      "byteLength": 6591,
+      "sha256": "55521e2caa737a9d5c99878ce372f440187b5a0e1743deb953af76b83de1ccf3",
+      "materializedAt": "2026-10-03T18:14:00Z",
+      "classification": "NORMATIVE_GOLDEN_VECTORS"
+    }
+  ]
+}
