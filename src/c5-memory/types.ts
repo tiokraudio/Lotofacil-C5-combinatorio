@@ -1,68 +1,60 @@
 /**
- * Tipos canônicos para o núcleo matemático de C5-Memory-2.0.0.
- *
- * Módulo puro de domínio sem efeitos colaterais.
+ * C5-Memory-2.0.0 — Tipos Oficiais e Estruturas Canônicas
  */
 
-/**
- * Jogo canônico da Lotofácil contendo exatamente 15 dezenas no intervalo [1..25].
- */
-export type Game15 = readonly number[];
+export type LotofacilNumber = number; // 1 a 25
+export type C5Game = readonly number[]; // 15 dezenas estritamente crescentes [1..25]
 
-/**
- * Candidato C5 composto por 5 jogos de 15 dezenas.
- */
-export type C5Candidate = readonly [Game15, Game15, Game15, Game15, Game15];
-
-/**
- * Jogo histórico (H) de 15 dezenas.
- */
-export type HistoryGame = readonly number[];
-
-/**
- * Histograma completo de distâncias de Johnson (n0..n10).
- * n_d representa a contagem de pares (jogo_candidato, jogo_historico) com d_J = d.
- * A soma total sum_{d=0}^{10} n_d é estritamente igual a 5 * |H|.
- */
-export type JohnsonHistogram = readonly [
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number
-];
-
-/**
- * Candidato posicionado no pool avaliado pelo seletor.
- * Carrega seu poolIndex ordinal canônico (atribuído externamente).
- */
 export interface PoolCandidate {
-  readonly poolIndex: number;
-  readonly games: C5Candidate;
+  readonly index: number;
+  readonly games: readonly C5Game[];
+  readonly leximinScore?: readonly number[];
 }
 
-/**
- * Resultado da seleção MAX-LEXIMIN de um pool de candidatos contra o histórico H.
- */
-export interface SelectionResult {
-  /**
-   * Índice posicional no array do pool fornecido (0 <= winnerIndex < pool.length).
-   */
-  readonly winnerIndex: number;
+export interface MemoryHistory {
+  readonly games: readonly C5Game[];
+  readonly revision: number;
+  readonly fingerprint: string;
+}
 
-  /**
-   * O poolIndex canônico do candidato vencedor (imutável e originário do pool).
-   */
-  readonly winnerPoolIndex: number;
+export interface Draft {
+  readonly contestNumber: number;
+  readonly games: readonly C5Game[];
+  readonly poolIndex: number;
+  readonly poolMasterSeed: string;
+  readonly historyFingerprint: string;
+  readonly historyRevision: number;
+  readonly leximinProfile: readonly number[];
+  readonly generatedAt: string;
+}
 
-  /**
-   * O histograma de distâncias de Johnson (n0..n10) do candidato vencedor contra H.
-   */
-  readonly winnerHistogram: JohnsonHistogram;
+export interface FrozenMemoryPayload {
+  readonly contestNumber: number;
+  readonly games: readonly C5Game[];
+  readonly poolIndex: number;
+  readonly poolMasterSeed: string;
+  readonly historyFingerprint: string;
+  readonly historyRevision: number;
+  readonly sha256: string;
+  readonly frozenAt: string;
+}
+
+export type ContestStatus = "AVAILABLE" | "PREVIEW" | "FROZEN" | "COMPLETED";
+export type AlgorithmVersion = "C5-Memory-2.0.0" | "C5-1.0.0";
+
+export interface ContestRecord {
+  readonly id?: string;
+  readonly contestNumber: number;
+  readonly contestDate: string; // YYYY-MM-DD
+  readonly status: ContestStatus;
+  readonly algorithmVersion: AlgorithmVersion;
+  readonly games: readonly C5Game[];
+  readonly draft?: Draft;
+  readonly frozenPayload?: FrozenMemoryPayload;
+  readonly officialResult?: readonly number[];
+  readonly gameHits?: readonly number[];
+  readonly bestHits?: number;
+  readonly bestHitsCount?: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }

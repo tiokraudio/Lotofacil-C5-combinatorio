@@ -1,8 +1,0 @@
-{
-  "checkpoint": "IC5",
-  "corpusTotalCases": 1000,
-  "casesSampled": 9,
-  "allFingerprintsDeterministic": true,
-  "corpusSha256": "a15465e8a4306e6790a4a2327902d3c3ffcc20af95d2a5430ca5052e0eff39cd",
-  "status": "PASS"
-}

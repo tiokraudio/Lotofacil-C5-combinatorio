@@ -1,7 +1,0 @@
-{
-  "checkpoint": "IC8",
-  "deterministicReplayMatch": true,
-  "tamperedSeedDetected": true,
-  "tamperedIndexDetected": true,
-  "status": "PASS"
-}

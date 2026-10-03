@@ -1,8 +1,0 @@
-{
-  "checkpoint": "IC8",
-  "validationFailed": true,
-  "planRejected": true,
-  "recordsInStoreAfterRejection": 0,
-  "zeroPartialWrites": true,
-  "status": "PASS"
-}

@@ -1,7 +1,0 @@
-{
-  "checkpoint": "IC7",
-  "scenario": "expectedRevision != currentRevision && expectedFingerprint != currentFingerprint",
-  "errorCaptured": true,
-  "recordsPersisted": true,
-  "status": "PASS"
-}

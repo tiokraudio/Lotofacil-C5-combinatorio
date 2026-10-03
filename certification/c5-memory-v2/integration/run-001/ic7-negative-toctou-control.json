@@ -1,7 +1,0 @@
-{
-  "checkpoint": "IC7",
-  "defectiveArchitectureDoubleCommits": true,
-  "appAtomicArchitectureCommits": 1,
-  "negativeControlDetected": true,
-  "status": "PASS"
-}

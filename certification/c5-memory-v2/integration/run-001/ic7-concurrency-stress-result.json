@@ -1,9 +1,0 @@
-{
-  "checkpoint": "IC7",
-  "totalRuns": 100,
-  "commits": 100,
-  "staleRejections": 100,
-  "doubleCommits": 0,
-  "lostCommits": 0,
-  "status": "PASS"
-}

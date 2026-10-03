@@ -1,7 +1,0 @@
-{
-  "checkpoint": "IC7",
-  "scenario": "expectedRevision != currentRevision",
-  "errorCaptured": true,
-  "recordsPersisted": true,
-  "status": "PASS"
-}

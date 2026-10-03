@@ -1,186 +1,117 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { AlertTriangle } from "lucide-react";
-import { Header, NavTab } from "./components/Header.tsx";
-import { GeneratorView } from "./components/GeneratorView.tsx";
-import { ConferenceView } from "./components/ConferenceView.tsx";
-import { HistoryView } from "./components/HistoryView.tsx";
-import { AuditView } from "./components/AuditView.tsx";
-import { repository } from "./storage/service.ts";
-import {
-  type AppBootState,
-  type AppBootResult,
-  performAppBootstrap,
-} from "./system/bootstrap.ts";
-import { refreshCoordinator } from "./system/refreshCoordinator.ts";
-import { localSyncCoordinator } from "./system/localSyncCoordinator.ts";
+import React, { useState, useEffect } from "react";
+import { Header, NavTab } from "./components/Header";
+import { C5DashboardView } from "./components/C5DashboardView";
+import { C5MemoryView } from "./components/C5MemoryView";
+import { ConferenceView } from "./components/ConferenceView";
+import { HistoryView } from "./components/HistoryView";
+import { AuditView } from "./components/AuditView";
+import { ContestRecord } from "./c5-memory/types";
+import { getAllContestRecords } from "./storage/db";
+import { initializeSeedData } from "./storage/seedData";
 
-export default function App() {
-  const [currentTab, setCurrentTab] = useState<NavTab>("generator");
-  const [historyCount, setHistoryCount] = useState<number>(0);
-  const [updateKey, setUpdateKey] = useState<number>(1);
-  const [bootState, setBootState] = useState<AppBootState>("BOOTING");
-  const [bootResult, setBootResult] = useState<AppBootResult | null>(null);
+export const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<NavTab>("dashboard");
+  const [records, setRecords] = useState<ContestRecord[]>([]);
+  const [currentContestNumber, setCurrentContestNumber] = useState<number>(3505);
+  const [conferenceTargetNumber, setConferenceTargetNumber] = useState<number | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const isMountedRef = useRef<boolean>(true);
-  const activeRunIdRef = useRef<number>(0);
-
-  const refreshHistoryBadge = useCallback(async () => {
+  const loadData = async () => {
     try {
-      const all = await repository.getAllContestRecords();
-      if (isMountedRef.current) {
-        setHistoryCount(all.length);
+      await initializeSeedData();
+      const loaded = await getAllContestRecords();
+      setRecords(loaded);
+
+      if (loaded.length > 0) {
+        const maxContest = Math.max(...loaded.map(r => r.contestNumber));
+        // Se o último já está COMPLETED, o atual para gerar é max + 1
+        const lastRecord = loaded.find(r => r.contestNumber === maxContest);
+        if (lastRecord && lastRecord.status === "COMPLETED") {
+          setCurrentContestNumber(maxContest + 1);
+        } else {
+          setCurrentContestNumber(maxContest);
+        }
       }
-    } catch {
-      // Falha de leitura de storage é tratada pelas views correspondentes
+    } catch (err) {
+      console.error("Erro ao inicializar dados:", err);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
-
-  const runBootstrap = useCallback(async () => {
-    const runId = ++activeRunIdRef.current;
-    setBootState("BOOTING");
-    const result = await performAppBootstrap();
-
-    if (!isMountedRef.current || runId !== activeRunIdRef.current || result.stale) {
-      return; // Ignora resultado obsoleto ou se o componente foi desmontado
-    }
-
-    setBootResult(result);
-    setBootState(result.state);
-    if (result.state === "READY" || result.state === "DEGRADED") {
-      await refreshHistoryBadge();
-    }
-  }, [refreshHistoryBadge]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    runBootstrap();
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [runBootstrap]);
-
-  // Inscrição no coordenador global de atualizações persistentes (Prompt 14 #17-#24)
-  useEffect(() => {
-    const unsub = refreshCoordinator.subscribe((rev) => {
-      setUpdateKey(rev);
-      refreshHistoryBadge();
-    });
-    return unsub;
-  }, [refreshHistoryBadge]);
-
-  const handleDataInvalidated = async () => {
-    await refreshHistoryBadge();
   };
 
-  // 1. Estado BOOTING: infraestrutura essencial sendo checada
-  if (bootState === "BOOTING") {
-    return (
-      <div
-        className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-4 font-sans select-none"
-        aria-live="polite"
-      >
-        <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mb-4" />
-        <h2 className="text-base font-bold text-zinc-200 font-mono tracking-wide">
-          INICIALIZANDO SISTEMA
-        </h2>
-        <p className="text-xs text-zinc-400 mt-1.5 text-center max-w-sm">
-          Verificando primitivas criptográficas, manifesto de integridade e armazenamento local...
-        </p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  // 2. Estado FATAL: infraestrutura essencial indisponível (geração, congelamento, etc. bloqueados)
-  if (bootState === "FATAL") {
-    return (
-      <div
-        className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-4 font-sans"
-        role="alert"
-      >
-        <div className="max-w-md w-full p-6 rounded-2xl bg-zinc-900 border border-rose-500/50 shadow-2xl space-y-4 text-center">
-          <div className="w-12 h-12 rounded-full bg-rose-950/60 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold font-mono text-zinc-100">
-            FALHA OPERACIONAL ESSENCIAL
-          </h2>
-          <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
-            {bootResult?.error?.userMessage || "Não foi possível acessar a infraestrutura local necessária para operar o sistema com segurança."}
-          </p>
-          <p className="text-[11px] text-zinc-500 leading-normal">
-            As operações de geração, congelamento, pontuação e importação estão bloqueadas para proteger a integridade dos seus dados.
-          </p>
-          <div className="pt-2">
-            <button
-              type="button"
-              id="btn-retry-bootstrap"
-              onClick={runBootstrap}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold font-mono text-xs tracking-wide transition-all shadow-md cursor-pointer focus:ring-2 focus:ring-emerald-400"
-            >
-              TENTAR NOVAMENTE
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleContestUpdated = () => {
+    loadData();
+  };
 
-  // 3. Estados READY ou DEGRADED: aplicação operacional liberada
+  const handleNavigateToConference = (contestNum: number) => {
+    setConferenceTargetNumber(contestNum);
+    setActiveTab("conference");
+  };
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
-      {/* Cabeçalho Principal */}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <Header
-        currentTab={currentTab}
-        onTabChange={setCurrentTab}
-        historyCount={historyCount}
+        activeTab={activeTab}
+        onTabChange={tab => setActiveTab(tab)}
+        currentContestNumber={currentContestNumber}
       />
 
-      {/* Conteúdo Central */}
-      <main className="grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Banner de Aviso para Modo DEGRADADO (Prompt 14 #9 e #50) */}
-        {bootState === "DEGRADED" && (
-          <div
-            id="banner-degraded-state"
-            role="alert"
-            className="mb-6 p-4 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md"
-          >
-            <div className="flex items-center gap-2.5">
-              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-              <span>
-                <strong>MODO DEGRADADO:</strong> {bootResult?.quarantineCount} concurso(s) com violação em quarentena. Operações em registros válidos continuam operacionais.
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCurrentTab("audit")}
-              className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-mono text-[11px] border border-amber-500/30 whitespace-nowrap self-start sm:self-auto cursor-pointer"
-            >
-              VER AUDITORIA
-            </button>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        {isLoading ? (
+          <div className="py-24 text-center text-slate-400">
+            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm">Inicializando C5-Memory-2.0.0...</p>
           </div>
-        )}
+        ) : (
+          <>
+            {activeTab === "dashboard" && (
+              <C5DashboardView
+                records={records}
+                currentContestNumber={currentContestNumber}
+                onNavigateToGenerator={() => setActiveTab("generator")}
+                onNavigateToConference={() => setActiveTab("conference")}
+              />
+            )}
 
-        {currentTab === "generator" && (
-          <GeneratorView onRecordUpdated={handleDataInvalidated} />
+            {activeTab === "generator" && (
+              <C5MemoryView
+                currentContestNumber={currentContestNumber}
+                onContestUpdated={handleContestUpdated}
+                onNavigateToConference={handleNavigateToConference}
+              />
+            )}
+
+            {activeTab === "conference" && (
+              <ConferenceView
+                initialContestNumber={conferenceTargetNumber}
+                onContestUpdated={handleContestUpdated}
+                onNavigateToDashboard={() => setActiveTab("dashboard")}
+              />
+            )}
+
+            {activeTab === "history" && <HistoryView records={records} />}
+
+            {activeTab === "audit" && <AuditView records={records} />}
+          </>
         )}
-        {currentTab === "conference" && (
-          <ConferenceView onRecordUpdated={handleDataInvalidated} />
-        )}
-        {currentTab === "history" && <HistoryView updateTrigger={updateKey} />}
-        {currentTab === "audit" && <AuditView onImportSuccess={handleDataInvalidated} />}
       </main>
 
-      {/* Rodapé Sóbrio e Técnico */}
-      <footer className="border-t border-zinc-900 bg-zinc-950/60 py-6 text-center text-xs text-zinc-400">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4">
           <p>
-            C₅ LOTOFÁCIL • Gerador Combinatório Auditável • C5-Memory
+            Lotofácil C5 Combinatório • Algoritmo Canônico C5-Memory-2.0.0 • Critério MAX-LEXIMIN (K=500)
           </p>
-          <p className="font-mono text-[11px]">
-            5 jogos de 15 dezenas (R$ 17,50) • Cobertura total das 25 dezenas
+          <p className="mt-1 text-slate-600">
+            Registro prospectivo com congelamento SHA-256 e auditoria criptográfica independente.
           </p>
         </div>
       </footer>
     </div>
   );
-}
+};
+
+export default App;

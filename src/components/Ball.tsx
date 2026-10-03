@@ -1,84 +1,52 @@
 import React from "react";
-import { pad2 } from "../storage/service.ts";
-
-export type BallVariant = "default" | "hit" | "miss" | "selectable" | "official";
 
 interface BallProps {
   number: number;
-  variant?: BallVariant;
-  selected?: boolean;
-  disabled?: boolean;
-  onClick?: () => void;
+  isHit?: boolean;
+  isOfficial?: boolean;
+  isSelected?: boolean;
   size?: "sm" | "md" | "lg";
-  ariaLabel?: string;
+  onClick?: () => void;
+  disabled?: boolean;
 }
 
 export const Ball: React.FC<BallProps> = ({
   number,
-  variant = "default",
-  selected = false,
-  disabled = false,
-  onClick,
+  isHit = false,
+  isOfficial = false,
+  isSelected = false,
   size = "md",
-  ariaLabel,
+  onClick,
+  disabled = false,
 }) => {
-  const formatted = pad2(number);
+  const formatted = number.toString().padStart(2, "0");
 
   const sizeClasses = {
-    sm: "w-8 h-8 text-xs",
-    md: "w-10 h-10 text-sm font-semibold",
-    lg: "w-12 h-12 text-base font-bold",
+    sm: "w-7 h-7 text-xs font-semibold",
+    md: "w-9 h-9 text-sm font-bold",
+    lg: "w-11 h-11 text-base font-bold",
   }[size];
 
-  // Base styling: sem cassino/ludicidade, foco em legibilidade e clareza técnica
-  let variantClasses = "bg-zinc-800 border-zinc-700 text-zinc-200";
+  let colorClasses = "bg-slate-800 text-slate-300 border border-slate-700/60 hover:border-slate-500";
 
-  if (variant === "official") {
-    variantClasses = "bg-emerald-950/80 border-emerald-500/80 text-emerald-200 shadow-xs";
-  } else if (variant === "hit") {
-    variantClasses = "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-bold ring-1 ring-emerald-500/40";
-  } else if (variant === "miss") {
-    variantClasses = "bg-zinc-900/60 border-zinc-800 text-zinc-400 opacity-60";
-  } else if (variant === "selectable") {
-    if (selected) {
-      variantClasses = "bg-emerald-600 border-emerald-400 text-white shadow-xs scale-105 font-bold ring-2 ring-emerald-400/50";
-    } else {
-      variantClasses = disabled
-        ? "bg-zinc-900/40 border-zinc-800/60 text-zinc-400 cursor-not-allowed opacity-40"
-        : "bg-zinc-800/90 border-zinc-700 text-zinc-200 hover:bg-zinc-700 hover:border-zinc-500 cursor-pointer active:scale-95";
-    }
-  }
-
-  if (variant === "selectable") {
-    return (
-      <button
-        type="button"
-        id={`ball-btn-${formatted}`}
-        onClick={onClick}
-        disabled={disabled && !selected}
-        aria-pressed={selected}
-        aria-label={ariaLabel || `Dezena ${formatted}${selected ? " selecionada" : ""}`}
-        className={`inline-flex items-center justify-center rounded-lg border transition-all duration-150 select-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 ${sizeClasses} ${variantClasses}`}
-      >
-        <span>{formatted}</span>
-      </button>
-    );
+  if (isHit) {
+    colorClasses = "bg-emerald-500/20 text-emerald-300 border-2 border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]";
+  } else if (isOfficial) {
+    colorClasses = "bg-purple-600/30 text-purple-200 border-2 border-purple-500";
+  } else if (isSelected) {
+    colorClasses = "bg-indigo-600 text-white border-2 border-indigo-400 shadow-md shadow-indigo-500/30";
   }
 
   return (
-    <div
-      id={`ball-display-${formatted}`}
-      aria-label={ariaLabel || `Dezena ${formatted}${variant === "hit" ? " (acerto)" : ""}`}
-      className={`relative inline-flex items-center justify-center rounded-lg border transition-colors select-none ${sizeClasses} ${variantClasses}`}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || !onClick}
+      className={`rounded-full flex items-center justify-center transition-all duration-150 select-none ${sizeClasses} ${colorClasses} ${
+        onClick && !disabled ? "cursor-pointer active:scale-95" : "cursor-default"
+      }`}
     >
-      <span>{formatted}</span>
-      {variant === "hit" && (
-        <span
-          className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-zinc-950"
-          title="Acerto"
-          aria-hidden="true"
-        />
-      )}
-    </div>
+      {formatted}
+    </button>
   );
 };

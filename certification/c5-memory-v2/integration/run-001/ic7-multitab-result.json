@@ -1,7 +1,0 @@
-{
-  "checkpoint": "IC7",
-  "tabAOutcome": "COMMIT",
-  "tabBOutcome": "STALE_REVISION_REJECTED",
-  "independentConnectionsAudited": 2,
-  "status": "PASS"
-}

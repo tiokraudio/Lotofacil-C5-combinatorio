@@ -1,8 +1,0 @@
-{
-  "checkpoint": "IC7",
-  "fulfilledCount": 1,
-  "rejectedCount": 1,
-  "staleCode": "STALE_REVISION_REJECTED",
-  "finalRecordsCount": 1,
-  "status": "PASS"
-}

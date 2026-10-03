@@ -1,8 +1,0 @@
-{
-  "checkpoint": "IC6",
-  "tabAInitialRevision": 100,
-  "tabBCommittedRevision": 101,
-  "tabAConfirmationOutcome": "STALE_REVISION_REJECTED",
-  "tabAStaleDetected": true,
-  "status": "PASS"
-}

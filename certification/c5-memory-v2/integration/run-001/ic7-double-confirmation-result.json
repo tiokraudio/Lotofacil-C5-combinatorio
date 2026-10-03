@@ -1,7 +1,0 @@
-{
-  "checkpoint": "IC7",
-  "firstAttempt": "COMMIT",
-  "secondAttempt": "STALE_REVISION_REJECTED",
-  "finalRecordsCount": 1,
-  "status": "PASS"
-}

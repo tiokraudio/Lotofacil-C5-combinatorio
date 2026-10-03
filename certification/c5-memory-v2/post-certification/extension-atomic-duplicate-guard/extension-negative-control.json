@@ -1,7 +1,0 @@
-{
-  "testName": "NEGATIVE_CONTROL_WITHOUT_ATOMIC_GUARD",
-  "description": "Execução de commit com réplica da transação SEM a validação do passo 4.5",
-  "duplicateEnteredWithoutGuard": true,
-  "duplicateBlockedWithGuard": true,
-  "causalEvidence": "Comprovado: sem o passo 4.5, uma chamada direta a confirmMemoryBetAtomic gravaria o jogo duplicado com sucesso no IndexedDB (count=2 em H). Com o passo 4.5, a operação é terminantemente abortada e rejeitada com ExactHistoryDuplicateBlockedError."
-}
