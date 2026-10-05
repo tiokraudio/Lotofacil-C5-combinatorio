@@ -10,14 +10,16 @@ import {
   ArrowRight,
   ShieldCheck,
   Layers,
+  Printer,
 } from "lucide-react";
-import { ContestRecord, Draft } from "../c5-memory/types";
+import { ContestRecord } from "../c5-memory/types";
 import {
-  generateMemoryDraft,
-  confirmMemoryDraft,
-  discardMemoryDraft,
-  getMemoryOperationalState,
-} from "../c5-memory/application/service";
+  generateMemoryDraftUI,
+  confirmMemoryDraftUI,
+  discardMemoryDraftUI,
+  getMemoryOperationalStateUI,
+  Draft210,
+} from "../c5-memory/application/uiService";
 import { Ball } from "./Ball";
 
 interface C5MemoryViewProps {
@@ -33,9 +35,11 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
 }) => {
   const [contestNumber, setContestNumber] = useState<number>(currentContestNumber);
   const [record, setRecord] = useState<ContestRecord | null>(null);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<Draft210 | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [copiedHash, setCopiedHash] = useState(false);
+  const [copiedGames, setCopiedGames] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [historyRevision, setHistoryRevision] = useState<number>(0);
 
@@ -50,7 +54,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
   const loadContestData = async (cNum: number) => {
     setErrorMsg(null);
     try {
-      const state = await getMemoryOperationalState(cNum);
+      const state = await getMemoryOperationalStateUI(cNum);
       setHistoryRevision(state.historyRevision);
       if (state.draft) {
         setDraft(state.draft);
@@ -62,10 +66,10 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
           contestNumber: state.contestNumber,
           contestDate: new Date().toISOString().split("T")[0],
           status: state.status,
-          algorithmVersion: "C5-Memory-2.0.0",
+          algorithmVersion: state.algorithmVersion as any,
           games: state.games,
-          draft: state.draft,
-          frozenPayload: state.frozenPayload,
+          draft: state.draft as any,
+          frozenPayload: state.frozenPayload as any,
           officialResult: state.officialResult,
           gameHits: state.gameHits,
           bestHits: state.bestHits,
@@ -85,7 +89,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
     setErrorMsg(null);
 
     try {
-      const newDraft = await generateMemoryDraft(contestNumber);
+      const newDraft = await generateMemoryDraftUI(contestNumber);
       setDraft(newDraft);
       await loadContestData(contestNumber);
       setIsGenerating(false);
@@ -97,19 +101,29 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
   };
 
   const handleConfirmAndFreeze = async () => {
-    if (!draft) return;
+    if (!draft || isConfirming) return;
+    if (record?.status === "FROZEN" || record?.status === "COMPLETED") {
+      setErrorMsg("APPLICATION_DOUBLE_CONFIRM_BLOCKED: Concurso já confirmado.");
+      return;
+    }
+
+    setIsConfirming(true);
+    setErrorMsg(null);
     try {
-      const confirmed = await confirmMemoryDraft(draft.contestNumber, draft);
+      const confirmed = await confirmMemoryDraftUI(draft.contestNumber, draft);
       setRecord(confirmed);
+      setDraft(null);
       onContestUpdated();
     } catch (err: any) {
       setErrorMsg("Erro ao confirmar aposta atômica: " + err.message);
+    } finally {
+      setIsConfirming(false);
     }
   };
 
   const handleDiscardPreview = async () => {
     try {
-      await discardMemoryDraft(contestNumber);
+      await discardMemoryDraftUI(contestNumber);
       setDraft(null);
       setRecord(null);
       onContestUpdated();
@@ -122,6 +136,20 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
     navigator.clipboard.writeText(sha);
     setCopiedHash(true);
     setTimeout(() => setCopiedHash(false), 2000);
+  };
+
+  const handleCopyGames = () => {
+    if (!record?.games) return;
+    const text = record.games
+      .map((g, i) => `Jogo ${i + 1}: ${g.map(n => String(n).padStart(2, "0")).join(" ")}`)
+      .join("\n");
+    navigator.clipboard.writeText(text);
+    setCopiedGames(true);
+    setTimeout(() => setCopiedGames(false), 2000);
+  };
+
+  const handlePrintGames = () => {
+    window.print();
   };
 
   const handleAdvanceToNextContest = () => {
@@ -144,7 +172,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
               <span className="text-xs text-slate-400">AVAILABLE → PREVIEW → FROZEN → COMPLETED</span>
             </div>
             <h1 className="text-2xl font-bold text-slate-100">
-              Gerador C5-Memory-2.0.0
+              Gerador C5-Memory-2.1.0
             </h1>
           </div>
 
@@ -217,6 +245,8 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
 
           <div>
             <button
+              id="btn-generate-c5"
+              data-testid="btn-generate"
               onClick={handleGenerate}
               disabled={isGenerating}
               className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-base transition-all shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
@@ -229,7 +259,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" />
-                  <span>Gerar C5 (Memory-2.0.0)</span>
+                  <span>Gerar C5 (Memory-2.1.0)</span>
                 </>
               )}
             </button>
@@ -253,14 +283,19 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
 
               <div className="flex items-center gap-2">
                 <button
+                  id="btn-discard-preview"
+                  data-testid="btn-discard"
                   onClick={handleDiscardPreview}
                   className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs cursor-pointer transition-colors"
                 >
                   Descartar
                 </button>
                 <button
+                  id="btn-confirm-freeze"
+                  data-testid="btn-confirm"
                   onClick={handleConfirmAndFreeze}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all"
+                  disabled={isConfirming}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all disabled:opacity-50"
                 >
                   <Lock className="w-4 h-4" />
                   <span>Confirmar e Congelar Aposta (SHA-256)</span>
@@ -337,13 +372,35 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={() => onNavigateToConference(record.contestNumber)}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-lg shadow-indigo-600/20 cursor-pointer transition-all"
-              >
-                <span>Conferir Resultado Oficial</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  id="btn-copy-frozen-games"
+                  onClick={handleCopyGames}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 cursor-pointer transition-all"
+                  title="Copiar os 5 jogos congelados"
+                >
+                  {copiedGames ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedGames ? "Copiado!" : "Copiar Jogos"}</span>
+                </button>
+
+                <button
+                  id="btn-print-frozen-games"
+                  onClick={handlePrintGames}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 cursor-pointer transition-all"
+                  title="Imprimir os 5 jogos congelados"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimir</span>
+                </button>
+
+                <button
+                  onClick={() => onNavigateToConference(record.contestNumber)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-lg shadow-indigo-600/20 cursor-pointer transition-all"
+                >
+                  <span>Conferir Resultado Oficial</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Hash SHA-256 com Botão de Cópia */}

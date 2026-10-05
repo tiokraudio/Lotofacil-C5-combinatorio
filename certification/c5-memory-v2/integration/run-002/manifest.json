@@ -1,8 +1,8 @@
 {
   "runId": "C5M-INTEGRATION-RUN-002",
-  "checkpoint": "IC4",
+  "checkpoint": "IC5",
   "title": "Baseline Freeze, Environment Inventory & Normative Entry Gate",
-  "status": "OPEN_IC4_PASS",
+  "status": "OPEN_IC5_PASS",
   "openedAt": "2026-10-03T18:14:00Z",
   "externalRecoveryCopy": "NOT_AVAILABLE",
   "goldenVectorVersion": "POST_INCIDENT_GOLDEN_VECTORS_V3",
@@ -18,5 +18,6 @@
   "c5_210_golden_version": "C5_MEMORY_2_1_0_GOLDEN_V1",
   "c5_210_golden_sha256": "49cd9ca494c3e0d6f0163ea4d83bbaf354cd64ed4238175f5ea5081bf5b8600f",
   "ic3Verdict": "PASS",
-  "ic4Verdict": "PASS"
+  "ic4Verdict": "PASS",
+  "ic5Verdict": "PASS"
 }

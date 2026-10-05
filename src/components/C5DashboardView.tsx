@@ -17,7 +17,7 @@ import { ContestRecord, ContestStatus } from "../c5-memory/types";
 import {
   buildC5Dashboard,
   buildC5MonthlyReport,
-} from "../c5-memory/analytics/c5Analytics";
+} from "../c5-memory/application/uiService";
 import { Ball } from "./Ball";
 
 interface C5DashboardViewProps {

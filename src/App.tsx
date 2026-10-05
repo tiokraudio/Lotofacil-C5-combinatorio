@@ -6,8 +6,7 @@ import { ConferenceView } from "./components/ConferenceView";
 import { HistoryView } from "./components/HistoryView";
 import { AuditView } from "./components/AuditView";
 import { ContestRecord } from "./c5-memory/types";
-import { getAllContestRecords } from "./storage/db";
-import { initializeSeedData } from "./storage/seedData";
+import { getAllContestRecordsUI, initializeSeedDataUI } from "./c5-memory/application/uiService";
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>("dashboard");
@@ -18,8 +17,8 @@ export const App: React.FC = () => {
 
   const loadData = async () => {
     try {
-      await initializeSeedData();
-      const loaded = await getAllContestRecords();
+      await initializeSeedDataUI();
+      const loaded = await getAllContestRecordsUI();
       setRecords(loaded);
 
       if (loaded.length > 0) {
@@ -64,7 +63,7 @@ export const App: React.FC = () => {
         {isLoading ? (
           <div className="py-24 text-center text-slate-400">
             <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm">Inicializando C5-Memory-2.0.0...</p>
+            <p className="text-sm">Inicializando C5-Memory-2.1.0...</p>
           </div>
         ) : (
           <>

@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle2, AlertCircle, Save, ArrowRight, RotateCcw } from "lucide-react";
-import { ContestRecord, MemoryHistory, C5Game } from "../c5-memory/types";
-import { calculateHits } from "../c5-memory/math";
-import { createMemoryHistory } from "../c5-memory/history";
+import { ContestRecord } from "../c5-memory/types";
 import {
-  getAllContestRecords,
-  getContestRecord,
-  saveContestRecord,
-  getStoredMemoryHistory,
-  saveStoredMemoryHistory,
-} from "../storage/db";
+  getAllContestRecordsUI,
+  getMemoryOperationalStateUI,
+  scoreContestOperationUI,
+} from "../c5-memory/application/uiService";
 import { Ball } from "./Ball";
 
 interface ConferenceViewProps {
@@ -48,7 +44,7 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
   }, [selectedContestNumber]);
 
   const loadContests = async () => {
-    const list = await getAllContestRecords();
+    const list = await getAllContestRecordsUI();
     const sorted = list.sort((a, b) => b.contestNumber - a.contestNumber);
     setContests(sorted);
     if (sorted.length > 0 && !initialContestNumber) {
@@ -59,11 +55,36 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
   const loadSelectedContest = async (cNum: number) => {
     setErrorMsg(null);
     setSuccessMsg(null);
-    const rec = await getContestRecord(cNum);
-    setCurrentRecord(rec || null);
-    if (rec && rec.officialResult && rec.officialResult.length === 15) {
-      setSelectedBalls([...rec.officialResult]);
-    } else {
+    try {
+      const state = await getMemoryOperationalStateUI(cNum);
+      if (state.status !== "AVAILABLE" || state.draft || state.frozenPayload) {
+        const rec: ContestRecord = {
+          contestNumber: state.contestNumber,
+          contestDate: new Date().toISOString().split("T")[0],
+          status: state.status,
+          algorithmVersion: state.algorithmVersion as any,
+          games: state.games,
+          draft: state.draft as any,
+          frozenPayload: state.frozenPayload as any,
+          officialResult: state.officialResult,
+          gameHits: state.gameHits,
+          bestHits: state.bestHits,
+          bestHitsCount: state.bestHitsCount,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setCurrentRecord(rec);
+        if (rec.officialResult && rec.officialResult.length === 15) {
+          setSelectedBalls([...rec.officialResult]);
+        } else {
+          setSelectedBalls([]);
+        }
+      } else {
+        setCurrentRecord(null);
+        setSelectedBalls([]);
+      }
+    } catch {
+      setCurrentRecord(null);
       setSelectedBalls([]);
     }
   };
@@ -92,30 +113,7 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
     setIsSaving(true);
     setErrorMsg(null);
     try {
-      const hits = currentRecord.games.map(g => calculateHits(g, selectedBalls));
-      const best = Math.max(...hits);
-      const bestCount = hits.filter(h => h === best).length;
-
-      const updatedRecord: ContestRecord = {
-        ...currentRecord,
-        status: "COMPLETED",
-        officialResult: selectedBalls,
-        gameHits: hits,
-        bestHits: best,
-        bestHitsCount: bestCount,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await saveContestRecord(updatedRecord);
-
-      // Se era a primeira vez apurando, atualiza o histórico canônico H
-      if (currentRecord.status === "FROZEN") {
-        const hist = await getStoredMemoryHistory();
-        const newGames: C5Game[] = [...hist.games, ...currentRecord.games];
-        const newHist = createMemoryHistory(newGames, hist.revision + 1);
-        await saveStoredMemoryHistory(newHist);
-      }
-
+      const updatedRecord = await scoreContestOperationUI(currentRecord.contestNumber, selectedBalls);
       setCurrentRecord(updatedRecord);
       setSuccessMsg("Concurso conferido com sucesso e registrado na memória histórica!");
       onContestUpdated();
@@ -206,6 +204,8 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
               <span>Limpar</span>
             </button>
             <button
+              id="btn-save-official-result"
+              data-testid="btn-save-result"
               onClick={handleSaveResult}
               disabled={selectedBalls.length !== 15 || isSaving}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all cursor-pointer"
@@ -242,7 +242,7 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
 
           <div className="space-y-3">
             {currentRecord.games.map((game, idx) => {
-              const liveHits = calculateHits(game, selectedBalls);
+              const liveHits = game.filter(n => selectedBalls.includes(n)).length;
               const isHigh = liveHits >= 11;
               return (
                 <div
