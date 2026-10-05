@@ -1,10 +1,22 @@
 {
   "runId": "C5M-INTEGRATION-RUN-002",
-  "checkpoint": "IC0",
+  "checkpoint": "IC4",
   "title": "Baseline Freeze, Environment Inventory & Normative Entry Gate",
-  "status": "OPEN_IC0_PASS",
+  "status": "OPEN_IC4_PASS",
   "openedAt": "2026-10-03T18:14:00Z",
   "externalRecoveryCopy": "NOT_AVAILABLE",
-  "goldenVectorVersion": "POST_INCIDENT_GOLDEN_VECTORS_V2",
-  "goldenVectorSha256": "55521e2caa737a9d5c99878ce372f440187b5a0e1743deb953af76b83de1ccf3"
+  "goldenVectorVersion": "POST_INCIDENT_GOLDEN_VECTORS_V3",
+  "goldenVectorSha256": "7d0dfdb11277da500be7bafe3353fbc5bec80b19b9eb449a72f4b0a16daf3d69",
+  "ic1Verdict": "RECOVERED_PASS",
+  "ic1BlockReason": "GOLDEN_V2_INTEGRITY_MISMATCH: post-incident-golden-vectors-v2.json diverges at milestone 1 game 1 from reference and app evaluators",
+  "canonicalCorpusSha256": "ee20c3f542f1efeb9e7f36d413e82aab35f883cbd7ad89f001ed47726a46fe42",
+  "goldenV2Status": "INVALIDATED",
+  "goldenV2Sha256": "55521e2caa737a9d5c99878ce372f440187b5a0e1743deb953af76b83de1ccf3",
+  "ic2Verdict": "RECOVERED_PASS",
+  "ic2BlockReason": "C5_GEOMETRY_FAIL: 10000/10000 candidates tested violate C5 structural geometry",
+  "targetAlgorithmVersion": "C5-Memory-2.1.0",
+  "c5_210_golden_version": "C5_MEMORY_2_1_0_GOLDEN_V1",
+  "c5_210_golden_sha256": "49cd9ca494c3e0d6f0163ea4d83bbaf354cd64ed4238175f5ea5081bf5b8600f",
+  "ic3Verdict": "PASS",
+  "ic4Verdict": "PASS"
 }

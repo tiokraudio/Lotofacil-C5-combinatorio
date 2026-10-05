@@ -1,6 +1,6 @@
 {
   "runId": "C5M-INTEGRATION-RUN-002",
-  "checkpoint": "IC0",
+  "checkpoint": "IC4",
   "baselineCommit": "35f361283579048b6f96ebadc31f9f79f8b9b445",
   "baselineBundleSha256": "cada3233666836845f5c2f63027b22d53f97bd46b32285ef43b9eda3c690ea8d",
   "canonicalStorageSource": "contests",
@@ -111,6 +111,232 @@
       "sha256": "55521e2caa737a9d5c99878ce372f440187b5a0e1743deb953af76b83de1ccf3",
       "materializedAt": "2026-10-03T18:14:00Z",
       "classification": "NORMATIVE_GOLDEN_VECTORS"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-002/corpus/canonical-corpus-v2.json",
+      "byteLength": 10355,
+      "sha256": "ee20c3f542f1efeb9e7f36d413e82aab35f883cbd7ad89f001ed47726a46fe42",
+      "materializedAt": "2026-10-05T00:24:00Z",
+      "classification": "RUN002_CANONICAL_CORPUS"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC1CorpusAndMilestones.ts",
+      "byteLength": 10276,
+      "sha256": "01ab48b26405c68d3900644a050572ee2f10d00814b901a68e710bb82c284cae",
+      "materializedAt": "2026-10-05T00:24:00Z",
+      "classification": "IC1_CORPUS_AND_MILESTONES_TEST"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC1NegativeControls.test.ts",
+      "byteLength": 4354,
+      "sha256": "4731bb20d2bfc9733dd5109edbf83e26b5852a876e8d37b5fa9fbec97d03a851",
+      "materializedAt": "2026-10-05T00:24:00Z",
+      "classification": "IC1_NEGATIVE_CONTROLS_TEST"
+    },
+    {
+      "path": "src/c5-memory/testing/generatePostIncidentGoldenVectorsV3.ts",
+      "byteLength": 3958,
+      "sha256": "914d95b8a05f8cc9ac509c84d654e33ea31a56bd41f973fafcfa6efb89468fc7",
+      "materializedAt": "2026-10-05T11:54:00Z",
+      "classification": "GOLDEN_V3_PROGRAMMATIC_GENERATOR"
+    },
+    {
+      "path": "src/c5-memory/testing/materializeAndValidateGoldenV3.ts",
+      "byteLength": 2784,
+      "sha256": "df03f32e7e7452249bfa43a57f2f99f90f60e7b5926008eeb7bde376131dd154",
+      "materializedAt": "2026-10-05T11:54:00Z",
+      "classification": "GOLDEN_V3_DOUBLE_MATERIALIZER"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC1R2Recertification.test.ts",
+      "byteLength": 13107,
+      "sha256": "e1836b2fd00954fc57265d96df2d5fa4f616084297c488e2b58e65ec22c229f1",
+      "materializedAt": "2026-10-05T11:54:00Z",
+      "classification": "IC1_R2_RECERTIFICATION_SUITE"
+    },
+    {
+      "path": "certification/post-incident-golden-vectors-v3.json",
+      "byteLength": 17424,
+      "sha256": "7d0dfdb11277da500be7bafe3353fbc5bec80b19b9eb449a72f4b0a16daf3d69",
+      "materializedAt": "2026-10-05T11:54:00Z",
+      "classification": "POST_INCIDENT_GOLDEN_VECTORS_V3"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC2FullAudit.ts",
+      "byteLength": 22926,
+      "sha256": "7f8bb6a8a6954663a2ce5748b65c47a68502d9fbdd6a5a073c6589ad6c187818",
+      "materializedAt": "2026-10-05T12:23:00Z",
+      "classification": "IC2_FULL_MATHEMATICAL_AUDIT_SUITE"
+    },
+    {
+      "path": "src/c5-memory/structuralC5.ts",
+      "byteLength": 4269,
+      "sha256": "e9202d00f4ff20bb72833bcbc2c4b691307e4cf1fc29900d88becf5ad3520b00",
+      "materializedAt": "2026-10-05T13:13:00Z",
+      "classification": "STRUCTURAL_C5_BUILDER"
+    },
+    {
+      "path": "src/c5-memory/engine210.ts",
+      "byteLength": 6127,
+      "sha256": "98537bea83e86b1b590cee4e95d29eb5a7ac27ea0914b81589bb27f5a6fcaabb",
+      "materializedAt": "2026-10-05T13:13:00Z",
+      "classification": "C5_MEMORY_2_1_0_ENGINE"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC2R2Suite.ts",
+      "byteLength": 16187,
+      "sha256": "76dba2f255acc5cd62b6f21a6e2eb3c0c3579e6805db2752dcdc3f60c295a9ff",
+      "materializedAt": "2026-10-05T13:13:00Z",
+      "classification": "IC2_R2_REMEDIATION_SUITE"
+    },
+    {
+      "path": "certification/c5-memory-v2/integration/run-002/corpus/structural-c5-golden-candidate-v1.json",
+      "byteLength": 9982,
+      "sha256": "7b4a95586f0b717d5aeab31e3b4d10d7dcc0b85ebfcfc4abf395a0c2a9439bce",
+      "materializedAt": "2026-10-05T13:13:00Z",
+      "classification": "STRUCTURAL_C5_GOLDEN_CANDIDATE_V1"
+    },
+    {
+      "path": "src/c5-memory/testing/referenceEvaluator210.ts",
+      "byteLength": 5261,
+      "sha256": "f16883a0340b68b353e8ff1e1a905e0c9995e44c016fb225054cfa9e6386fc02",
+      "materializedAt": "2026-10-05T13:21:00Z",
+      "classification": "REFERENCE_EVALUATOR_2_1_0"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC2R3Recertification.ts",
+      "byteLength": 19856,
+      "sha256": "e6661b393d29330f0b80cd5cd0e1fae662622b772244b04a4c49b1dee4441ecd",
+      "materializedAt": "2026-10-05T13:21:00Z",
+      "classification": "IC2_R3_RECERTIFICATION_SUITE"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowser210ViaCDP.ts",
+      "byteLength": 3910,
+      "sha256": "7438ecb8cf6a23239add114d49286f1a96d27f1a9fd5a61bd2a5fb81ae060b93",
+      "materializedAt": "2026-10-05T13:21:00Z",
+      "classification": "BROWSER_CDP_RUNNER_2_1_0"
+    },
+    {
+      "path": "public/recert02-browser-runner-210.html",
+      "byteLength": 629,
+      "sha256": "b506097735e3f1ee7eba1f45ee7b113003e161381818d433953efde431509ba2",
+      "materializedAt": "2026-10-05T13:21:00Z",
+      "classification": "BROWSER_RUNNER_HTML_2_1_0"
+    },
+    {
+      "path": "public/recert02-browser-runner-210.js",
+      "byteLength": 6487,
+      "sha256": "4eb28dc74c275a30421afa7db0df9097461ef2af8450b3ebbd378a1ec07127c1",
+      "materializedAt": "2026-10-05T13:21:00Z",
+      "classification": "BROWSER_RUNNER_JS_2_1_0"
+    },
+    {
+      "path": "certification/c5-memory-2.1.0-golden-v1.json",
+      "byteLength": 9993,
+      "sha256": "49cd9ca494c3e0d6f0163ea4d83bbaf354cd64ed4238175f5ea5081bf5b8600f",
+      "materializedAt": "2026-10-05T13:21:00Z",
+      "classification": "C5_MEMORY_2_1_0_GOLDEN_V1"
+    },
+    {
+      "path": "src/storage/storageManager210.ts",
+      "byteLength": 11436,
+      "sha256": "20036d4fed33aba3c8c239a264e0d332380151574725f993cf8c97196544fffa",
+      "materializedAt": "2026-10-05T13:28:00Z",
+      "classification": "STORAGE_MANAGER_2_1_0"
+    },
+    {
+      "path": "public/recert03-browser-runner-ic3.html",
+      "byteLength": 617,
+      "sha256": "9dd46fc4b8d0bf2d85de338bd5d21393af46db24e8de7785760e04ae81ffebdc",
+      "materializedAt": "2026-10-05T13:28:00Z",
+      "classification": "IC3_BROWSER_RUNNER_HTML"
+    },
+    {
+      "path": "public/recert03-browser-runner-ic3.js",
+      "byteLength": 11570,
+      "sha256": "f4d0775b959cf0c732f307d7677dc17e03e88ddd393741575f9b77305c46f30a",
+      "materializedAt": "2026-10-05T13:28:00Z",
+      "classification": "IC3_BROWSER_RUNNER_JS"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC3ViaCDP.ts",
+      "byteLength": 3936,
+      "sha256": "ef88141f12acd7f2eca6caa10b3a1adaf53c7b370c80ad4e5a7bba5addf5ca34",
+      "materializedAt": "2026-10-05T13:28:00Z",
+      "classification": "IC3_BROWSER_CDP_RUNNER"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC3Recertification.ts",
+      "byteLength": 20347,
+      "sha256": "1e57a25da37a5ac2fd700137dc5db8dbcc97b5dec9f4b0de8bd523606e31b10f",
+      "materializedAt": "2026-10-05T13:28:00Z",
+      "classification": "IC3_RECERTIFICATION_SUITE"
+    },
+    {
+      "path": "src/c5-memory/application/service210.ts",
+      "byteLength": 8540,
+      "sha256": "e92cfcf737b6599de7b94fcd663a60101887e388675814b6c8320b397c1939bd",
+      "materializedAt": "2026-10-05T13:51:00Z",
+      "classification": "APPLICATION_LAYER_SERVICE_2_1_0"
+    },
+    {
+      "path": "public/recert04-browser-runner-ic4.html",
+      "byteLength": 633,
+      "sha256": "f60162ad610bccf97d97d2b457e46750f04680c8a1bce0399b0b4222145294ec",
+      "materializedAt": "2026-10-05T13:51:00Z",
+      "classification": "IC4_BROWSER_RUNNER_HTML"
+    },
+    {
+      "path": "public/recert04-browser-runner-ic4.js",
+      "byteLength": 11976,
+      "sha256": "b007c6f6ede4af130641bc4781c6c1eb6b1170f0522417e6b7f0241c9484d464",
+      "materializedAt": "2026-10-05T13:51:00Z",
+      "classification": "IC4_BROWSER_RUNNER_JS"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC4ViaCDP.ts",
+      "byteLength": 3841,
+      "sha256": "7be1100edb97c30a0c9b2f0ef30a69c5c5e6490b5ac09260a72389446b1b7f5e",
+      "materializedAt": "2026-10-05T13:51:00Z",
+      "classification": "IC4_BROWSER_CDP_RUNNER"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC4Recertification.ts",
+      "byteLength": 18727,
+      "sha256": "2d662f1b6b80e274d35c9a0f9e18bab26cc49976344d9b1405854bdb673c7dc4",
+      "materializedAt": "2026-10-05T13:51:00Z",
+      "classification": "IC4_RECERTIFICATION_SUITE"
     }
-  ]
+  ],
+  "ic1Status": "RECOVERED_PASS",
+  "ic1BlockReason": "GOLDEN_V2_INTEGRITY_MISMATCH: post-incident-golden-vectors-v2.json diverges at milestone 1 game 1 from reference and app evaluators",
+  "goldenV2Status": "INVALIDATED",
+  "goldenV2InvalidationReason": "MANUAL_MATERIALIZATION_CORRUPTION",
+  "goldenV2Sha256": "55521e2caa737a9d5c99878ce372f440187b5a0e1743deb953af76b83de1ccf3",
+  "primaryCausalDivergenceCount": 1,
+  "propagatedDivergenceCount": 4,
+  "recert02FalsePassRootCause": "GOLDEN_V2_NOT_COMPARED_FIELD_BY_FIELD_AGAINST_EVALUATORS",
+  "goldenV3Status": "RECOVERED_NORMATIVE_CANDIDATE",
+  "goldenV3Sha256": "7d0dfdb11277da500be7bafe3353fbc5bec80b19b9eb449a72f4b0a16daf3d69",
+  "goldenV3Bytes": 17424,
+  "v3GeneratedProgrammatically": true,
+  "v3SequentialGeneration": "PASS",
+  "v3A_eq_v3B": true,
+  "v3ShaA_eq_shaB": true,
+  "reference_eq_v3": true,
+  "app_eq_v3": true,
+  "browser_eq_v3": true,
+  "selectedC5PoolBinding": "PASS",
+  "frozenPayloadBinding": "PASS",
+  "fullSha256Validation": "PASS",
+  "v3NegativeControls": "PASS",
+  "run002Status": "OPEN_IC4_PASS",
+  "ic2Status": "RECOVERED_PASS",
+  "ic2BlockReason": "C5_GEOMETRY_FAIL: candidate generator in pool produces 5 independent games; 10000/10000 candidates violate uniform frequency 3 and {7x5,8x5} intersections",
+  "targetAlgorithmVersion": "C5-Memory-2.1.0",
+  "structuralC5BuilderImplemented": true,
+  "c5_210_golden_sha256": "49cd9ca494c3e0d6f0163ea4d83bbaf354cd64ed4238175f5ea5081bf5b8600f",
+  "ic3Status": "PASS",
+  "ic4Status": "PASS"
 }

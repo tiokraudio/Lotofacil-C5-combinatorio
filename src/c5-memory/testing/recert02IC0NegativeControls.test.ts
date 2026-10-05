@@ -34,8 +34,8 @@ const AUTHORIZED_GOLDEN_V2_SHA = "55521e2caa737a9d5c99878ce372f440187b5a0e1743de
 
 // 3. Baseline Commit Incorreto
 {
-  const fakeCommit = "0000000000000000000000000000000000000000";
-  const isValid = fakeCommit === AUTHORIZED_BASELINE_COMMIT;
+  const fakeCommit: string = "0000000000000000000000000000000000000000";
+  const isValid = (fakeCommit as string) === AUTHORIZED_BASELINE_COMMIT;
   assert.strictEqual(isValid, false, "Deveria rejeitar commit não autorizado");
   console.log("  ✓ Controle Negativo 3: Baseline commit incorreto rejeitado.");
 }
@@ -67,16 +67,16 @@ const AUTHORIZED_GOLDEN_V2_SHA = "55521e2caa737a9d5c99878ce372f440187b5a0e1743de
 
 // 7. Source-of-truth Alterada de 'contests'
 {
-  const simulatedSource = "c5_memory_history"; // Tentativa errônea de declarar derivada como canônica
-  const isCanonical = simulatedSource === "contests";
+  const simulatedSource: string = "c5_memory_history"; // Tentativa errônea de declarar derivada como canônica
+  const isCanonical = (simulatedSource as string) === "contests";
   assert.strictEqual(isCanonical, false, "Deveria rejeitar store não canônica");
   console.log("  ✓ Controle Negativo 7: Store não canônica rejeitada como source of truth.");
 }
 
 // 8. Bundle com SHA Divergente
 {
-  const simulatedBundleCorruptedHash = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-  const isBundleValid = simulatedBundleCorruptedHash === AUTHORIZED_BUNDLE_SHA;
+  const simulatedBundleCorruptedHash: string = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+  const isBundleValid = (simulatedBundleCorruptedHash as string) === AUTHORIZED_BUNDLE_SHA;
   assert.strictEqual(isBundleValid, false, "Deveria rejeitar bundle com hash divergente");
   console.log("  ✓ Controle Negativo 8: Bundle com hash divergente detectado e rejeitado.");
 }
