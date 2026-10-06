@@ -1,6 +1,6 @@
 {
   "runId": "C5M-INTEGRATION-RUN-002",
-  "checkpoint": "IC6",
+  "checkpoint": "IC7",
   "baselineCommit": "35f361283579048b6f96ebadc31f9f79f8b9b445",
   "baselineBundleSha256": "cada3233666836845f5c2f63027b22d53f97bd46b32285ef43b9eda3c690ea8d",
   "canonicalStorageSource": "contests",
@@ -377,6 +377,34 @@
       "sha256": "ec584391504c2fdd7325d1765ee147525273b8e5cd00f1b8200d9f3015ad239e",
       "materializedAt": "2026-10-05T14:16:00Z",
       "classification": "IC6_RECERTIFICATION_SUITE"
+    },
+    {
+      "path": "public/recert07-browser-runner-ic7.html",
+      "byteLength": 814,
+      "sha256": "95a7a105dd9560a6079b75bde5433d334c5de74cd2e613787d15b1e5ec891ce6",
+      "materializedAt": "2026-10-06T11:00:00Z",
+      "classification": "IC7_BROWSER_RUNNER_HTML"
+    },
+    {
+      "path": "public/recert07-browser-runner-ic7.js",
+      "byteLength": 6424,
+      "sha256": "3d0a8b77f4de3bf4b18c413058c9f0e50d670ce1ec839a244f8109daa6c33211",
+      "materializedAt": "2026-10-06T11:00:00Z",
+      "classification": "IC7_BROWSER_RUNNER_JS"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC7ViaCDP.ts",
+      "byteLength": 3940,
+      "sha256": "61f6e156056455f2e597b715767ccff47042cb4246a8e4446a4fd213304b3b50",
+      "materializedAt": "2026-10-06T11:00:00Z",
+      "classification": "IC7_BROWSER_CDP_RUNNER"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC7Recertification.ts",
+      "byteLength": 19057,
+      "sha256": "14c57c73b74f5eca26a0ec10ed94a1f6c188be3fcebee8ea30c49155fcdcea2e",
+      "materializedAt": "2026-10-06T11:00:00Z",
+      "classification": "IC7_RECERTIFICATION_SUITE"
     }
   ],
   "ic1Status": "RECOVERED_PASS",
@@ -401,7 +429,7 @@
   "frozenPayloadBinding": "PASS",
   "fullSha256Validation": "PASS",
   "v3NegativeControls": "PASS",
-  "run002Status": "OPEN_IC6_PASS",
+  "run002Status": "OPEN_IC7_PASS",
   "ic2Status": "RECOVERED_PASS",
   "ic2BlockReason": "C5_GEOMETRY_FAIL: candidate generator in pool produces 5 independent games; 10000/10000 candidates violate uniform frequency 3 and {7x5,8x5} intersections",
   "targetAlgorithmVersion": "C5-Memory-2.1.0",
@@ -410,5 +438,6 @@
   "ic3Status": "PASS",
   "ic4Status": "PASS",
   "ic5Status": "PASS",
-  "ic6Status": "PASS"
+  "ic6Status": "PASS",
+  "ic7Status": "PASS"
 }
