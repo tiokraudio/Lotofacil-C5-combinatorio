@@ -440,6 +440,62 @@
       "sha256": "3d70b6bd9c939d7b76c3649284663124b19623c5c376f8688a322c99604ce77d",
       "materializedAt": "2026-10-06T11:16:00Z",
       "classification": "IC8_RECERTIFICATION_SUITE"
+    },
+    {
+      "path": "src/c5-memory/research/types.ts",
+      "byteLength": 2329,
+      "sha256": "567f275bcf7c91178eb6afe3a6918ff9b3f2fb3989be460c783880858dfd5ca3",
+      "materializedAt": "2026-10-06T11:32:00Z",
+      "classification": "RESEARCH_TYPES"
+    },
+    {
+      "path": "src/c5-memory/research/combinatorics.ts",
+      "byteLength": 5737,
+      "sha256": "e7b9645a4ec77888ba326245c33bfe07d580745cafaacf894769fa18b874c57b",
+      "materializedAt": "2026-10-06T11:32:00Z",
+      "classification": "RESEARCH_COMBINATORICS"
+    },
+    {
+      "path": "src/c5-memory/research/protocolValidator.ts",
+      "byteLength": 2282,
+      "sha256": "bcfe6084e5a87e1c3c1e87313a3b8c2e95e79a7f97d3dc3fb73bf5176394a23e",
+      "materializedAt": "2026-10-06T11:32:00Z",
+      "classification": "RESEARCH_PROTOCOL_VALIDATOR"
+    },
+    {
+      "path": "src/c5-memory/research/engine.ts",
+      "byteLength": 11463,
+      "sha256": "60b9642260852fae7df1fac28df6df5b69a7ae188deb66b710952c921c410707",
+      "materializedAt": "2026-10-06T11:32:00Z",
+      "classification": "RESEARCH_ENGINE"
+    },
+    {
+      "path": "public/recert09-browser-runner-ic9.html",
+      "byteLength": 811,
+      "sha256": "325d560bfd29cb19b4ceafd9b952b2a1d62b739483d59d7421741c92776dbc77",
+      "materializedAt": "2026-10-06T11:33:00Z",
+      "classification": "IC9_BROWSER_RUNNER_HTML"
+    },
+    {
+      "path": "public/recert09-browser-runner-ic9.js",
+      "byteLength": 5446,
+      "sha256": "cd8b28d5cb0b0bc6492be66ac70c851880660cb27fd649ea76d1785e8fe70279",
+      "materializedAt": "2026-10-06T11:33:00Z",
+      "classification": "IC9_BROWSER_RUNNER_JS"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC9ViaCDP.ts",
+      "byteLength": 3982,
+      "sha256": "d0f9625975dd28041753bece1f9a1d17911d27ea67dd32572dd3828ce5812d48",
+      "materializedAt": "2026-10-06T11:33:00Z",
+      "classification": "IC9_BROWSER_CDP_RUNNER"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC9Recertification.ts",
+      "byteLength": 18664,
+      "sha256": "cc3a86466b8caee2fd303ef11a30ca5df7528c4f86cc2f9344c65841d343afe2",
+      "materializedAt": "2026-10-06T11:33:00Z",
+      "classification": "IC9_RECERTIFICATION_SUITE"
     }
   ],
   "ic1Status": "RECOVERED_PASS",
@@ -464,7 +520,7 @@
   "frozenPayloadBinding": "PASS",
   "fullSha256Validation": "PASS",
   "v3NegativeControls": "PASS",
-  "run002Status": "OPEN_IC8_PASS",
+  "run002Status": "OPEN_IC9_PASS",
   "ic2Status": "RECOVERED_PASS",
   "ic2BlockReason": "C5_GEOMETRY_FAIL: candidate generator in pool produces 5 independent games; 10000/10000 candidates violate uniform frequency 3 and {7x5,8x5} intersections",
   "targetAlgorithmVersion": "C5-Memory-2.1.0",
@@ -475,5 +531,6 @@
   "ic5Status": "PASS",
   "ic6Status": "PASS",
   "ic7Status": "PASS",
-  "ic8Status": "PASS"
+  "ic8Status": "PASS",
+  "ic9Status": "PASS"
 }

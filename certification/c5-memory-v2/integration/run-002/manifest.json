@@ -1,8 +1,8 @@
 {
   "runId": "C5M-INTEGRATION-RUN-002",
-  "checkpoint": "IC8",
+  "checkpoint": "IC9",
   "title": "Baseline Freeze, Environment Inventory & Normative Entry Gate",
-  "status": "OPEN_IC8_PASS",
+  "status": "OPEN_IC9_PASS",
   "openedAt": "2026-10-03T18:14:00Z",
   "externalRecoveryCopy": "NOT_AVAILABLE",
   "goldenVectorVersion": "POST_INCIDENT_GOLDEN_VECTORS_V3",
@@ -22,5 +22,6 @@
   "ic5Verdict": "PASS",
   "ic6Verdict": "PASS",
   "ic7Verdict": "PASS",
-  "ic8Verdict": "PASS"
+  "ic8Verdict": "PASS",
+  "ic9Verdict": "PASS"
 }
