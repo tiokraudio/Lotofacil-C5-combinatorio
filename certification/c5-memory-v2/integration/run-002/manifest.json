@@ -1,6 +1,6 @@
 {
   "runId": "C5M-INTEGRATION-RUN-002",
-  "checkpoint": "IC9",
+  "checkpoint": "IC9-R1",
   "title": "Baseline Freeze, Environment Inventory & Normative Entry Gate",
   "status": "OPEN_IC9_PASS",
   "openedAt": "2026-10-03T18:14:00Z",
@@ -23,5 +23,6 @@
   "ic6Verdict": "PASS",
   "ic7Verdict": "PASS",
   "ic8Verdict": "PASS",
-  "ic9Verdict": "PASS"
+  "ic9Verdict": "RECOVERED_PASS",
+  "ic9R1Verdict": "PASS"
 }

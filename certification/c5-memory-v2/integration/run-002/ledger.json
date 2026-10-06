@@ -443,17 +443,24 @@
     },
     {
       "path": "src/c5-memory/research/types.ts",
-      "byteLength": 2329,
-      "sha256": "567f275bcf7c91178eb6afe3a6918ff9b3f2fb3989be460c783880858dfd5ca3",
-      "materializedAt": "2026-10-06T11:32:00Z",
+      "byteLength": 2535,
+      "sha256": "b281264c9c7e87f9816661aa4037d7c6f4e91f48cd4513459e59659db784e602",
+      "materializedAt": "2026-10-06T11:50:00Z",
       "classification": "RESEARCH_TYPES"
     },
     {
       "path": "src/c5-memory/research/combinatorics.ts",
-      "byteLength": 5737,
-      "sha256": "e7b9645a4ec77888ba326245c33bfe07d580745cafaacf894769fa18b874c57b",
-      "materializedAt": "2026-10-06T11:32:00Z",
+      "byteLength": 7344,
+      "sha256": "7ef54b1693a98dc62cfadbf34d8472b1d81d5dcc47f4e56b5fe046a7029a0f5c",
+      "materializedAt": "2026-10-06T11:50:00Z",
       "classification": "RESEARCH_COMBINATORICS"
+    },
+    {
+      "path": "src/c5-memory/research/statistics.ts",
+      "byteLength": 2449,
+      "sha256": "2b246b8932bac87b2c7ab079eae05b3971bf7a7e08a6bb4e3e49a5c2631bf017",
+      "materializedAt": "2026-10-06T11:50:00Z",
+      "classification": "RESEARCH_STATISTICS"
     },
     {
       "path": "src/c5-memory/research/protocolValidator.ts",
@@ -464,9 +471,9 @@
     },
     {
       "path": "src/c5-memory/research/engine.ts",
-      "byteLength": 11463,
-      "sha256": "60b9642260852fae7df1fac28df6df5b69a7ae188deb66b710952c921c410707",
-      "materializedAt": "2026-10-06T11:32:00Z",
+      "byteLength": 17646,
+      "sha256": "3021054c6c7673eec301ab6ee3b99d9ac89c2feade1afc2129417aeda5fba3e1",
+      "materializedAt": "2026-10-06T11:50:00Z",
       "classification": "RESEARCH_ENGINE"
     },
     {
@@ -492,9 +499,9 @@
     },
     {
       "path": "src/c5-memory/testing/run002IC9Recertification.ts",
-      "byteLength": 18664,
-      "sha256": "cc3a86466b8caee2fd303ef11a30ca5df7528c4f86cc2f9344c65841d343afe2",
-      "materializedAt": "2026-10-06T11:33:00Z",
+      "byteLength": 28594,
+      "sha256": "5af56ab78db9dc4bfe23a8e64085a5aec9c5f36d9b6c3d789ebd5691730f0638",
+      "materializedAt": "2026-10-06T11:52:00Z",
       "classification": "IC9_RECERTIFICATION_SUITE"
     }
   ],
@@ -532,5 +539,6 @@
   "ic6Status": "PASS",
   "ic7Status": "PASS",
   "ic8Status": "PASS",
-  "ic9Status": "PASS"
+  "ic9Status": "RECOVERED_PASS",
+  "ic9R1Status": "PASS"
 }

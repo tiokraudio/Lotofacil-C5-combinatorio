@@ -96,6 +96,65 @@ export function getOutcomes14Plus(game: readonly number[]): number[] {
 }
 
 /**
+ * Mapeamento inverso canônico: de um índice escalar [0, 3268759]
+ * para o jogo correspondente de 15 dezenas (1..25) ordenado ascendentemente.
+ */
+export function outcomeIndexToGame(index: number): number[] {
+  if (index < 0 || index >= UNIVERSE_TOTAL_OUTCOMES) {
+    throw new Error(`Índice fora do universo C(25, 15): ${index}`);
+  }
+  const game = new Array<number>(15);
+  let rem = index;
+  let currentA = 24;
+  for (let i = 14; i >= 0; i--) {
+    while (BINOM_TABLE[currentA][i + 1] > rem) {
+      currentA--;
+    }
+    game[i] = currentA + 1;
+    rem -= BINOM_TABLE[currentA][i + 1];
+    currentA--;
+  }
+  return game;
+}
+
+/**
+ * Retorna os resultados com 15 acertos (exatamente 1 resultado: o próprio jogo)
+ */
+export function getOutcomes15(game: readonly number[]): number[] {
+  return [gameToOutcomeIndex(game)];
+}
+
+/**
+ * Avaliador de Cobertura de Referência sobre um conjunto de amostras ou universo
+ */
+export function countCoveredOutcomesReference(
+  games: readonly (readonly number[])[],
+  minHits: number,
+  sampleOutcomes: readonly (readonly number[])[]
+): number {
+  let coveredCount = 0;
+  for (const outcome of sampleOutcomes) {
+    let maxHit = 0;
+    for (const g of games) {
+      let hit = 0;
+      let i = 0;
+      let j = 0;
+      while (i < g.length && j < outcome.length) {
+        if (g[i] === outcome[j]) { hit++; i++; j++; }
+        else if (g[i] < outcome[j]) { i++; }
+        else { j++; }
+      }
+      if (hit > maxHit) maxHit = hit;
+      if (maxHit >= minHits) break;
+    }
+    if (maxHit >= minHits) {
+      coveredCount++;
+    }
+  }
+  return coveredCount;
+}
+
+/**
  * Tabela rápida de popcount de 8 bits
  */
 const POPCOUNT_8 = new Uint8Array(256);

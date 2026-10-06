@@ -14,6 +14,10 @@ export interface ResearchMetrics {
   readonly distinct15: number;
   readonly distinct14Plus: number;
   readonly selectionDurationMs: number;
+  readonly timingPoolGenerationMs: number;
+  readonly timingQComputationMs: number;
+  readonly timingSelectionMs: number;
+  readonly timingCoverageUpdateMs: number;
   readonly leximinMinDistance?: number;
 }
 
@@ -40,6 +44,7 @@ export interface ArmExecutionState {
   readonly bitsetSha256: string;
   readonly stepResults: readonly ArmStepResult[];
   readonly stateSha256: string;
+  readonly scientificResultHash: string;
 }
 
 export interface ResearchCheckpoint {
