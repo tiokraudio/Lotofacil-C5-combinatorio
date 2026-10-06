@@ -1,0 +1,95 @@
+{
+  "protocolId": "C5_MEMORY_210_RESEARCH_PROTOCOL_V1",
+  "version": "1.0.0",
+  "title": "Protocolo Científico Oficial para Pesquisa Longitudinal do C5-Memory-2.1.0",
+  "frozenAt": "2026-10-06T11:15:00Z",
+  "objective": "Avaliar o impacto longitudinal da seleção MAX-LEXIMIN sobre sequências de Structural C5 em comparação com baseline determinístico sob grade controlada de K.",
+  "singleVariablePrinciple": {
+    "status": "ENFORCED",
+    "description": "Baseline e MAX-LEXIMIN diferem estritamente na política de seleção sobre candidatos Structural C5."
+  },
+  "initialState": {
+    "history": "EMPTY",
+    "historyRevision": 0,
+    "legacy20Included": false,
+    "userStateIncluded": false
+  },
+  "universe": {
+    "combinationFormula": "C(25, 15)",
+    "totalOutcomes": 3268760
+  },
+  "timeStep": {
+    "unit": "CONTEST",
+    "gamesPerStep": 5,
+    "updateTiming": "AFTER_STEP_SELECTION"
+  },
+  "historyGrowth": {
+    "formula": "|H_t| = 5t",
+    "enforcedNoDuplicates": true
+  },
+  "duplicatePolicy": {
+    "rule": "REJECT_EXACT_DUPLICATE_AND_NEXT_CANDIDATE",
+    "behavior": "MAX-LEXIMIN penaliza d_J=0 (n0 > 0); duplicate guard rejeita jogos duplicados em H."
+  },
+  "baseline": {
+    "version": "C5-Memory-2.1.0-STRUCTURAL-BASELINE",
+    "usesStructuralC5": true,
+    "selectionRule": "FIRST_POOL_CANDIDATE_INDEX_0",
+    "kInvariance": true
+  },
+  "experiments": {
+    "experimentA": {
+      "id": "EXPERIMENT_A",
+      "name": "END_TO_END_POLICY_EFFECT",
+      "description": "Cada braço evolui seu próprio histórico e seed master operacional: poolMasterSeed = SHA256(contestNumber, historyFingerprint)."
+    },
+    "experimentB": {
+      "id": "EXPERIMENT_B",
+      "name": "CONTROLLED_SELECTION_EFFECT",
+      "description": "Baseline e MAX-LEXIMIN recebem em cada passo o mesmo pool exógeno gerado por RESEARCH_POOL_SEED:<masterResearchSeed>:<t>."
+    }
+  },
+  "kGrid": [10, 20, 50, 100, 500],
+  "masterSeeds": {
+    "count": 32,
+    "generationAlgorithm": "HMAC_SHA256_INCREMENTAL",
+    "masterSalt": "C5M-RESEARCH-SEED-SALT-2026-V1"
+  },
+  "horizons": [100, 500, 1000, 2000, 3788],
+  "metrics": {
+    "primary": "DISTINCT_COVERAGE_14_PLUS",
+    "secondary": [
+      "DISTINCT_15",
+      "DISTINCT_14_PLUS",
+      "DISTINCT_13_PLUS",
+      "DISTINCT_12_PLUS",
+      "DISTINCT_11_PLUS",
+      "DUPLICATE_GAME_COUNT",
+      "UNIQUE_GAME_COUNT",
+      "JOHNSON_DISTANCE_DIAGNOSTICS",
+      "SELECTION_TIMING"
+    ]
+  },
+  "coverageEvaluation": {
+    "bitsetSizeBits": 3268760,
+    "bitsetSizeBytes": 408595,
+    "semantics": "UNION_OF_DISTINCT_OUTCOMES",
+    "noMultiplicitySum": true
+  },
+  "statisticalSummary": {
+    "measures": ["MEAN", "MEDIAN", "MIN", "MAX", "STD_DEV", "PAIRED_DELTAS", "SIGN_PROPORTIONS"],
+    "pairedDesign": true,
+    "confidenceIntervalMethod": "NOT_USED"
+  },
+  "superiorityReportingRule": "REPORT_MEAN_MEDIAN_AND_POSITIVE_SEEDS_WITHOUT_UNILATERAL_CLAIM",
+  "kSelectionRule": "MULTI_CRITERIA_SATURATION_AND_COMPUTATIONAL_EFFICIENCY",
+  "performanceLimits": {
+    "targetMs": 500,
+    "hardLimitMs": 2000
+  },
+  "reproducibility": {
+    "manifestRequired": true,
+    "resumeEqualsContinuous": true,
+    "serialEqualsParallel": true
+  }
+}

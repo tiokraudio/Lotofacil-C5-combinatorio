@@ -1,6 +1,6 @@
 {
   "runId": "C5M-INTEGRATION-RUN-002",
-  "checkpoint": "IC7",
+  "checkpoint": "IC8",
   "baselineCommit": "35f361283579048b6f96ebadc31f9f79f8b9b445",
   "baselineBundleSha256": "cada3233666836845f5c2f63027b22d53f97bd46b32285ef43b9eda3c690ea8d",
   "canonicalStorageSource": "contests",
@@ -405,6 +405,41 @@
       "sha256": "14c57c73b74f5eca26a0ec10ed94a1f6c188be3fcebee8ea30c49155fcdcea2e",
       "materializedAt": "2026-10-06T11:00:00Z",
       "classification": "IC7_RECERTIFICATION_SUITE"
+    },
+    {
+      "path": "certification/c5-memory-v2/research/c5-memory-2.1.0-research-protocol-v1.json",
+      "byteLength": 3190,
+      "sha256": "e8841fee2b15243f035ef777cef2cc70789012cc9d8d3299bc66e96c88a98226",
+      "materializedAt": "2026-10-06T11:15:00Z",
+      "classification": "RESEARCH_PROTOCOL_V1_SPECIFICATION"
+    },
+    {
+      "path": "public/recert08-browser-runner-ic8.html",
+      "byteLength": 816,
+      "sha256": "b9afc442d453a3b72a9f841da9cecaeb0ffffda733bbadeeaba3bb4b0df5c84c",
+      "materializedAt": "2026-10-06T11:16:00Z",
+      "classification": "IC8_BROWSER_RUNNER_HTML"
+    },
+    {
+      "path": "public/recert08-browser-runner-ic8.js",
+      "byteLength": 4434,
+      "sha256": "385b6a6b14fde789b186b542c7076bfb5e1467e8ca58f28f595aff203c748c63",
+      "materializedAt": "2026-10-06T11:16:00Z",
+      "classification": "IC8_BROWSER_RUNNER_JS"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC8ViaCDP.ts",
+      "byteLength": 3952,
+      "sha256": "0b51a14acbcfb22994cb5762e0ce0c02925c2690dcb9382a9b7310011235294e",
+      "materializedAt": "2026-10-06T11:16:00Z",
+      "classification": "IC8_BROWSER_CDP_RUNNER"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC8Recertification.ts",
+      "byteLength": 15866,
+      "sha256": "3d70b6bd9c939d7b76c3649284663124b19623c5c376f8688a322c99604ce77d",
+      "materializedAt": "2026-10-06T11:16:00Z",
+      "classification": "IC8_RECERTIFICATION_SUITE"
     }
   ],
   "ic1Status": "RECOVERED_PASS",
@@ -429,7 +464,7 @@
   "frozenPayloadBinding": "PASS",
   "fullSha256Validation": "PASS",
   "v3NegativeControls": "PASS",
-  "run002Status": "OPEN_IC7_PASS",
+  "run002Status": "OPEN_IC8_PASS",
   "ic2Status": "RECOVERED_PASS",
   "ic2BlockReason": "C5_GEOMETRY_FAIL: candidate generator in pool produces 5 independent games; 10000/10000 candidates violate uniform frequency 3 and {7x5,8x5} intersections",
   "targetAlgorithmVersion": "C5-Memory-2.1.0",
@@ -439,5 +474,6 @@
   "ic4Status": "PASS",
   "ic5Status": "PASS",
   "ic6Status": "PASS",
-  "ic7Status": "PASS"
+  "ic7Status": "PASS",
+  "ic8Status": "PASS"
 }
