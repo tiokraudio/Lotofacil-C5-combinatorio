@@ -1,0 +1,24 @@
+{
+  "manifestId": "C5M_RESEARCH_MANIFEST_210_V1",
+  "protocolId": "C5_MEMORY_210_RESEARCH_PROTOCOL_V1",
+  "protocolSha256": "e8841fee2b15243f035ef777cef2cc70789012cc9d8d3299bc66e96c88a98226",
+  "engineSha256": "3021054c6c7673eec301ab6ee3b99d9ac89c2feade1afc2129417aeda5fba3e1",
+  "executedSeedsCount": 32,
+  "kGrid": [
+    10,
+    20,
+    50,
+    100,
+    500
+  ],
+  "horizons": [
+    100,
+    500,
+    1000,
+    2000,
+    3788
+  ],
+  "resultsSummarySha256": "195d6eba66b99884e44b03c146e47079bb6bd6635d2b82b22034d03584730f88",
+  "createdAt": "2026-10-06T12:45:00Z",
+  "status": "CERTIFIED_DEFINITIVE"
+}

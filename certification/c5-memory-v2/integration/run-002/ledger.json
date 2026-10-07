@@ -527,7 +527,7 @@
   "frozenPayloadBinding": "PASS",
   "fullSha256Validation": "PASS",
   "v3NegativeControls": "PASS",
-  "run002Status": "OPEN_IC9_PASS",
+  "run002Status": "OPEN_IC10_PASS",
   "ic2Status": "RECOVERED_PASS",
   "ic2BlockReason": "C5_GEOMETRY_FAIL: candidate generator in pool produces 5 independent games; 10000/10000 candidates violate uniform frequency 3 and {7x5,8x5} intersections",
   "targetAlgorithmVersion": "C5-Memory-2.1.0",
@@ -540,5 +540,15 @@
   "ic7Status": "PASS",
   "ic8Status": "PASS",
   "ic9Status": "RECOVERED_PASS",
-  "ic9R1Status": "PASS"
+  "ic9R1Status": "PASS",
+  "ic10Status": "PASS",
+  "ic10SignTestPassed": "32/32",
+  "ic10OptimalK": 50,
+  "ic10ResearchResultsSha256": "195d6eba66b99884e44b03c146e47079bb6bd6635d2b82b22034d03584730f88",
+  "ic10K50MeanGainExpA": 83811,
+  "ic10K50MeanGainExpB": 86728,
+  "ic10K50MeanLatencyMs": 5.74,
+  "ic10K50P95LatencyMs": 16.3,
+  "ic10ConcaveSaturationCurve": "PASS",
+  "ic10ReproducibilityManifest": "CERTIFIED_DEFINITIVE"
 }

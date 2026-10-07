@@ -1,8 +1,8 @@
 {
   "runId": "C5M-INTEGRATION-RUN-002",
-  "checkpoint": "IC9-R1",
-  "title": "Baseline Freeze, Environment Inventory & Normative Entry Gate",
-  "status": "OPEN_IC9_PASS",
+  "checkpoint": "IC10",
+  "title": "Definitive Longitudinal Research & K Selection Protocol",
+  "status": "OPEN_IC10_PASS",
   "openedAt": "2026-10-03T18:14:00Z",
   "externalRecoveryCopy": "NOT_AVAILABLE",
   "goldenVectorVersion": "POST_INCIDENT_GOLDEN_VECTORS_V3",
@@ -24,5 +24,8 @@
   "ic7Verdict": "PASS",
   "ic8Verdict": "PASS",
   "ic9Verdict": "RECOVERED_PASS",
-  "ic9R1Verdict": "PASS"
+  "ic9R1Verdict": "PASS",
+  "ic10Verdict": "PASS",
+  "selectedK": 50,
+  "definitiveResearchManifestSha256": "195d6eba66b99884e44b03c146e47079bb6bd6635d2b82b22034d03584730f88"
 }
