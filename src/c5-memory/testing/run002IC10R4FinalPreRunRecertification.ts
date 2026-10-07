@@ -41,6 +41,7 @@ import {
   restoreResearchExecutionV2,
   generateEvidenceManifestV2,
   generateAggregatesAndReportsV2,
+  generateJohnsonDiagnosticsV2,
   validateEvidenceCompletenessV2,
   RawTrajectoryHorizonRecord,
   TrajectoryEvidenceFile,
@@ -62,6 +63,7 @@ import {
 } from "../research/combinatorics";
 import {
   calculatePercentile,
+  calculateNearestRankPercentile,
   calculateStatisticalSummary,
   calculatePairedDeltas,
 } from "../research/statistics";
@@ -189,17 +191,161 @@ try {
   console.log("EXACT_ARITHMETIC_DELTAS_CONSISTENCY      = PASS");
 
   // ---------------------------------------------------------------------------
-  // 4. F08: PERCENTIL REAL P95 (SEM MULTIPLICADORES SINTÉTICOS)
+  // 3B. FIX-3: AVALIADOR INDEPENDENTE DE REFERÊNCIA BRUTE FORCE (ORÁCULO)
   // ---------------------------------------------------------------------------
-  console.log("\n--- [SEÇÃO 4] F08: PERCENTIL REAL P95 ---");
+  console.log("\n--- [SEÇÃO 3B] FIX-3: AVALIADOR INDEPENDENTE DE REFERÊNCIA BRUTE FORCE ---");
+  // Implementação conceitual independente sem reutilizar evaluateHierarchicalCoverage nem seus atalhos
+  function bruteForceReferenceCoverage(history: readonly (readonly number[])[]) {
+    let cov15 = 0;
+    let cov14 = 0;
+    let cov13 = 0;
+    let cov12 = 0;
+    let cov11 = 0;
+
+    const nGames = history.length;
+    const inGame = new Uint8Array(nGames * 26);
+    for (let g = 0; g < nGames; g++) {
+      for (const num of history[g]) {
+        inGame[g * 26 + num] = 1;
+      }
+    }
+
+    const current = new Int32Array(15);
+    function backtrack(start: number, depth: number) {
+      if (depth === 15) {
+        let maxHits = 0;
+        for (let g = 0; g < nGames; g++) {
+          const offset = g * 26;
+          let hits = 0;
+          for (let j = 0; j < 15; j++) {
+            hits += inGame[offset + current[j]];
+          }
+          if (hits > maxHits) {
+            maxHits = hits;
+            if (maxHits === 15) break;
+          }
+        }
+        if (maxHits >= 15) cov15++;
+        if (maxHits >= 14) cov14++;
+        if (maxHits >= 13) cov13++;
+        if (maxHits >= 12) cov12++;
+        if (maxHits >= 11) cov11++;
+        return;
+      }
+      const maxStart = 25 - (15 - depth) + 1;
+      for (let x = start; x <= maxStart; x++) {
+        current[depth] = x;
+        backtrack(x + 1, depth + 1);
+      }
+    }
+
+    backtrack(1, 0);
+    return {
+      coverage15: cov15,
+      coverage14Plus: cov14,
+      coverage13Plus: cov13,
+      coverage12Plus: cov12,
+      coverage11Plus: cov11,
+    };
+  }
+
+  const deterministicGames: number[][] = [
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16],
+    [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17],
+    [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 22, 23, 24, 25],
+    [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 21, 22, 23, 24, 25],
+    [1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 20, 21, 22, 23, 24],
+    [6, 7, 8, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25],
+    [1, 4, 7, 10, 13, 16, 19, 22, 25, 2, 5, 8, 11, 14, 17].sort((a, b) => a - b),
+    [3, 6, 9, 12, 15, 18, 21, 24, 1, 2, 7, 8, 13, 14, 19].sort((a, b) => a - b),
+    [2, 5, 8, 11, 14, 17, 20, 23, 1, 4, 9, 12, 15, 18, 21].sort((a, b) => a - b),
+  ];
+
+  // 1 jogo
+  const opt1 = evaluateHierarchicalCoverage(deterministicGames.slice(0, 1));
+  const ref1 = bruteForceReferenceCoverage(deterministicGames.slice(0, 1));
+  assert.strictEqual(opt1.coverage15, ref1.coverage15);
+  assert.strictEqual(opt1.coverage14Plus, ref1.coverage14Plus);
+  assert.strictEqual(opt1.coverage13Plus, ref1.coverage13Plus);
+  assert.strictEqual(opt1.coverage12Plus, ref1.coverage12Plus);
+  assert.strictEqual(opt1.coverage11Plus, ref1.coverage11Plus);
+  console.log("REFERENCE_1_GAME                         = PASS");
+
+  // 2 jogos
+  const opt2 = evaluateHierarchicalCoverage(deterministicGames.slice(0, 2));
+  const ref2 = bruteForceReferenceCoverage(deterministicGames.slice(0, 2));
+  assert.strictEqual(opt2.coverage15, ref2.coverage15);
+  assert.strictEqual(opt2.coverage14Plus, ref2.coverage14Plus);
+  assert.strictEqual(opt2.coverage13Plus, ref2.coverage13Plus);
+  assert.strictEqual(opt2.coverage12Plus, ref2.coverage12Plus);
+  assert.strictEqual(opt2.coverage11Plus, ref2.coverage11Plus);
+  console.log("REFERENCE_2_GAMES                        = PASS");
+
+  // 5 jogos
+  const opt5 = evaluateHierarchicalCoverage(deterministicGames.slice(0, 5));
+  const ref5 = bruteForceReferenceCoverage(deterministicGames.slice(0, 5));
+  assert.strictEqual(opt5.coverage15, ref5.coverage15);
+  assert.strictEqual(opt5.coverage14Plus, ref5.coverage14Plus);
+  assert.strictEqual(opt5.coverage13Plus, ref5.coverage13Plus);
+  assert.strictEqual(opt5.coverage12Plus, ref5.coverage12Plus);
+  assert.strictEqual(opt5.coverage11Plus, ref5.coverage11Plus);
+  console.log("REFERENCE_5_GAMES                        = PASS");
+
+  // 10 jogos
+  const opt10 = evaluateHierarchicalCoverage(deterministicGames.slice(0, 10));
+  const ref10 = bruteForceReferenceCoverage(deterministicGames.slice(0, 10));
+  assert.strictEqual(opt10.coverage15, ref10.coverage15);
+  assert.strictEqual(opt10.coverage14Plus, ref10.coverage14Plus);
+  assert.strictEqual(opt10.coverage13Plus, ref10.coverage13Plus);
+  assert.strictEqual(opt10.coverage12Plus, ref10.coverage12Plus);
+  assert.strictEqual(opt10.coverage11Plus, ref10.coverage11Plus);
+  console.log("REFERENCE_10_GAMES                       = PASS");
+
+  // Controle Negativo do Oráculo: discrepância artificial de 1 unidade deve falhar a asserção
+  assert.throws(
+    () => {
+      const corruptedRef = { ...ref10, coverage14Plus: ref10.coverage14Plus + 1 };
+      assert.strictEqual(opt10.coverage14Plus, corruptedRef.coverage14Plus);
+    },
+    /AssertionError/,
+    "Discrepância com o oráculo deve ser detectada e rejeitada"
+  );
+  console.log("ORACLE_NEGATIVE_CONTROL                  = PASS");
+
+  // ---------------------------------------------------------------------------
+  // 4. F08 / FIX-1: PERCENTIL P95 NEAREST-RANK
+  // ---------------------------------------------------------------------------
+  console.log("\n--- [SEÇÃO 4] F08 / FIX-1: PERCENTIL P95 NEAREST-RANK ---");
   const testTimings = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-  const p95Real = calculatePercentile(testTimings, 0.95);
-  // Interpolação linear: index = 0.95 * 9 = 8.55 -> lower=8 (90), upper=9 (100) -> 90*0.45 + 100*0.55 = 95.5
-  assert.strictEqual(p95Real, 95.5, "Percentil real 95 deve ser exatamente 95.5");
+  const p95Observed = calculateNearestRankPercentile(testTimings, 0.95);
+  const p95Expected = 100;
+  assert.strictEqual(p95Observed, p95Expected, `P95 esperado 100, obtido ${p95Observed}`);
+  console.log(`P95_EXPECTED                             = ${p95Expected}`);
+  console.log(`P95_OBSERVED                             = ${p95Observed}`);
+
+  // Validações adicionais obrigatórias:
+  // N=1
+  assert.strictEqual(calculateNearestRankPercentile([42], 0.95), 42);
+  // N=2
+  assert.strictEqual(calculateNearestRankPercentile([10, 20], 0.95), 20);
+  // N=10
+  assert.strictEqual(calculateNearestRankPercentile(testTimings, 0.95), 100);
+  // N=20
+  const vec20 = Array.from({ length: 20 }, (_, i) => (i + 1) * 5);
+  assert.strictEqual(calculateNearestRankPercentile(vec20, 0.95), 95);
+  // Valores repetidos
+  assert.strictEqual(calculateNearestRankPercentile([50, 50, 50, 50], 0.95), 50);
+  // Valores decimais
+  const vecDec = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5];
+  assert.strictEqual(calculateNearestRankPercentile(vecDec, 0.95), 10.5);
+  // Entrada não ordenada
+  const vecUnsorted = [90, 20, 80, 10, 60, 40, 70, 30, 100, 50];
+  assert.strictEqual(calculateNearestRankPercentile(vecUnsorted, 0.95), 100);
 
   const stat = calculateStatisticalSummary(testTimings);
-  assert.strictEqual(stat.p95, 95.5, "Resumo estatístico deve conter p95 exato");
-  console.log("EXACT_P95_PERCENTILE_CALCULATION         = PASS (95.5 ms)");
+  assert.strictEqual(stat.p95, 100, "Resumo estatístico deve conter p95 nearest-rank = 100");
+  console.log("P95_NEAREST_RANK                         = PASS");
 
   // ---------------------------------------------------------------------------
   // 5. F03: RETOMADA TRANSPARENTE E EQUIVALÊNCIA BYTE-A-BYTE
@@ -394,6 +540,67 @@ try {
   assert.strictEqual(johnsonDiag.zeroDuplicatePolicyEnforced, true);
   assert.strictEqual(johnsonDiag.collisionsDetected, false);
   console.log("JOHNSON_DIAGNOSTICS_DERIVED_FROM_RAW    = PASS");
+
+  // FIX-2: Controles Negativos e Positivos Obrigatórios do Diagnóstico de Johnson
+  // Caso A — RAW ausente
+  const fixtureADir = path.join(testDir, "fixture-a-missing-raw");
+  fs.cpSync(fullMockDir, fixtureADir, { recursive: true });
+  fs.rmSync(path.join(fixtureADir, "raw", "experiment-a", "canonical_k10.json"));
+  assert.throws(
+    () => {
+      generateJohnsonDiagnosticsV2(fixtureADir, FROZEN_RESEARCH_PROTOCOL_V2_SHA256);
+    },
+    /JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE/,
+    "RAW ausente deve falhar com JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE"
+  );
+  console.log("JOHNSON_MISSING_RAW_REJECTED             = PASS");
+
+  // Caso B — RAW corrompido
+  const fixtureBDir = path.join(testDir, "fixture-b-corrupt-raw");
+  fs.cpSync(fullMockDir, fixtureBDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(fixtureBDir, "raw", "experiment-b", "k10_seed0.json"),
+    "{ invalid JSON content",
+    "utf-8"
+  );
+  assert.throws(
+    () => {
+      generateJohnsonDiagnosticsV2(fixtureBDir, FROZEN_RESEARCH_PROTOCOL_V2_SHA256);
+    },
+    /JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE/,
+    "RAW corrompido deve falhar com JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE"
+  );
+  console.log("JOHNSON_CORRUPT_RAW_REJECTED             = PASS");
+
+  // Caso C — Campo finalDuplicateCount ausente
+  const fixtureCDir = path.join(testDir, "fixture-c-missing-field");
+  fs.cpSync(fullMockDir, fixtureCDir, { recursive: true });
+  const targetCPath = path.join(fixtureCDir, "raw", "experiment-a", "canonical_k20.json");
+  const rawC = JSON.parse(fs.readFileSync(targetCPath, "utf-8"));
+  delete rawC.finalDuplicateCount;
+  fs.writeFileSync(targetCPath, JSON.stringify(rawC, null, 2), "utf-8");
+  assert.throws(
+    () => {
+      generateJohnsonDiagnosticsV2(fixtureCDir, FROZEN_RESEARCH_PROTOCOL_V2_SHA256);
+    },
+    /JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE/,
+    "Campo ausente deve falhar com JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE"
+  );
+  console.log("JOHNSON_MISSING_DUPLICATE_FIELD_REJECTED = PASS");
+
+  // Caso D — Duplicata real detectada dinamicamente
+  const fixtureDDir = path.join(testDir, "fixture-d-real-duplicate");
+  fs.cpSync(fullMockDir, fixtureDDir, { recursive: true });
+  const targetDPath = path.join(fixtureDDir, "raw", "experiment-b", "k50_seed3.json");
+  const rawD = JSON.parse(fs.readFileSync(targetDPath, "utf-8"));
+  rawD.finalDuplicateCount = 2;
+  fs.writeFileSync(targetDPath, JSON.stringify(rawD, null, 2), "utf-8");
+
+  const diagD = generateJohnsonDiagnosticsV2(fixtureDDir, FROZEN_RESEARCH_PROTOCOL_V2_SHA256);
+  assert.strictEqual(diagD.diagnostics.totalDuplicatesObserved, 2);
+  assert.strictEqual(diagD.diagnostics.zeroDuplicatePolicyEnforced, false);
+  assert.strictEqual(diagD.diagnostics.collisionsDetected, true);
+  console.log("JOHNSON_DUPLICATE_DETECTION              = PASS");
 
   // F11: Valida ausência estrita de conclusões pré-computadas e K não selecionado
   const execRep = JSON.parse(fs.readFileSync(reportsOutcome.executiveReportPath, "utf-8"));

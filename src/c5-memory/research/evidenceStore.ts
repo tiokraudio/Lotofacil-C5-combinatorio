@@ -7,7 +7,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import { ArmExecutionState } from "./types";
-import { ResearchArmExecutor } from "./engine";
+import { ResearchArmExecutor, deriveOfficialMasterSeeds } from "./engine";
 import {
   FROZEN_RESEARCH_PROTOCOL_V2_ID,
   FROZEN_RESEARCH_PROTOCOL_V2_SHA256,
@@ -627,6 +627,194 @@ export function generateEvidenceManifestV2(
 }
 
 /**
+ * Validação rigorosa e fail-closed de arquivo RAW para o Diagnóstico de Johnson (IC10-R1 FIX-2).
+ * Proibido converter missing / corrupt / undefined / invalid em 0 duplicates.
+ */
+export function validateAndReadRawTrajectoryForJohnson(
+  filePath: string,
+  expectedExperiment: "EXPERIMENT_A" | "EXPERIMENT_B",
+  expectedK: number,
+  expectedProtocolSha256: string,
+  expectedSeedIndex?: number,
+  expectedMasterSeed?: string
+): TrajectoryEvidenceFile {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: Arquivo RAW esperado ausente: ${filePath}`
+    );
+  }
+
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, "utf-8");
+  } catch (err: any) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: Erro de leitura no arquivo RAW ${filePath}: ${err?.message}`
+    );
+  }
+
+  let data: any;
+  try {
+    data = JSON.parse(content);
+  } catch (err: any) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: Arquivo RAW corrompido ou JSON inválido: ${filePath}: ${err?.message}`
+    );
+  }
+
+  if (!data || typeof data !== "object") {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: Estrutura inválida no arquivo RAW: ${filePath}`
+    );
+  }
+
+  if (data.protocolId !== FROZEN_RESEARCH_PROTOCOL_V2_ID) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: protocolId inválido em ${filePath} (${data.protocolId})`
+    );
+  }
+
+  if (data.protocolSha256 !== expectedProtocolSha256) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: protocolSha256 divergente em ${filePath} (${data.protocolSha256} !== ${expectedProtocolSha256})`
+    );
+  }
+
+  if (data.experiment !== expectedExperiment) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: Identidade de experimento inválida em ${filePath} (${data.experiment})`
+    );
+  }
+
+  if (data.k !== expectedK) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: K incorreto em ${filePath} (${data.k} !== ${expectedK})`
+    );
+  }
+
+  if (expectedMasterSeed !== undefined && data.masterSeed !== expectedMasterSeed) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: masterSeed incorreta em ${filePath} (${data.masterSeed} !== ${expectedMasterSeed})`
+    );
+  }
+
+  if (expectedSeedIndex !== undefined && data.seedIndex !== expectedSeedIndex) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: seedIndex incorreto em ${filePath} (${data.seedIndex} !== ${expectedSeedIndex})`
+    );
+  }
+
+  if (
+    data.finalDuplicateCount === undefined ||
+    data.finalDuplicateCount === null ||
+    typeof data.finalDuplicateCount !== "number" ||
+    Number.isNaN(data.finalDuplicateCount) ||
+    data.finalDuplicateCount < 0
+  ) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: finalDuplicateCount ausente ou inválido em ${filePath}`
+    );
+  }
+
+  if (
+    !data.horizonRecords ||
+    typeof data.horizonRecords !== "object" ||
+    Object.keys(data.horizonRecords).length === 0
+  ) {
+    throw new Error(
+      `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: horizonRecords ausente ou inválido em ${filePath}`
+    );
+  }
+
+  for (const [hKey, rec] of Object.entries<any>(data.horizonRecords)) {
+    if (
+      !rec ||
+      rec.duplicateCount === undefined ||
+      rec.duplicateCount === null ||
+      typeof rec.duplicateCount !== "number" ||
+      Number.isNaN(rec.duplicateCount) ||
+      rec.duplicateCount < 0
+    ) {
+      throw new Error(
+        `JOHNSON_DIAGNOSTICS_INSUFFICIENT_EVIDENCE: duplicateCount inválido no horizonte ${hKey} em ${filePath}`
+      );
+    }
+  }
+
+  return data as TrajectoryEvidenceFile;
+}
+
+/**
+ * Gera o diagnóstico Johnson 100% derivado dos arquivos RAW físicos em disco com Fail-Closed estrito (FIX-2).
+ */
+export function generateJohnsonDiagnosticsV2(
+  baseDir: string = EVIDENCE_BASE_DIR,
+  protocolSha256: string = FROZEN_RESEARCH_PROTOCOL_V2_SHA256
+): { readonly johnsonPath: string; readonly diagnostics: JohnsonDiagnosticsFile } {
+  const kGrid = [10, 20, 50, 100, 500];
+  const officialSeeds = deriveOfficialMasterSeeds();
+  const rawADir = path.join(baseDir, "raw", "experiment-a");
+  const rawBDir = path.join(baseDir, "raw", "experiment-b");
+
+  let totalDuplicatesObserved = 0;
+  let collisionsDetected = false;
+
+  for (const k of kGrid) {
+    const filePath = path.join(rawADir, `canonical_k${k}.json`);
+    const data = validateAndReadRawTrajectoryForJohnson(
+      filePath,
+      "EXPERIMENT_A",
+      k,
+      protocolSha256,
+      undefined,
+      "CANONICAL_OPERATIONAL"
+    );
+    totalDuplicatesObserved += data.finalDuplicateCount;
+    if (data.finalDuplicateCount > 0) collisionsDetected = true;
+    for (const rec of Object.values(data.horizonRecords)) {
+      if (rec.duplicateCount > 0) {
+        collisionsDetected = true;
+      }
+    }
+  }
+
+  for (const k of kGrid) {
+    for (let s = 0; s < 32; s++) {
+      const filePath = path.join(rawBDir, `k${k}_seed${s}.json`);
+      const data = validateAndReadRawTrajectoryForJohnson(
+        filePath,
+        "EXPERIMENT_B",
+        k,
+        protocolSha256,
+        s,
+        officialSeeds[s]
+      );
+      totalDuplicatesObserved += data.finalDuplicateCount;
+      if (data.finalDuplicateCount > 0) collisionsDetected = true;
+      for (const rec of Object.values(data.horizonRecords)) {
+        if (rec.duplicateCount > 0) {
+          collisionsDetected = true;
+        }
+      }
+    }
+  }
+
+  const johnsonFile: JohnsonDiagnosticsFile = {
+    protocolId: FROZEN_RESEARCH_PROTOCOL_V2_ID,
+    protocolSha256,
+    zeroDuplicatePolicyEnforced: totalDuplicatesObserved === 0 && !collisionsDetected,
+    totalDuplicatesObserved,
+    collisionsDetected,
+    createdAt: new Date().toISOString(),
+  };
+
+  const johnsonPath = path.join(baseDir, "reports", "johnson-diagnostics.json");
+  atomicWriteFile(johnsonPath, JSON.stringify(johnsonFile, null, 2));
+
+  return { johnsonPath, diagnostics: johnsonFile };
+}
+
+/**
  * Gera e persiste os agregados estatísticos, diagnósticos e relatório executivo (F10).
  * Garante rastreabilidade total: todos os dados agregados derivam exclusivamente dos arquivos RAW físicos.
  */
@@ -796,64 +984,8 @@ export function generateAggregatesAndReportsV2(
   const performancePath = path.join(baseDir, "reports", "performance-diagnostics.json");
   atomicWriteFile(performancePath, JSON.stringify(perfFile, null, 2));
 
-  // 4. Diagnóstico de Johnson (derivado 100% dos arquivos RAW persistidos em disco)
-  let totalDuplicatesObserved = 0;
-  let collisionsDetected = false;
-
-  if (fs.existsSync(rawADir)) {
-    for (const k of kGrid) {
-      const filePath = path.join(rawADir, `canonical_k${k}.json`);
-      if (fs.existsSync(filePath)) {
-        try {
-          const data = JSON.parse(fs.readFileSync(filePath, "utf-8")) as TrajectoryEvidenceFile;
-          const dupes = data.finalDuplicateCount ?? 0;
-          totalDuplicatesObserved += dupes;
-          if (dupes > 0) collisionsDetected = true;
-          for (const rec of Object.values(data.horizonRecords ?? {})) {
-            if (rec.duplicateCount > 0) {
-              collisionsDetected = true;
-            }
-          }
-        } catch {
-          // ignora se não existir
-        }
-      }
-    }
-  }
-
-  if (fs.existsSync(rawBDir)) {
-    for (const k of kGrid) {
-      for (let s = 0; s < 32; s++) {
-        const filePath = path.join(rawBDir, `k${k}_seed${s}.json`);
-        if (fs.existsSync(filePath)) {
-          try {
-            const data = JSON.parse(fs.readFileSync(filePath, "utf-8")) as TrajectoryEvidenceFile;
-            const dupes = data.finalDuplicateCount ?? 0;
-            totalDuplicatesObserved += dupes;
-            if (dupes > 0) collisionsDetected = true;
-            for (const rec of Object.values(data.horizonRecords ?? {})) {
-              if (rec.duplicateCount > 0) {
-                collisionsDetected = true;
-              }
-            }
-          } catch {
-            // ignora se não existir
-          }
-        }
-      }
-    }
-  }
-
-  const johnsonFile: JohnsonDiagnosticsFile = {
-    protocolId: "C5_MEMORY_210_RESEARCH_PROTOCOL_V2",
-    protocolSha256,
-    zeroDuplicatePolicyEnforced: totalDuplicatesObserved === 0,
-    totalDuplicatesObserved,
-    collisionsDetected,
-    createdAt: new Date().toISOString(),
-  };
-  const johnsonPath = path.join(baseDir, "reports", "johnson-diagnostics.json");
-  atomicWriteFile(johnsonPath, JSON.stringify(johnsonFile, null, 2));
+  // 4. Diagnóstico de Johnson (derivado 100% dos arquivos RAW persistidos em disco com Fail-Closed estrito)
+  const { johnsonPath } = generateJohnsonDiagnosticsV2(baseDir, protocolSha256);
 
   // 5. Relatório Científico Executivo (sem alegações ou recomendações de K pré-computadas)
   const execReport: ExecutiveScientificReportFileV2 = {

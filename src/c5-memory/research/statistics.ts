@@ -17,30 +17,29 @@ export interface StatisticalSummary {
 }
 
 /**
- * Calcula percentil p (0 <= p <= 1) via interpolação linear determinística exata.
- * Elimina aproximações sintéticas e multiplicadores heurísticos.
+ * Calcula percentil p (0 <= p <= 1) via método nearest-rank:
+ *
+ * sorted = values sorted ascending
+ * rank   = ceil(p * N)
+ * index  = rank - 1
+ * result = sorted[index]
+ *
+ * Contrato normativo congelado: NÃO utiliza interpolação linear nem multiplicadores heurísticos.
+ * Exemplo normativo: values = [10,20,30,40,50,60,70,80,90,100], N = 10, ceil(0.95 * 10) = 10 -> index 9 -> 100.
  */
-export function calculatePercentile(values: readonly number[], p: number): number {
+export function calculateNearestRankPercentile(values: readonly number[], p: number): number {
   if (values.length === 0) {
     return 0;
   }
   if (p <= 0) return Math.min(...values);
-  if (p >= 1) return Math.max(...values);
 
   const sorted = [...values].sort((a, b) => a - b);
   const n = sorted.length;
-  if (n === 1) return sorted[0];
-
-  const index = p * (n - 1);
-  const lower = Math.floor(index);
-  const upper = Math.ceil(index);
-  const weight = index - lower;
-
-  if (lower === upper) {
-    return sorted[lower];
-  }
-  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+  const rank = Math.min(n, Math.max(1, Math.ceil(p * n)));
+  return sorted[rank - 1];
 }
+
+export const calculatePercentile = calculateNearestRankPercentile;
 
 /**
  * Calcula os deltas pareados: delta_i = ML_i - baseline_i por semente pareada
