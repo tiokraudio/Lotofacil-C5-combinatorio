@@ -1,0 +1,47 @@
+{
+  "protocolId": "C5_MEMORY_210_RESEARCH_PROTOCOL_V2",
+  "protocolSha256": "1ca46d2e84a55c79426b7fc08d01e1b981d12a12018fc04116975cb1468d8df1",
+  "experiment": "EXPERIMENT_B",
+  "replicationModel": "EXOGENOUS_REPLICATED_POOLS",
+  "masterSeed": "C5M-RESEARCH-SEED-00",
+  "seedIndex": 0,
+  "k": 50,
+  "finalHorizon": 100,
+  "horizonRecords": {
+    "100": {
+      "experiment": "EXPERIMENT_B",
+      "masterSeed": "C5M-RESEARCH-SEED-00",
+      "k": 50,
+      "t": 100,
+      "baselineCoverage15": 500,
+      "baselineCoverage14Plus": 74210,
+      "baselineCoverage13Plus": 852100,
+      "baselineCoverage12Plus": 2894100,
+      "baselineCoverage11Plus": 3268760,
+      "mlCoverage15": 500,
+      "mlCoverage14Plus": 75430,
+      "mlCoverage13Plus": 864200,
+      "mlCoverage12Plus": 2910500,
+      "mlCoverage11Plus": 3268760,
+      "delta15": 0,
+      "delta14Plus": 1220,
+      "delta13Plus": 12100,
+      "delta12Plus": 16400,
+      "delta11Plus": 0,
+      "deltaPercent14Plus": 1.6439,
+      "historyCardinality": 500,
+      "duplicateCount": 0,
+      "poolHash": "mock_pool_hash_test",
+      "timings": {
+        "meanSelectionMs": 4.12,
+        "p95SelectionMs": 8.45,
+        "maxSelectionMs": 12.3
+      }
+    }
+  },
+  "finalHistoryCardinality": 500,
+  "finalDuplicateCount": 0,
+  "baselineFinalFingerprint": "fingerprint_baseline_h0_mock",
+  "mlFinalFingerprint": "fingerprint_ml_h0_mock",
+  "recordedAt": "2026-10-07T13:40:03.688Z"
+}

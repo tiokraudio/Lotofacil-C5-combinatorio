@@ -1,0 +1,24 @@
+{
+  "manifestVersion": "2.0.0",
+  "protocolId": "C5_MEMORY_210_RESEARCH_PROTOCOL_V2",
+  "protocolSha256": "1ca46d2e84a55c79426b7fc08d01e1b981d12a12018fc04116975cb1468d8df1",
+  "experimentAModel": "CANONICAL_DETERMINISTIC_TRAJECTORY",
+  "experimentBModel": "EXOGENOUS_REPLICATED_POOLS",
+  "expectedTrajectoryCountA": 5,
+  "expectedTrajectoryCountB": 160,
+  "persistedArtifacts": [
+    {
+      "path": "certification/c5-memory-v2/research/evidence-v2/raw/experiment-b/k50_seed0.json",
+      "sizeBytes": 1440,
+      "sha256": "57c786a3c74100ecc927e3722d6fda65a467e1892bd2b1f089704dfd7df9aaab",
+      "type": "TRAJECTORY_RAW"
+    },
+    {
+      "path": "certification/c5-memory-v2/research/evidence-v2/checkpoints/checkpoint_experiment_b_k50_t100.json",
+      "sizeBytes": 1088,
+      "sha256": "0ab3f8f55eab53af055bcc0cd4af9b237205ee096e44a88a026ba876a60d72b2",
+      "type": "CHECKPOINT"
+    }
+  ],
+  "createdAt": "2026-10-07T13:40:03.692Z"
+}

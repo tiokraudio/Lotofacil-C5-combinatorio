@@ -12,6 +12,12 @@ export const FROZEN_RESEARCH_PROTOCOL_SHA256 =
 export const DEFAULT_PROTOCOL_PATH =
   "certification/c5-memory-v2/research/c5-memory-2.1.0-research-protocol-v1.json" as const;
 
+export const FROZEN_RESEARCH_PROTOCOL_V2_ID = "C5_MEMORY_210_RESEARCH_PROTOCOL_V2" as const;
+export const FROZEN_RESEARCH_PROTOCOL_V2_SHA256 =
+  "1ca46d2e84a55c79426b7fc08d01e1b981d12a12018fc04116975cb1468d8df1" as const;
+export const DEFAULT_PROTOCOL_V2_PATH =
+  "certification/c5-memory-v2/research/c5-memory-2.1.0-research-protocol-v2.json" as const;
+
 export interface ValidatedProtocol {
   readonly protocolId: string;
   readonly version: string;
@@ -56,6 +62,49 @@ export function validateResearchProtocolBinding(
 
   if (!Array.isArray(parsed.kGrid) || parsed.kGrid.length === 0) {
     throw new Error("RESEARCH_PROTOCOL_INVALID_K_GRID: kGrid ausente ou inválido no protocolo.");
+  }
+
+  return {
+    protocolId: parsed.protocolId,
+    version: parsed.version,
+    kGrid: parsed.kGrid,
+    masterSeeds: parsed.masterSeeds,
+    horizons: parsed.horizons,
+    rawJson: raw,
+    calculatedSha256,
+  };
+}
+
+/**
+ * Valida a integridade física e o binding de runtime do Protocolo de Pesquisa V2 (IC10-R1).
+ */
+export function validateResearchProtocolV2Binding(
+  protocolPath: string = DEFAULT_PROTOCOL_V2_PATH,
+  injectedRawContent?: string
+): ValidatedProtocol {
+  const raw = injectedRawContent ?? fs.readFileSync(protocolPath, "utf-8");
+  const calculatedSha256 = crypto
+    .createHash("sha256")
+    .update(Buffer.from(raw))
+    .digest("hex");
+
+  if (calculatedSha256 !== FROZEN_RESEARCH_PROTOCOL_V2_SHA256) {
+    throw new Error(
+      `RESEARCH_PROTOCOL_V2_RUNTIME_BINDING_VIOLATION: O hash do protocolo (${calculatedSha256}) ` +
+      `diverge do hash congelado na Ordem Executiva (${FROZEN_RESEARCH_PROTOCOL_V2_SHA256}). Execução abortada!`
+    );
+  }
+
+  const parsed = JSON.parse(raw);
+
+  if (parsed.protocolId !== FROZEN_RESEARCH_PROTOCOL_V2_ID) {
+    throw new Error(
+      `RESEARCH_PROTOCOL_V2_ID_MISMATCH: Esperado ${FROZEN_RESEARCH_PROTOCOL_V2_ID}, recebido ${parsed.protocolId}`
+    );
+  }
+
+  if (!Array.isArray(parsed.kGrid) || parsed.kGrid.length === 0) {
+    throw new Error("RESEARCH_PROTOCOL_V2_INVALID_K_GRID: kGrid ausente ou inválido no protocolo V2.");
   }
 
   return {

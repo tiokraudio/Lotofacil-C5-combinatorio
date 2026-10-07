@@ -1,0 +1,136 @@
+{
+  "protocolId": "C5_MEMORY_210_RESEARCH_PROTOCOL_V2",
+  "version": "2.0.0",
+  "title": "Protocolo Científico Oficial para Pesquisa Longitudinal do C5-Memory-2.1.0 (Emenda V2 — IC10-R1)",
+  "frozenAt": "2026-10-07T13:30:00Z",
+  "amendmentReason": "IC10-R1: Correção normativa da replicação do Experimento A (A1 = CANONICAL_DETERMINISTIC_TRAJECTORY) e institucionalização da persistência integral e incremental de evidência (raw per-trajectory artifacts).",
+  "objective": "Avaliar o impacto longitudinal da seleção MAX-LEXIMIN sobre sequências de Structural C5 em comparação com baseline determinístico sob grade controlada de K em trajetórias operacionais canônicas e sob pools exógenos controlados.",
+  "singleVariablePrinciple": {
+    "status": "ENFORCED",
+    "description": "Baseline e MAX-LEXIMIN diferem estritamente na política de seleção sobre candidatos Structural C5."
+  },
+  "initialState": {
+    "history": "EMPTY",
+    "historyRevision": 0,
+    "legacy20Included": false,
+    "userStateIncluded": false
+  },
+  "universe": {
+    "combinationFormula": "C(25, 15)",
+    "totalOutcomes": 3268760
+  },
+  "timeStep": {
+    "unit": "CONTEST",
+    "gamesPerStep": 5,
+    "updateTiming": "AFTER_STEP_SELECTION"
+  },
+  "historyGrowth": {
+    "formula": "|H_t| = 5t",
+    "enforcedNoDuplicates": true
+  },
+  "duplicatePolicy": {
+    "rule": "REJECT_EXACT_DUPLICATE_AND_NEXT_CANDIDATE",
+    "behavior": "MAX-LEXIMIN penaliza d_J=0 (n0 > 0); duplicate guard rejeita jogos duplicados em H."
+  },
+  "baseline": {
+    "version": "C5-Memory-2.1.0-STRUCTURAL-BASELINE",
+    "usesStructuralC5": true,
+    "selectionRule": "FIRST_POOL_CANDIDATE_INDEX_0",
+    "kInvariance": true
+  },
+  "experiments": {
+    "experimentA": {
+      "id": "EXPERIMENT_A",
+      "name": "CANONICAL_DETERMINISTIC_TRAJECTORY",
+      "replicationModel": "CANONICAL_DETERMINISTIC_TRAJECTORY",
+      "description": "Cada braço evolui seu próprio histórico sob a seed master operacional determinística: poolMasterSeed = SHA256(contestNumber, historyFingerprint). Partindo de H0 vazio e sem sementes exógenas, constitui exatamente 1 trajetória determinística por braço e K.",
+      "trajectoryCount": 1,
+      "statisticalInference": "NONE_DETERMINISTIC_TRAJECTORY"
+    },
+    "experimentB": {
+      "id": "EXPERIMENT_B",
+      "name": "CONTROLLED_SELECTION_EFFECT",
+      "replicationModel": "EXOGENOUS_REPLICATED_POOLS",
+      "description": "Baseline e MAX-LEXIMIN recebem em cada passo o mesmo pool exógeno gerado por RESEARCH_POOL_SEED:<masterResearchSeed>:<t> para 32 sementes master independentes.",
+      "trajectoryCount": 32,
+      "statisticalInference": "PAIRED_DIFFERENCES_ACROSS_SEEDS"
+    }
+  },
+  "kGrid": [10, 20, 50, 100, 500],
+  "masterSeeds": {
+    "count": 32,
+    "generationAlgorithm": "HMAC_SHA256_INCREMENTAL",
+    "masterSalt": "C5M-RESEARCH-SEED-SALT-2026-V1"
+  },
+  "horizons": [100, 500, 1000, 2000, 3788],
+  "metrics": {
+    "primary": "DISTINCT_COVERAGE_14_PLUS",
+    "secondary": [
+      "DISTINCT_15",
+      "DISTINCT_14_PLUS",
+      "DISTINCT_13_PLUS",
+      "DISTINCT_12_PLUS",
+      "DISTINCT_11_PLUS",
+      "DUPLICATE_GAME_COUNT",
+      "UNIQUE_GAME_COUNT",
+      "JOHNSON_DISTANCE_DIAGNOSTICS",
+      "SELECTION_TIMING"
+    ]
+  },
+  "coverageEvaluation": {
+    "bitsetSizeBits": 3268760,
+    "bitsetSizeBytes": 408595,
+    "semantics": "UNION_OF_DISTINCT_OUTCOMES",
+    "noMultiplicitySum": true
+  },
+  "statisticalSummary": {
+    "measures": ["MEAN", "MEDIAN", "MIN", "MAX", "STD_DEV", "PAIRED_DELTAS", "SIGN_PROPORTIONS"],
+    "pairedDesign": true,
+    "confidenceIntervalMethod": "NOT_USED"
+  },
+  "rawArtifactPersistence": {
+    "mandatory": true,
+    "directoryLayout": "certification/c5-memory-v2/research/evidence-v2/",
+    "trajectorySchema": {
+      "requiredFields": [
+        "experiment",
+        "masterSeed",
+        "k",
+        "t",
+        "baselineCoverage15",
+        "baselineCoverage14Plus",
+        "baselineCoverage13Plus",
+        "baselineCoverage12Plus",
+        "baselineCoverage11Plus",
+        "mlCoverage15",
+        "mlCoverage14Plus",
+        "mlCoverage13Plus",
+        "mlCoverage12Plus",
+        "mlCoverage11Plus",
+        "delta15",
+        "delta14Plus",
+        "delta13Plus",
+        "delta12Plus",
+        "delta11Plus",
+        "deltaPercent14Plus",
+        "historyCardinality",
+        "duplicateCount",
+        "poolHash",
+        "timings"
+      ]
+    },
+    "incrementalPersistence": true,
+    "persistenceFrequency": "ON_EACH_HORIZON_CHECKPOINT"
+  },
+  "superiorityReportingRule": "REPORT_MEAN_MEDIAN_AND_POSITIVE_SEEDS_WITHOUT_UNILATERAL_CLAIM",
+  "kSelectionRule": "MULTI_CRITERIA_SATURATION_AND_COMPUTATIONAL_EFFICIENCY",
+  "performanceLimits": {
+    "targetMs": 500,
+    "hardLimitMs": 2000
+  },
+  "reproducibility": {
+    "manifestRequired": true,
+    "resumeEqualsContinuous": true,
+    "serialEqualsParallel": true
+  }
+}
