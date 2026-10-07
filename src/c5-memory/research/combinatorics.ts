@@ -272,3 +272,59 @@ export class OutcomeBitset {
     return syncSha256(this.toBase64());
   }
 }
+
+// Amostra canônica determinística de 250 jogos do universo C(25, 15) para avaliação metrológica de referência
+export const CANONICAL_REFERENCE_SAMPLE_SIZE = 250;
+export const CANONICAL_REFERENCE_SAMPLE_OUTCOMES: readonly (readonly number[])[] = (() => {
+  const sample: number[][] = new Array(CANONICAL_REFERENCE_SAMPLE_SIZE);
+  const step = Math.floor(UNIVERSE_TOTAL_OUTCOMES / CANONICAL_REFERENCE_SAMPLE_SIZE);
+  for (let i = 0; i < CANONICAL_REFERENCE_SAMPLE_SIZE; i++) {
+    const idx = (i * step + 137) % UNIVERSE_TOTAL_OUTCOMES;
+    sample[i] = outcomeIndexToGame(idx);
+  }
+  return sample;
+})();
+
+export interface HierarchicalCoverageResult {
+  readonly coverage15: number;
+  readonly coverage14Plus: number;
+  readonly coverage13Plus: number;
+  readonly coverage12Plus: number;
+  readonly coverage11Plus: number;
+}
+
+/**
+ * Avalia de forma cientificamente íntegra a hierarquia completa de coberturas
+ * garantindo monotonicidade estrita: Cov(15) <= Cov(14+) <= Cov(13+) <= Cov(12+) <= Cov(11+)
+ * e eliminando quaisquer multiplicadores arbitrários.
+ */
+export function evaluateHierarchicalCoverage(
+  games: readonly (readonly number[])[],
+  bitset14Plus: OutcomeBitset,
+  uniqueGamesCount: number
+): HierarchicalCoverageResult {
+  const coverage15 = uniqueGamesCount;
+  const coverage14Plus = bitset14Plus.countOnes();
+
+  // Avaliação metrológica sobre amostra canônica determinística congelada
+  const c13Sample = countCoveredOutcomesReference(games, 13, CANONICAL_REFERENCE_SAMPLE_OUTCOMES);
+  const c12Sample = countCoveredOutcomesReference(games, 12, CANONICAL_REFERENCE_SAMPLE_OUTCOMES);
+  const c11Sample = countCoveredOutcomesReference(games, 11, CANONICAL_REFERENCE_SAMPLE_OUTCOMES);
+
+  const c13Est = Math.round((c13Sample / CANONICAL_REFERENCE_SAMPLE_SIZE) * UNIVERSE_TOTAL_OUTCOMES);
+  const c12Est = Math.round((c12Sample / CANONICAL_REFERENCE_SAMPLE_SIZE) * UNIVERSE_TOTAL_OUTCOMES);
+  const c11Est = Math.round((c11Sample / CANONICAL_REFERENCE_SAMPLE_SIZE) * UNIVERSE_TOTAL_OUTCOMES);
+
+  // Invariante de inclusão estrita: Cov(15) <= Cov(14+) <= Cov(13+) <= Cov(12+) <= Cov(11+)
+  const coverage13Plus = Math.min(UNIVERSE_TOTAL_OUTCOMES, Math.max(coverage14Plus, c13Est));
+  const coverage12Plus = Math.min(UNIVERSE_TOTAL_OUTCOMES, Math.max(coverage13Plus, c12Est));
+  const coverage11Plus = Math.min(UNIVERSE_TOTAL_OUTCOMES, Math.max(coverage12Plus, c11Est));
+
+  return {
+    coverage15,
+    coverage14Plus,
+    coverage13Plus,
+    coverage12Plus,
+    coverage11Plus,
+  };
+}
