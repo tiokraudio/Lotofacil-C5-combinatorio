@@ -31,6 +31,30 @@ export interface ValidatedProtocol {
   readonly calculatedSha256: string;
 }
 
+export interface ValidatedProtocolV2 extends ValidatedProtocol {
+  readonly masterSeeds: {
+    readonly count: number;
+    readonly masterSalt: string;
+    readonly generationAlgorithm: string;
+  };
+  readonly experiments: {
+    readonly experimentA: {
+      readonly id: "EXPERIMENT_A";
+      readonly name: string;
+      readonly replicationModel: "CANONICAL_DETERMINISTIC_TRAJECTORY";
+      readonly trajectoryCount: number;
+      readonly statisticalInference: string;
+    };
+    readonly experimentB: {
+      readonly id: "EXPERIMENT_B";
+      readonly name: string;
+      readonly replicationModel: "EXOGENOUS_REPLICATED_POOLS";
+      readonly trajectoryCount: number;
+      readonly statisticalInference: string;
+    };
+  };
+}
+
 /**
  * Valida a integridade física e o binding de runtime do protocolo de pesquisa.
  * Lança erro fatal caso o arquivo esteja ausente, corrompido ou adulterado.
@@ -81,7 +105,7 @@ export function validateResearchProtocolBinding(
 export function validateResearchProtocolV2Binding(
   protocolPath: string = DEFAULT_PROTOCOL_V2_PATH,
   injectedRawContent?: string
-): ValidatedProtocol {
+): ValidatedProtocolV2 {
   const raw = injectedRawContent ?? fs.readFileSync(protocolPath, "utf-8");
   const calculatedSha256 = crypto
     .createHash("sha256")
@@ -107,12 +131,17 @@ export function validateResearchProtocolV2Binding(
     throw new Error("RESEARCH_PROTOCOL_V2_INVALID_K_GRID: kGrid ausente ou inválido no protocolo V2.");
   }
 
+  if (!parsed.experiments || !parsed.experiments.experimentA || !parsed.experiments.experimentB) {
+    throw new Error("RESEARCH_PROTOCOL_V2_INVALID_EXPERIMENTS: Bloco experiments ausente ou incompleto.");
+  }
+
   return {
     protocolId: parsed.protocolId,
     version: parsed.version,
     kGrid: parsed.kGrid,
     masterSeeds: parsed.masterSeeds,
     horizons: parsed.horizons,
+    experiments: parsed.experiments,
     rawJson: raw,
     calculatedSha256,
   };

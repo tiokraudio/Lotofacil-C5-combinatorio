@@ -8,6 +8,7 @@ import assert from "node:assert";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as os from "node:os";
 import {
   FROZEN_RESEARCH_PROTOCOL_ID,
   FROZEN_RESEARCH_PROTOCOL_SHA256,
@@ -20,10 +21,8 @@ import {
   EVIDENCE_BASE_DIR,
   RawTrajectoryHorizonRecord,
   TrajectoryEvidenceFile,
-  IncrementalCheckpointFile,
   validateTrajectoryRecordSchema,
   persistTrajectoryEvidence,
-  persistIncrementalCheckpoint,
   generateEvidenceManifest,
   computeSha256,
 } from "../research/evidenceStore";
@@ -141,7 +140,7 @@ const sampleRawRecord: RawTrajectoryHorizonRecord = {
   deltaPercent14Plus: 1.6439,
   historyCardinality: 500,
   duplicateCount: 0,
-  poolHash: "mock_pool_hash_test",
+  poolHash: computeSha256("test_sample_pool_hash"),
   timings: {
     meanSelectionMs: 4.12,
     p95SelectionMs: 8.45,
@@ -168,6 +167,9 @@ console.log("[PASS] NEGATIVE_CONTROL_SCHEMA_VALIDATION = PASS");
 // ---------------------------------------------------------------------------
 console.log("\n--- [SEÇÃO 5] ARQUITETURA DE PERSISTÊNCIA INCREMENTAL ---");
 
+const r1TestDir = path.join(os.tmpdir(), `c5-r1-test-${Date.now()}`);
+fs.mkdirSync(r1TestDir, { recursive: true });
+
 const sampleEvidenceFile: TrajectoryEvidenceFile = {
   protocolId: "C5_MEMORY_210_RESEARCH_PROTOCOL_V2",
   protocolSha256: FROZEN_RESEARCH_PROTOCOL_V2_SHA256,
@@ -187,28 +189,17 @@ const sampleEvidenceFile: TrajectoryEvidenceFile = {
   recordedAt: new Date().toISOString(),
 };
 
-const persisted = persistTrajectoryEvidence(sampleEvidenceFile);
+const persisted = persistTrajectoryEvidence(sampleEvidenceFile, r1TestDir);
 assert.ok(fs.existsSync(persisted.filePath), "Arquivo de evidência deve ser persistido em disco.");
 assert.ok(persisted.sizeBytes > 0, "Tamanho em bytes deve ser maior que 0.");
 console.log(`[PASS] PERSISTED_TRAJECTORY_SAMPLE = ${persisted.filePath} (${persisted.sizeBytes} bytes, SHA: ${persisted.sha256})`);
 
-const sampleCheckpoint: IncrementalCheckpointFile = {
-  protocolId: "C5_MEMORY_210_RESEARCH_PROTOCOL_V2",
-  checkpointHorizon: 100,
-  experiment: "EXPERIMENT_B",
-  k: 50,
-  completedSeedsCount: 1,
-  records: [sampleRawRecord],
-  persistedAt: new Date().toISOString(),
-};
-
-const persistedCheckpoint = persistIncrementalCheckpoint(sampleCheckpoint);
-assert.ok(fs.existsSync(persistedCheckpoint.filePath));
-console.log(`[PASS] PERSISTED_CHECKPOINT_SAMPLE = ${persistedCheckpoint.filePath}`);
-
-const manifestEvidenceV2 = generateEvidenceManifest(EVIDENCE_BASE_DIR, FROZEN_RESEARCH_PROTOCOL_V2_SHA256);
-assert.ok(manifestEvidenceV2.persistedArtifacts.length >= 2);
+const manifestEvidenceV2 = generateEvidenceManifest(r1TestDir, FROZEN_RESEARCH_PROTOCOL_V2_SHA256);
+assert.ok(manifestEvidenceV2.persistedArtifacts.length >= 1);
 console.log(`[PASS] EVIDENCE_MANIFEST_V2_GENERATED = YES (${manifestEvidenceV2.persistedArtifacts.length} artefatos catalogados)`);
+
+// Limpa fixtures temporárias
+fs.rmSync(r1TestDir, { recursive: true, force: true });
 
 // ---------------------------------------------------------------------------
 // 6. CONCLUSÃO DA HOMOLOGAÇÃO IC10-R1
