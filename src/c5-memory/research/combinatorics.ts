@@ -273,17 +273,47 @@ export class OutcomeBitset {
   }
 }
 
-// Amostra canônica determinística de 250 jogos do universo C(25, 15) para avaliação metrológica de referência
-export const CANONICAL_REFERENCE_SAMPLE_SIZE = 250;
-export const CANONICAL_REFERENCE_SAMPLE_OUTCOMES: readonly (readonly number[])[] = (() => {
-  const sample: number[][] = new Array(CANONICAL_REFERENCE_SAMPLE_SIZE);
-  const step = Math.floor(UNIVERSE_TOTAL_OUTCOMES / CANONICAL_REFERENCE_SAMPLE_SIZE);
-  for (let i = 0; i < CANONICAL_REFERENCE_SAMPLE_SIZE; i++) {
-    const idx = (i * step + 137) % UNIVERSE_TOTAL_OUTCOMES;
-    sample[i] = outcomeIndexToGame(idx);
+function popcount25(x: number): number {
+  x = x - ((x >> 1) & 0x55555555);
+  x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+  return (((x + (x >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
+
+let cachedUniverseMasks: Int32Array | null = null;
+
+/**
+ * Retorna o array canônico de todas as 3.268.760 máscaras de 25 bits do universo C(25, 15).
+ * Gerado deterministicamente e cacheado em memória.
+ */
+export function getUniverseMasks(): Int32Array {
+  if (!cachedUniverseMasks) {
+    const masks = new Int32Array(UNIVERSE_TOTAL_OUTCOMES);
+    let uIdx = 0;
+    function gen(n: number, k: number, mask: number) {
+      if (k === 0) {
+        masks[uIdx++] = mask;
+        return;
+      }
+      if (n < k) return;
+      gen(n - 1, k - 1, mask | (1 << (n - 1)));
+      gen(n - 1, k, mask);
+    }
+    gen(25, 15, 0);
+    cachedUniverseMasks = masks;
   }
-  return sample;
-})();
+  return cachedUniverseMasks;
+}
+
+/**
+ * Converte um jogo Lotofácil ordenado (1..25) para máscara de 25 bits.
+ */
+export function gameToMask(game: readonly number[]): number {
+  let mask = 0;
+  for (let i = 0; i < game.length; i++) {
+    mask |= 1 << (game[i] - 1);
+  }
+  return mask;
+}
 
 export interface HierarchicalCoverageResult {
   readonly coverage15: number;
@@ -293,38 +323,110 @@ export interface HierarchicalCoverageResult {
   readonly coverage11Plus: number;
 }
 
+const coverageCache = new Map<string, HierarchicalCoverageResult>();
+
 /**
- * Avalia de forma cientificamente íntegra a hierarquia completa de coberturas
- * garantindo monotonicidade estrita: Cov(15) <= Cov(14+) <= Cov(13+) <= Cov(12+) <= Cov(11+)
- * e eliminando quaisquer multiplicadores arbitrários.
+ * Avalia de forma matematicamente exata a hierarquia completa de coberturas
+ * sobre o universo integral de 3.268.760 resultados C(25, 15).
+ *
+ * Monotonicidade estrita: Cov(15) <= Cov(14+) <= Cov(13+) <= Cov(12+) <= Cov(11+)
+ * decorre naturalmente da inclusão combinatorial de conjuntos, sem aproximações,
+ * sem amostragem estatística e sem multiplicadores sintéticos (F08).
  */
 export function evaluateHierarchicalCoverage(
   games: readonly (readonly number[])[],
-  bitset14Plus: OutcomeBitset,
-  uniqueGamesCount: number
+  bitset14Plus?: OutcomeBitset,
+  uniqueGamesCount?: number
 ): HierarchicalCoverageResult {
-  const coverage15 = uniqueGamesCount;
-  const coverage14Plus = bitset14Plus.countOnes();
+  const uniqueCount =
+    uniqueGamesCount !== undefined
+      ? uniqueGamesCount
+      : new Set(games.map((g) => g.join(","))).size;
 
-  // Avaliação metrológica sobre amostra canônica determinística congelada
-  const c13Sample = countCoveredOutcomesReference(games, 13, CANONICAL_REFERENCE_SAMPLE_OUTCOMES);
-  const c12Sample = countCoveredOutcomesReference(games, 12, CANONICAL_REFERENCE_SAMPLE_OUTCOMES);
-  const c11Sample = countCoveredOutcomesReference(games, 11, CANONICAL_REFERENCE_SAMPLE_OUTCOMES);
+  const coverage15 = uniqueCount;
 
-  const c13Est = Math.round((c13Sample / CANONICAL_REFERENCE_SAMPLE_SIZE) * UNIVERSE_TOTAL_OUTCOMES);
-  const c12Est = Math.round((c12Sample / CANONICAL_REFERENCE_SAMPLE_SIZE) * UNIVERSE_TOTAL_OUTCOMES);
-  const c11Est = Math.round((c11Sample / CANONICAL_REFERENCE_SAMPLE_SIZE) * UNIVERSE_TOTAL_OUTCOMES);
+  if (games.length === 0) {
+    return {
+      coverage15: 0,
+      coverage14Plus: 0,
+      coverage13Plus: 0,
+      coverage12Plus: 0,
+      coverage11Plus: 0,
+    };
+  }
 
-  // Invariante de inclusão estrita: Cov(15) <= Cov(14+) <= Cov(13+) <= Cov(12+) <= Cov(11+)
-  const coverage13Plus = Math.min(UNIVERSE_TOTAL_OUTCOMES, Math.max(coverage14Plus, c13Est));
-  const coverage12Plus = Math.min(UNIVERSE_TOTAL_OUTCOMES, Math.max(coverage13Plus, c12Est));
-  const coverage11Plus = Math.min(UNIVERSE_TOTAL_OUTCOMES, Math.max(coverage12Plus, c11Est));
+  // Deduplica e mapeia para máscaras de 25 bits para checagem vetorial ultrarrápida
+  const maskSet = new Set<number>();
+  for (let i = 0; i < games.length; i++) {
+    maskSet.add(gameToMask(games[i]));
+  }
+  const gameMasks = Int32Array.from(maskSet);
+  const nGames = gameMasks.length;
 
-  return {
+  // Propriedade combinatorial canônica estrita para jogo único (C(15, k) * C(10, 15-k))
+  if (nGames === 1) {
+    return {
+      coverage15: 1,
+      coverage14Plus: 151,
+      coverage13Plus: 4876,
+      coverage12Plus: 59476,
+      coverage11Plus: 346126,
+    };
+  }
+
+  // Se bitset14Plus for fornecido, usa seu popcount exato
+  const known14Plus = bitset14Plus ? bitset14Plus.countOnes() : undefined;
+
+  // Verificação em cache de conjuntos de histórico já avaliados
+  const cacheKey = Array.from(gameMasks).sort().join(",");
+  const cached = coverageCache.get(cacheKey);
+  if (cached) {
+    return known14Plus !== undefined ? { ...cached, coverage14Plus: known14Plus } : cached;
+  }
+
+  const uMasks = getUniverseMasks();
+  const nU = uMasks.length;
+
+  let c14 = 0;
+  let c13 = 0;
+  let c12 = 0;
+  let c11 = 0;
+
+  for (let u = 0; u < nU; u++) {
+    const uMask = uMasks[u];
+    let maxHit = 0;
+    for (let g = 0; g < nGames; g++) {
+      const hit = popcount25(uMask & gameMasks[g]);
+      if (hit > maxHit) {
+        maxHit = hit;
+        if (maxHit === 15) break;
+      }
+    }
+
+    if (maxHit >= 11) {
+      c11++;
+      if (maxHit >= 12) {
+        c12++;
+        if (maxHit >= 13) {
+          c13++;
+          if (maxHit >= 14) {
+            c14++;
+          }
+        }
+      }
+    }
+  }
+
+  const coverage14Plus = known14Plus !== undefined ? known14Plus : c14;
+
+  const result: HierarchicalCoverageResult = {
     coverage15,
     coverage14Plus,
-    coverage13Plus,
-    coverage12Plus,
-    coverage11Plus,
+    coverage13Plus: c13,
+    coverage12Plus: c12,
+    coverage11Plus: c11,
   };
+
+  coverageCache.set(cacheKey, result);
+  return result;
 }

@@ -8,11 +8,38 @@ export interface StatisticalSummary {
   readonly median: number;
   readonly min: number;
   readonly max: number;
+  readonly p95: number;
   readonly standardDeviation: number;
   readonly positiveCount: number;
   readonly zeroCount: number;
   readonly negativeCount: number;
   readonly sampleCount: number;
+}
+
+/**
+ * Calcula percentil p (0 <= p <= 1) via interpolação linear determinística exata.
+ * Elimina aproximações sintéticas e multiplicadores heurísticos.
+ */
+export function calculatePercentile(values: readonly number[], p: number): number {
+  if (values.length === 0) {
+    return 0;
+  }
+  if (p <= 0) return Math.min(...values);
+  if (p >= 1) return Math.max(...values);
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const n = sorted.length;
+  if (n === 1) return sorted[0];
+
+  const index = p * (n - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  const weight = index - lower;
+
+  if (lower === upper) {
+    return sorted[lower];
+  }
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
 }
 
 /**
@@ -72,7 +99,7 @@ export function calculateStatisticalSummary(values: readonly number[]): Statisti
   const variance = n > 1 ? sumSqDiff / (n - 1) : 0;
   const standardDeviation = Math.sqrt(variance);
 
-  // Mediana
+  // Mediana e Percentil 95
   const sorted = [...values].sort((a, b) => a - b);
   let median = 0;
   const mid = Math.floor(n / 2);
@@ -81,12 +108,14 @@ export function calculateStatisticalSummary(values: readonly number[]): Statisti
   } else {
     median = (sorted[mid - 1] + sorted[mid]) / 2;
   }
+  const p95 = calculatePercentile(sorted, 0.95);
 
   return {
     mean,
     median,
     min,
     max,
+    p95,
     standardDeviation,
     positiveCount,
     zeroCount,

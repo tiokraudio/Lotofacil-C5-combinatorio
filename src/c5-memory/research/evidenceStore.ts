@@ -15,6 +15,7 @@ import {
 import {
   calculateStatisticalSummary,
   calculatePairedDeltas,
+  calculatePercentile,
   StatisticalSummary,
 } from "./statistics";
 
@@ -249,9 +250,10 @@ export interface ExecutiveScientificReportFileV2 {
   readonly totalTrajectoriesA: number;
   readonly totalTrajectoriesB: number;
   readonly kRecommendation: {
-    readonly selectedK: number;
+    readonly selectedK: number | null;
+    readonly status: "PENDING_T3788_EXECUTION" | "RECOMMENDED" | "UNSELECTED";
     readonly rationale: string;
-    readonly saturationEfficiencyRatio: Record<number, number>;
+    readonly saturationEfficiencyRatio?: Record<number, number>;
   };
   readonly traceabilityInputHashes: readonly string[];
   readonly createdAt: string;
@@ -746,7 +748,7 @@ export function generateAggregatesAndReportsV2(
           maxLeximinMedianCoverage: mlSummary.median,
           deltaSummary,
           meanSelectionTimeMs: timingSummary.mean,
-          p95SelectionTimeMs: timingSummary.max * 0.95,
+          p95SelectionTimeMs: calculatePercentile(group.timings, 0.95),
           maxSelectionTimeMs: timingSummary.max,
           duplicateCountBaseline: 0,
           duplicateCountMaxLeximin: 0,
@@ -776,7 +778,7 @@ export function generateAggregatesAndReportsV2(
     const stat = calculateStatisticalSummary(times);
     perKMetrics[k] = {
       meanSelectionMs: stat.mean,
-      p95SelectionMs: stat.max * 0.95,
+      p95SelectionMs: calculatePercentile(times, 0.95),
       maxSelectionMs: stat.max,
       compliantTarget: stat.mean <= 500,
       compliantHardLimit: stat.max <= 2000,
@@ -794,19 +796,66 @@ export function generateAggregatesAndReportsV2(
   const performancePath = path.join(baseDir, "reports", "performance-diagnostics.json");
   atomicWriteFile(performancePath, JSON.stringify(perfFile, null, 2));
 
-  // 4. Diagnóstico de Johnson
+  // 4. Diagnóstico de Johnson (derivado 100% dos arquivos RAW persistidos em disco)
+  let totalDuplicatesObserved = 0;
+  let collisionsDetected = false;
+
+  if (fs.existsSync(rawADir)) {
+    for (const k of kGrid) {
+      const filePath = path.join(rawADir, `canonical_k${k}.json`);
+      if (fs.existsSync(filePath)) {
+        try {
+          const data = JSON.parse(fs.readFileSync(filePath, "utf-8")) as TrajectoryEvidenceFile;
+          const dupes = data.finalDuplicateCount ?? 0;
+          totalDuplicatesObserved += dupes;
+          if (dupes > 0) collisionsDetected = true;
+          for (const rec of Object.values(data.horizonRecords ?? {})) {
+            if (rec.duplicateCount > 0) {
+              collisionsDetected = true;
+            }
+          }
+        } catch {
+          // ignora se não existir
+        }
+      }
+    }
+  }
+
+  if (fs.existsSync(rawBDir)) {
+    for (const k of kGrid) {
+      for (let s = 0; s < 32; s++) {
+        const filePath = path.join(rawBDir, `k${k}_seed${s}.json`);
+        if (fs.existsSync(filePath)) {
+          try {
+            const data = JSON.parse(fs.readFileSync(filePath, "utf-8")) as TrajectoryEvidenceFile;
+            const dupes = data.finalDuplicateCount ?? 0;
+            totalDuplicatesObserved += dupes;
+            if (dupes > 0) collisionsDetected = true;
+            for (const rec of Object.values(data.horizonRecords ?? {})) {
+              if (rec.duplicateCount > 0) {
+                collisionsDetected = true;
+              }
+            }
+          } catch {
+            // ignora se não existir
+          }
+        }
+      }
+    }
+  }
+
   const johnsonFile: JohnsonDiagnosticsFile = {
     protocolId: "C5_MEMORY_210_RESEARCH_PROTOCOL_V2",
     protocolSha256,
-    zeroDuplicatePolicyEnforced: true,
-    totalDuplicatesObserved: 0,
-    collisionsDetected: false,
+    zeroDuplicatePolicyEnforced: totalDuplicatesObserved === 0,
+    totalDuplicatesObserved,
+    collisionsDetected,
     createdAt: new Date().toISOString(),
   };
   const johnsonPath = path.join(baseDir, "reports", "johnson-diagnostics.json");
   atomicWriteFile(johnsonPath, JSON.stringify(johnsonFile, null, 2));
 
-  // 5. Relatório Científico Executivo
+  // 5. Relatório Científico Executivo (sem alegações ou recomendações de K pré-computadas)
   const execReport: ExecutiveScientificReportFileV2 = {
     protocolId: "C5_MEMORY_210_RESEARCH_PROTOCOL_V2",
     protocolSha256,
@@ -814,16 +863,10 @@ export function generateAggregatesAndReportsV2(
     totalTrajectoriesA: totalTrajA,
     totalTrajectoriesB: totalTrajB,
     kRecommendation: {
-      selectedK: 50,
+      selectedK: null,
+      status: "PENDING_T3788_EXECUTION",
       rationale:
-        "K=50 atinge saturação multiobjetivo com ganho de cobertura superior e excelente eficiência computacional.",
-      saturationEfficiencyRatio: {
-        10: 6701,
-        20: 3678,
-        50: 1714,
-        100: 955,
-        500: 219,
-      },
+        "Seleção científica de K e ratio de saturação estritamente pendentes da autorização e execução integral da corrida T3788. Proibida antecipação inferencial nesta fase.",
     },
     traceabilityInputHashes: inputTrajectoryHashes,
     createdAt: new Date().toISOString(),

@@ -41,6 +41,7 @@ import {
   calculateStateCheckpointIntegrity,
   EVIDENCE_BASE_DIR,
 } from "./evidenceStore";
+import { calculatePercentile } from "./statistics";
 
 export interface RunnerOptionsV2 {
   readonly protocolPath?: string;
@@ -270,9 +271,12 @@ export function runSingleTrajectoryV2(params: {
     maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k);
   }
 
+  const stepTimings: number[] = [];
+
   for (let t = startT; t <= maxT; t++) {
     const bRes = baselineArm.executeStep();
     const mRes = maxLeximinArm.executeStep();
+    stepTimings.push(mRes.metrics.selectionDurationMs);
 
     if (targetHorizons.includes(t)) {
       const bMetrics = bRes.metrics;
@@ -305,6 +309,19 @@ export function runSingleTrajectoryV2(params: {
         `POOL:${experiment}:${masterSeed}:${k}:${t}:${bRes.poolMasterSeed}`
       );
 
+      const meanSelectionMs =
+        stepTimings.length > 0
+          ? stepTimings.reduce((acc, v) => acc + v, 0) / stepTimings.length
+          : mMetrics.selectionDurationMs;
+      const p95SelectionMs =
+        stepTimings.length > 0
+          ? calculatePercentile(stepTimings, 0.95)
+          : mMetrics.selectionDurationMs;
+      const maxSelectionMs =
+        stepTimings.length > 0
+          ? Math.max(...stepTimings)
+          : mMetrics.selectionDurationMs;
+
       const record: RawTrajectoryHorizonRecord = {
         experiment,
         masterSeed,
@@ -327,12 +344,12 @@ export function runSingleTrajectoryV2(params: {
         delta11Plus,
         deltaPercent14Plus,
         historyCardinality: t * 5,
-        duplicateCount: 0,
+        duplicateCount: mMetrics.duplicateGames,
         poolHash,
         timings: {
-          meanSelectionMs: mMetrics.selectionDurationMs,
-          p95SelectionMs: mMetrics.selectionDurationMs * 1.05,
-          maxSelectionMs: mMetrics.selectionDurationMs * 1.1,
+          meanSelectionMs,
+          p95SelectionMs,
+          maxSelectionMs,
         },
       };
 
