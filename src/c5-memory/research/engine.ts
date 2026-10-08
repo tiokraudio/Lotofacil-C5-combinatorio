@@ -9,7 +9,13 @@ import {
   StructuralPRNG,
   derivePoolMasterSeed210,
 } from "../engine210";
-import { computeLeximinProfile, compareLeximin } from "../math";
+import {
+  computeLeximinProfile,
+  computeLeximinProfileReference,
+  computeLeximinProfileMasks,
+  compareLeximin,
+  gameToMask25,
+} from "../math";
 import { C5Game } from "../types";
 import { OutcomeBitset, getOutcomes14Plus } from "./combinatorics";
 import {
@@ -26,6 +32,8 @@ import {
   FROZEN_RESEARCH_PROTOCOL_ID,
   FROZEN_RESEARCH_PROTOCOL_SHA256,
 } from "./protocolValidator";
+
+export type ExecutionMode = "REFERENCE" | "OPTIMIZED";
 
 /**
  * Deriva a seed exógena para o Experimento B
@@ -100,6 +108,7 @@ export class ResearchArmExecutor {
   public readonly experimentId: ExperimentId;
   public readonly masterSeed: string;
   public readonly k: number;
+  public readonly executionMode: ExecutionMode;
 
   private currentStep: number = 0;
   private history: C5Game[] = [];
@@ -110,19 +119,29 @@ export class ResearchArmExecutor {
   private uniqueGamesSet: Set<string> = new Set();
   private duplicateGameCount: number = 0;
 
+  // Estruturas Otimizadas (Bitmask Contíguo + Contador Incremental)
+  private historyMasks: Int32Array;
+  private historyMaskCount: number = 0;
+  private bitsetDistinct14Count: number = 0;
+
   constructor(
     armId: "BASELINE" | "MAX_LEXIMIN",
     experimentId: ExperimentId,
     masterSeed: string,
     k: number,
-    initialBitset?: OutcomeBitset
+    initialBitset?: OutcomeBitset,
+    executionMode: ExecutionMode = "OPTIMIZED"
   ) {
     this.armId = armId;
     this.experimentId = experimentId;
     this.masterSeed = masterSeed;
     this.k = k;
+    this.executionMode = executionMode;
     this.bitset = initialBitset ? initialBitset.clone() : new OutcomeBitset();
+    this.bitsetDistinct14Count = this.bitset.countOnes();
     this.historyFingerprint = syncSha256("EMPTY_HISTORY_ROOT");
+    this.historyMasks = new Int32Array(25000);
+    this.historyMaskCount = 0;
   }
 
   /**
@@ -184,10 +203,32 @@ export class ResearchArmExecutor {
       // a) Filtra estritamente candidatos admissíveis primeiro
       const admissible: Array<{ index: number; games: C5Game[]; profile: readonly number[] }> = [];
       tQStart = typeof performance !== "undefined" ? performance.now() : Date.now();
-      for (let i = 0; i < this.k; i++) {
-        if (isCandidateAdmissible(pool[i].games, this.uniqueGamesSet)) {
-          const profile = computeLeximinProfile(pool[i].games, this.history);
-          admissible.push({ index: i, games: pool[i].games, profile });
+
+      if (this.executionMode === "REFERENCE") {
+        for (let i = 0; i < this.k; i++) {
+          if (isCandidateAdmissible(pool[i].games, this.uniqueGamesSet)) {
+            const profile = computeLeximinProfileReference(pool[i].games, this.history);
+            admissible.push({ index: i, games: pool[i].games, profile });
+          }
+        }
+      } else {
+        // Modo OPTIMIZED: cálculo ultrarrápido com bitmasks contíguos e popcount
+        for (let i = 0; i < this.k; i++) {
+          if (isCandidateAdmissible(pool[i].games, this.uniqueGamesSet)) {
+            const candMasks = [
+              gameToMask25(pool[i].games[0]),
+              gameToMask25(pool[i].games[1]),
+              gameToMask25(pool[i].games[2]),
+              gameToMask25(pool[i].games[3]),
+              gameToMask25(pool[i].games[4]),
+            ];
+            const profile = computeLeximinProfileMasks(
+              candMasks,
+              this.historyMasks,
+              this.historyMaskCount
+            );
+            admissible.push({ index: i, games: pool[i].games, profile });
+          }
         }
       }
       tQEnd = typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -229,10 +270,21 @@ export class ResearchArmExecutor {
         `${this.historyFingerprint}:${canonicalStr}`
       );
 
+      // Atualização contígua de máscaras
+      if (this.historyMaskCount >= this.historyMasks.length) {
+        const nextCap = Math.max(this.historyMasks.length * 2, this.historyMaskCount + 5000);
+        const newBuf = new Int32Array(nextCap);
+        newBuf.set(this.historyMasks);
+        this.historyMasks = newBuf;
+      }
+      this.historyMasks[this.historyMaskCount++] = gameToMask25(game);
+
       // Expande e marca os 151 resultados cobertos com 14+ acertos
       const outcomes14Plus = getOutcomes14Plus(game);
       for (let i = 0; i < outcomes14Plus.length; i++) {
-        this.bitset.set(outcomes14Plus[i]);
+        if (this.bitset.set(outcomes14Plus[i])) {
+          this.bitsetDistinct14Count++;
+        }
       }
     }
 
@@ -246,12 +298,17 @@ export class ResearchArmExecutor {
     const timingCoverageUpdateMs = Math.max(0, tCovUpdate - tSelect);
     const selectionDurationMs = Math.max(0, tCovUpdate - t0);
 
+    const distinct14Plus =
+      this.executionMode === "REFERENCE"
+        ? this.bitset.countOnes()
+        : this.bitsetDistinct14Count;
+
     const metrics: ResearchMetrics = {
       step: nextStep,
       uniqueGames: this.uniqueGamesSet.size,
       duplicateGames: this.duplicateGameCount,
       distinct15: this.uniqueGamesSet.size,
-      distinct14Plus: this.bitset.countOnes(),
+      distinct14Plus,
       selectionDurationMs,
       timingPoolGenerationMs,
       timingQComputationMs,
@@ -340,14 +397,18 @@ export class ResearchArmExecutor {
   /**
    * Restaura o executor a partir de um estado exportado
    */
-  public static restoreFromState(state: ArmExecutionState): ResearchArmExecutor {
+  public static restoreFromState(
+    state: ArmExecutionState,
+    executionMode: ExecutionMode = "OPTIMIZED"
+  ): ResearchArmExecutor {
     const bitset = OutcomeBitset.fromBase64(state.bitsetBase64);
     const executor = new ResearchArmExecutor(
       state.armId,
       state.experimentId,
       state.masterSeed,
       state.k,
-      bitset
+      bitset,
+      executionMode
     );
 
     executor.currentStep = state.currentStep;
@@ -358,7 +419,11 @@ export class ResearchArmExecutor {
 
     executor.uniqueGamesSet = new Set();
     executor.duplicateGameCount = 0;
-    for (const g of state.history) {
+    executor.historyMaskCount = state.history.length;
+    executor.historyMasks = new Int32Array(Math.max(25000, state.history.length * 2));
+    for (let i = 0; i < state.history.length; i++) {
+      const g = state.history[i];
+      executor.historyMasks[i] = gameToMask25(g);
       const cStr = formatGameCanonical(g);
       if (executor.uniqueGamesSet.has(cStr)) {
         executor.duplicateGameCount++;
@@ -366,6 +431,7 @@ export class ResearchArmExecutor {
         executor.uniqueGamesSet.add(cStr);
       }
     }
+    executor.bitsetDistinct14Count = executor.bitset.countOnes();
 
     return executor;
   }

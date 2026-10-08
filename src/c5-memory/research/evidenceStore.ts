@@ -7,7 +7,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import { ArmExecutionState } from "./types";
-import { ResearchArmExecutor, deriveOfficialMasterSeeds } from "./engine";
+import { ResearchArmExecutor, deriveOfficialMasterSeeds, ExecutionMode } from "./engine";
 import {
   FROZEN_RESEARCH_PROTOCOL_V2_ID,
   FROZEN_RESEARCH_PROTOCOL_V2_SHA256,
@@ -456,7 +456,8 @@ export function persistIncrementalStateCheckpoint(
  */
 export function restoreResearchExecutionV2(
   checkpointPathOrData: string | StateCheckpointFileV2,
-  expectedProtocolSha: string = FROZEN_RESEARCH_PROTOCOL_V2_SHA256
+  expectedProtocolSha: string = FROZEN_RESEARCH_PROTOCOL_V2_SHA256,
+  executionMode: ExecutionMode = "OPTIMIZED"
 ): {
   readonly baselineArm: ResearchArmExecutor;
   readonly maxLeximinArm: ResearchArmExecutor;
@@ -525,8 +526,8 @@ export function restoreResearchExecutionV2(
 
   validateTrajectoryRecordSchema(checkpoint.horizonRecord);
 
-  const baselineArm = ResearchArmExecutor.restoreFromState(checkpoint.arms.baseline);
-  const maxLeximinArm = ResearchArmExecutor.restoreFromState(checkpoint.arms.maxLeximin);
+  const baselineArm = ResearchArmExecutor.restoreFromState(checkpoint.arms.baseline, executionMode);
+  const maxLeximinArm = ResearchArmExecutor.restoreFromState(checkpoint.arms.maxLeximin, executionMode);
 
   return { baselineArm, maxLeximinArm, checkpoint };
 }

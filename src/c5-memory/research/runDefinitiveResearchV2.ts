@@ -24,6 +24,7 @@ import {
   ResearchArmExecutor,
   deriveResearchPoolSeedB,
   deriveOfficialMasterSeeds,
+  ExecutionMode,
 } from "./engine";
 import {
   atomicWriteFile,
@@ -50,6 +51,7 @@ export interface RunnerOptionsV2 {
   readonly targetHorizons?: readonly number[];
   readonly dryRun?: boolean;
   readonly resume?: boolean;
+  readonly executionMode?: ExecutionMode;
 }
 
 export interface DefinitiveExecutionOutcomeV2 {
@@ -127,6 +129,7 @@ export function runDefinitiveResearchV2(
       targetHorizons: horizons,
       baseDir,
       resume: options.resume,
+      executionMode: options.executionMode,
     });
     trajACount++;
   }
@@ -143,6 +146,7 @@ export function runDefinitiveResearchV2(
         targetHorizons: horizons,
         baseDir,
         resume: options.resume,
+        executionMode: options.executionMode,
       });
       trajBCount++;
     }
@@ -183,8 +187,9 @@ export function runSingleTrajectoryV2(params: {
   readonly targetHorizons: readonly number[];
   readonly baseDir: string;
   readonly resume?: boolean;
+  readonly executionMode?: ExecutionMode;
 }): TrajectoryEvidenceFile {
-  const { protocol, experiment, k, masterSeed, seedIndex, targetHorizons, baseDir, resume = true } = params;
+  const { protocol, experiment, k, masterSeed, seedIndex, targetHorizons, baseDir, resume = true, executionMode = "OPTIMIZED" } = params;
   const maxT = targetHorizons[targetHorizons.length - 1];
 
   const subDir =
@@ -239,7 +244,7 @@ export function runSingleTrajectoryV2(params: {
 
     if (latestChkFile && latestHorizon > 0) {
       try {
-        const restored = restoreResearchExecutionV2(latestChkFile, protocol.calculatedSha256);
+        const restored = restoreResearchExecutionV2(latestChkFile, protocol.calculatedSha256, executionMode);
         baselineArm = restored.baselineArm;
         maxLeximinArm = restored.maxLeximinArm;
         startT = latestHorizon + 1;
@@ -258,17 +263,17 @@ export function runSingleTrajectoryV2(params: {
           }
         }
       } catch {
-        baselineArm = new ResearchArmExecutor("BASELINE", experiment, masterSeed, k);
-        maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k);
+        baselineArm = new ResearchArmExecutor("BASELINE", experiment, masterSeed, k, undefined, executionMode);
+        maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k, undefined, executionMode);
         startT = 1;
       }
     } else {
-      baselineArm = new ResearchArmExecutor("BASELINE", experiment, masterSeed, k);
-      maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k);
+      baselineArm = new ResearchArmExecutor("BASELINE", experiment, masterSeed, k, undefined, executionMode);
+      maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k, undefined, executionMode);
     }
   } else {
-    baselineArm = new ResearchArmExecutor("BASELINE", experiment, masterSeed, k);
-    maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k);
+    baselineArm = new ResearchArmExecutor("BASELINE", experiment, masterSeed, k, undefined, executionMode);
+    maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k, undefined, executionMode);
   }
 
   const stepTimings: number[] = [];
