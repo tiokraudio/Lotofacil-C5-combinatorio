@@ -559,11 +559,41 @@ function main() {
 
     console.log();
 
-    // Validação da escalabilidade longitudinal
+    // 8.3 Validação Quantitativa do Modelo de Escalabilidade Longitudinal
+    console.log("\n--- [SCALING_MODEL_VALIDATION] ---");
+    // Razão teórica pura para complexidade quadrática com histórico acumulado:
+    // R_quad = [T2 * (T2 + 1)] / [T1 * (T1 + 1)] = 250500 / 62750 ≈ 3.992
+    // Razão teórica pura para complexidade linear: R_lin = T2 / T1 = 2.000
+    // O modelo total real é: Time(T) = T * C_linear + (T*(T+1)/2) * K * C_dist
+    // Critério quantitativo a priori de aceitação:
+    // 1. Min ratio = 1.50 (comprova super-linearidade do histórico acumulado e descarta O(1))
+    // 2. Max ratio = 4.50 (limite superior garantindo que a complexidade empírica não excede O(T^2))
+    // 3. Extrapolação quadrática comprovada como limitante superior conservador.
+    const expectedQuadraticRatio = (T2 * (T2 + 1)) / (T1 * (T1 + 1));
+    const MIN_ACCEPTABLE_RATIO = 1.50;
+    const MAX_ACCEPTABLE_RATIO = 4.50;
+
+    let scalingValidationPassed = true;
     for (const k of [10, 20, 50, 100, 500]) {
       const observedRatio = measuredT2Ms[k] / Math.max(0.1, measuredT1Ms[k]);
-      assert.ok(observedRatio > 0 && Number.isFinite(observedRatio), `Scaling ratio deve ser válido para K=${k}`);
+      const relativeDivergence = ((observedRatio - expectedQuadraticRatio) / expectedQuadraticRatio) * 100;
+
+      console.log(`SCALING_K${k}_OBSERVED_RATIO  = ${observedRatio.toFixed(3)}`);
+      console.log(`SCALING_K${k}_EXPECTED_QUAD   = ${expectedQuadraticRatio.toFixed(3)}`);
+      console.log(`SCALING_K${k}_REL_DIVERGENCE  = ${relativeDivergence > 0 ? "+" : ""}${relativeDivergence.toFixed(2)}%`);
+
+      const kPassed = observedRatio >= MIN_ACCEPTABLE_RATIO && observedRatio <= MAX_ACCEPTABLE_RATIO;
+      console.log(`SCALING_K${k}_VALIDATION      = ${kPassed ? "PASS" : "FAIL"}`);
+
+      if (!kPassed) {
+        scalingValidationPassed = false;
+      }
+      assert.ok(
+        kPassed,
+        `Escalabilidade observada para K=${k} (${observedRatio.toFixed(3)}) fora dos limites quantitativos [${MIN_ACCEPTABLE_RATIO}, ${MAX_ACCEPTABLE_RATIO}]`
+      );
     }
+    assert.ok(scalingValidationPassed, "Validação de escalabilidade quantitativa falhou");
 
     // Modelo de Extrapolação Conservador Baseado Exclusivamente nas Medições:
     // scaleFactor = [T_TARGET * (T_TARGET + 1)] / [T2 * (T2 + 1)]
@@ -596,12 +626,14 @@ function main() {
 
     console.log("\nRUNTIME_ESTIMATE_FROM_MEASUREMENTS      = PASS");
     console.log("NO_HARDCODED_RUNTIME_INPUTS             = PASS");
+    console.log("SCALING_RATIOS_REPORTED                 = PASS");
+    console.log("SCALING_MODEL_VALIDATED                 = PASS");
     console.log("LONGITUDINAL_SCALING_CHECK              = PASS");
 
     // -------------------------------------------------------------------------
     // 9. FINAL BINARY GATE
     // -------------------------------------------------------------------------
-    console.log("\n=== T3788 COMPUTATIONAL R1.1 FINAL BINARY GATE ===\n");
+    console.log("\n=== T3788 COMPUTATIONAL R1.2 FINAL BINARY GATE ===\n");
     console.log("BITMASK_MATHEMATICAL_EQUIVALENCE       = PASS");
     console.log("DISTANCE_EQUIVALENCE                    = PASS");
     console.log("LEXIMIN_SELECTION_EQUIVALENCE           = PASS");
@@ -618,6 +650,8 @@ function main() {
     console.log("OPTIMIZED_RESUME_EQUIVALENCE            = PASS");
     console.log("RUNTIME_ESTIMATE_FROM_MEASUREMENTS      = PASS");
     console.log("NO_HARDCODED_RUNTIME_INPUTS             = PASS");
+    console.log("SCALING_RATIOS_REPORTED                 = PASS");
+    console.log("SCALING_MODEL_VALIDATED                 = PASS");
     console.log("LONGITUDINAL_SCALING_CHECK              = PASS");
     console.log("PROTOCOL_V2_UNCHANGED                   = PASS");
     console.log("SEEDS_UNCHANGED                         = PASS");
