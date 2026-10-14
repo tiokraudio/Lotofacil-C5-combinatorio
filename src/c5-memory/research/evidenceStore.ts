@@ -53,6 +53,19 @@ export function atomicWriteFile(
   }
 
   fs.renameSync(tmpPath, targetPath);
+
+  // Sincronização de metadados do diretório pai após rename (quando suportada pelo SO/FS)
+  try {
+    const dirFd = fs.openSync(dir, "r");
+    try {
+      fs.fsyncSync(dirFd);
+    } finally {
+      fs.closeSync(dirFd);
+    }
+  } catch {
+    // Diretório fsync pode não ser suportado em todos os SOs/filesystems virtuais
+  }
+
   return { sizeBytes: buffer.length, sha256, targetPath };
 }
 
@@ -450,14 +463,22 @@ export function persistIncrementalStateCheckpoint(
   return { filePath: targetPath, sha256: writeRes.sha256, sizeBytes: writeRes.sizeBytes };
 }
 
+export interface CheckpointExpectedBinding {
+  readonly experiment?: "EXPERIMENT_A" | "EXPERIMENT_B";
+  readonly k?: number;
+  readonly masterSeed?: string;
+  readonly seedIndex?: number;
+}
+
 /**
  * Restaura e valida formalmente a execução a partir de um checkpoint físico (F03).
- * Aborta com erro fatal se houver adulteração em qualquer dimensão.
+ * Aborta com erro fatal se houver adulteração ou incompatibilidade em qualquer dimensão.
  */
 export function restoreResearchExecutionV2(
   checkpointPathOrData: string | StateCheckpointFileV2,
   expectedProtocolSha: string = FROZEN_RESEARCH_PROTOCOL_V2_SHA256,
-  executionMode: ExecutionMode = "OPTIMIZED"
+  executionMode: ExecutionMode = "OPTIMIZED",
+  expectedBinding?: CheckpointExpectedBinding
 ): {
   readonly baselineArm: ResearchArmExecutor;
   readonly maxLeximinArm: ResearchArmExecutor;
@@ -472,6 +493,30 @@ export function restoreResearchExecutionV2(
     checkpoint = JSON.parse(raw);
   } else {
     checkpoint = checkpointPathOrData;
+  }
+
+  // Validação estrita de compatibilidade com a trajetória alvo
+  if (expectedBinding) {
+    if (expectedBinding.experiment && checkpoint.experiment !== expectedBinding.experiment) {
+      throw new Error(
+        `INCOMPATIBLE_CHECKPOINT_REJECTED: experiment mismatch (${checkpoint.experiment} !== ${expectedBinding.experiment})`
+      );
+    }
+    if (expectedBinding.k !== undefined && checkpoint.k !== expectedBinding.k) {
+      throw new Error(
+        `INCOMPATIBLE_CHECKPOINT_REJECTED: k mismatch (${checkpoint.k} !== ${expectedBinding.k})`
+      );
+    }
+    if (expectedBinding.masterSeed && checkpoint.masterSeed !== expectedBinding.masterSeed) {
+      throw new Error(
+        `INCOMPATIBLE_CHECKPOINT_REJECTED: masterSeed mismatch`
+      );
+    }
+    if (expectedBinding.seedIndex !== undefined && checkpoint.seedIndex !== expectedBinding.seedIndex) {
+      throw new Error(
+        `INCOMPATIBLE_CHECKPOINT_REJECTED: seedIndex mismatch (${checkpoint.seedIndex} !== ${expectedBinding.seedIndex})`
+      );
+    }
   }
 
   if (checkpoint.protocolId !== FROZEN_RESEARCH_PROTOCOL_V2_ID) {

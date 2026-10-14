@@ -1,0 +1,20 @@
+{
+  "backupVersion": "1.0.0",
+  "createdAt": "2026-10-14T14:40:59.291Z",
+  "sourceBaseDir": "/tmp/c5m-operational-readiness-1791988855349/source_execution",
+  "fileCount": 2,
+  "totalBytes": 1161320,
+  "files": [
+    {
+      "relativePath": "checkpoints/state_experiment_b_k10_s777_t10.json",
+      "sizeBytes": 1159714,
+      "sha256": "64d0b82ee46d40d2453c8e5c3ff50e33568416ed1c07d7f005a7fbae8d591f52"
+    },
+    {
+      "relativePath": "raw/experiment-b/k10_seed777.json",
+      "sizeBytes": 1606,
+      "sha256": "b5838f4a2b4c9842d6ef5f34727a6f2cf6d0cb0f5aa14c5a9b442014f523b173"
+    }
+  ],
+  "manifestSha256": "9fcd3be48b7650ec0be0f76677044261a788730f0bc69df56a5fa488c7e521b7"
+}

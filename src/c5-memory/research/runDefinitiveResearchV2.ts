@@ -174,6 +174,83 @@ export function runDefinitiveResearchV2(
   };
 }
 
+export interface TrajectoryLock {
+  readonly lockPath: string;
+  readonly release: () => void;
+}
+
+export function isPidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Adquire lock exclusivo de processo para uma trajetória específica.
+ * Impede execuções concorrentes duplicadas da mesma tupla (experiment, K, seed).
+ */
+export function acquireTrajectoryLock(
+  baseDir: string,
+  experiment: "EXPERIMENT_A" | "EXPERIMENT_B",
+  k: number,
+  seedIndex?: number
+): TrajectoryLock {
+  const lockDir = path.join(baseDir, "locks");
+  fs.mkdirSync(lockDir, { recursive: true });
+  const seedTag = seedIndex !== undefined ? `_s${seedIndex}` : "_canonical";
+  const lockPath = path.join(lockDir, `${experiment.toLowerCase()}_k${k}${seedTag}.lock`);
+
+  if (fs.existsSync(lockPath)) {
+    try {
+      const lockData = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
+      if (typeof lockData.pid === "number" && isPidAlive(lockData.pid)) {
+        throw new Error(
+          `CONCURRENT_EXECUTION_BLOCKED: Trajetória ${experiment} K=${k} seed=${seedIndex ?? "canonical"} já está em execução ativa pelo PID ${lockData.pid}.`
+        );
+      } else {
+        // Stale lock de processo abortado/finalizado
+        fs.unlinkSync(lockPath);
+      }
+    } catch (e: any) {
+      if (e.message && e.message.includes("CONCURRENT_EXECUTION_BLOCKED")) {
+        throw e;
+      }
+      try {
+        fs.unlinkSync(lockPath);
+      } catch {}
+    }
+  }
+
+  const payload = JSON.stringify({
+    pid: process.pid,
+    experiment,
+    k,
+    seedIndex,
+    acquiredAt: new Date().toISOString(),
+  });
+
+  const fd = fs.openSync(lockPath, "wx");
+  try {
+    fs.writeSync(fd, payload);
+  } finally {
+    fs.closeSync(fd);
+  }
+
+  return {
+    lockPath,
+    release: () => {
+      try {
+        if (fs.existsSync(lockPath)) {
+          fs.unlinkSync(lockPath);
+        }
+      } catch {}
+    },
+  };
+}
+
 /**
  * Executa uma única trajetória controlada com checkpointing atômico e persistência de RAW (V2).
  * Suporta retomada transparente a partir do último checkpoint (F03).
@@ -192,91 +269,104 @@ export function runSingleTrajectoryV2(params: {
   const { protocol, experiment, k, masterSeed, seedIndex, targetHorizons, baseDir, resume = true, executionMode = "OPTIMIZED" } = params;
   const maxT = targetHorizons[targetHorizons.length - 1];
 
-  const subDir =
-    experiment === "EXPERIMENT_A"
-      ? path.join(baseDir, "raw", "experiment-a")
-      : path.join(baseDir, "raw", "experiment-b");
+  const lock = acquireTrajectoryLock(baseDir, experiment, k, seedIndex);
+  try {
+    const subDir =
+      experiment === "EXPERIMENT_A"
+        ? path.join(baseDir, "raw", "experiment-a")
+        : path.join(baseDir, "raw", "experiment-b");
 
-  const fileName =
-    experiment === "EXPERIMENT_A"
-      ? `canonical_k${k}.json`
-      : `k${k}_seed${seedIndex ?? 0}.json`;
+    const fileName =
+      experiment === "EXPERIMENT_A"
+        ? `canonical_k${k}.json`
+        : `k${k}_seed${seedIndex ?? 0}.json`;
 
-  const targetRawPath = path.join(subDir, fileName);
+    const targetRawPath = path.join(subDir, fileName);
 
-  // Se já existe e está completo, reutiliza (resumabilidade transparente)
-  if (resume && fs.existsSync(targetRawPath)) {
-    try {
-      const existing = JSON.parse(fs.readFileSync(targetRawPath, "utf-8")) as TrajectoryEvidenceFile;
-      const hasAllHorizons = targetHorizons.every(h => existing.horizonRecords && existing.horizonRecords[h]);
-      if (hasAllHorizons && existing.finalHorizon >= maxT) {
-        return existing;
-      }
-    } catch {
-      // Reexecuta se estiver corrompido
-    }
-  }
-
-  let baselineArm: ResearchArmExecutor;
-  let maxLeximinArm: ResearchArmExecutor;
-  let startT = 1;
-  const horizonRecords: Record<number, RawTrajectoryHorizonRecord> = {};
-
-  // Verifica se existe checkpoint prévio para retomar
-  if (resume) {
-    const chkDir = path.join(baseDir, "checkpoints");
-    const seedTag = seedIndex !== undefined ? `_s${seedIndex}` : "_canonical";
-    let latestHorizon = 0;
-    let latestChkFile: string | null = null;
-
-    if (fs.existsSync(chkDir)) {
-      for (const h of targetHorizons) {
-        const chkFile = path.join(
-          chkDir,
-          `state_${experiment.toLowerCase()}_k${k}${seedTag}_t${h}.json`
-        );
-        if (fs.existsSync(chkFile) && h < maxT) {
-          latestHorizon = h;
-          latestChkFile = chkFile;
-        }
-      }
-    }
-
-    if (latestChkFile && latestHorizon > 0) {
+    // Se já existe e está completo, reutiliza (resumabilidade transparente)
+    if (resume && fs.existsSync(targetRawPath)) {
       try {
-        const restored = restoreResearchExecutionV2(latestChkFile, protocol.calculatedSha256, executionMode);
-        baselineArm = restored.baselineArm;
-        maxLeximinArm = restored.maxLeximinArm;
-        startT = latestHorizon + 1;
-
-        // Recupera registros de horizonte dos checkpoints anteriores
-        for (const h of targetHorizons) {
-          if (h <= latestHorizon) {
-            const hFile = path.join(
-              chkDir,
-              `state_${experiment.toLowerCase()}_k${k}${seedTag}_t${h}.json`
-            );
-            if (fs.existsSync(hFile)) {
-              const chk = JSON.parse(fs.readFileSync(hFile, "utf-8")) as StateCheckpointFileV2;
-              horizonRecords[h] = chk.horizonRecord;
-            }
-          }
+        const existing = JSON.parse(fs.readFileSync(targetRawPath, "utf-8")) as TrajectoryEvidenceFile;
+        const hasAllHorizons = targetHorizons.every(h => existing.horizonRecords && existing.horizonRecords[h]);
+        if (hasAllHorizons && existing.finalHorizon >= maxT) {
+          return existing;
         }
       } catch {
+        // Reexecuta se estiver corrompido
+      }
+    }
+
+    let baselineArm: ResearchArmExecutor;
+    let maxLeximinArm: ResearchArmExecutor;
+    let startT = 1;
+    const horizonRecords: Record<number, RawTrajectoryHorizonRecord> = {};
+    const seedTag = seedIndex !== undefined ? `_s${seedIndex}` : "_canonical";
+
+    // Verifica se existe checkpoint prévio para retomar
+    if (resume) {
+      const chkDir = path.join(baseDir, "checkpoints");
+      let latestHorizon = 0;
+      let latestChkFile: string | null = null;
+
+      if (fs.existsSync(chkDir)) {
+        for (const h of targetHorizons) {
+          const chkFile = path.join(
+            chkDir,
+            `state_${experiment.toLowerCase()}_k${k}${seedTag}_t${h}.json`
+          );
+          if (fs.existsSync(chkFile) && h < maxT) {
+            latestHorizon = h;
+            latestChkFile = chkFile;
+          }
+        }
+      }
+
+      if (latestChkFile && latestHorizon > 0) {
+        try {
+          const restored = restoreResearchExecutionV2(
+            latestChkFile,
+            protocol.calculatedSha256,
+            executionMode,
+            {
+              experiment,
+              k,
+              masterSeed,
+              seedIndex,
+            }
+          );
+          baselineArm = restored.baselineArm;
+          maxLeximinArm = restored.maxLeximinArm;
+          startT = latestHorizon + 1;
+
+          // Recupera registros de horizonte dos checkpoints anteriores
+          for (const h of targetHorizons) {
+            if (h <= latestHorizon) {
+              const hFile = path.join(
+                chkDir,
+                `state_${experiment.toLowerCase()}_k${k}${seedTag}_t${h}.json`
+              );
+              if (fs.existsSync(hFile)) {
+                const chk = JSON.parse(fs.readFileSync(hFile, "utf-8")) as StateCheckpointFileV2;
+                horizonRecords[h] = chk.horizonRecord;
+              }
+            }
+          }
+          console.log(`[TRAJECTORY_RESUME] Retomada confirmada para ${experiment} K=${k}${seedTag} a partir do checkpoint T=${latestHorizon} (${path.basename(latestChkFile)}).`);
+        } catch (e: any) {
+          throw new Error(`CHECKPOINT_RESTORE_FAILED: Falha na validação ou restauração do checkpoint ${latestChkFile}: ${e.message}`);
+        }
+      } else {
+        console.log(`[TRAJECTORY_START] Iniciando nova trajetória ${experiment} K=${k}${seedTag} a partir de T=1.`);
         baselineArm = new ResearchArmExecutor("BASELINE", experiment, masterSeed, k, undefined, executionMode);
         maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k, undefined, executionMode);
-        startT = 1;
       }
     } else {
+      console.log(`[TRAJECTORY_START] Iniciando nova trajetória (sem resume) ${experiment} K=${k}${seedTag} a partir de T=1.`);
       baselineArm = new ResearchArmExecutor("BASELINE", experiment, masterSeed, k, undefined, executionMode);
       maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k, undefined, executionMode);
     }
-  } else {
-    baselineArm = new ResearchArmExecutor("BASELINE", experiment, masterSeed, k, undefined, executionMode);
-    maxLeximinArm = new ResearchArmExecutor("MAX_LEXIMIN", experiment, masterSeed, k, undefined, executionMode);
-  }
 
-  const stepTimings: number[] = [];
+    const stepTimings: number[] = [];
 
   for (let t = startT; t <= maxT; t++) {
     const bRes = baselineArm.executeStep();
@@ -396,7 +486,8 @@ export function runSingleTrajectoryV2(params: {
         createdAt: new Date().toISOString(),
       };
 
-      persistIncrementalStateCheckpoint(stateCheckpoint, baseDir);
+      const chkRes = persistIncrementalStateCheckpoint(stateCheckpoint, baseDir);
+      console.log(`[CHECKPOINT_PERSISTED] Checkpoint gravado: ${path.basename(chkRes.filePath)} (sha: ${chkRes.sha256.slice(0, 16)}...)`);
     }
   }
 
@@ -422,4 +513,7 @@ export function runSingleTrajectoryV2(params: {
 
   persistTrajectoryEvidence(evidenceFile, baseDir);
   return evidenceFile;
+} finally {
+  lock.release();
+}
 }
