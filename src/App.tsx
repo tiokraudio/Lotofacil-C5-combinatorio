@@ -14,8 +14,11 @@ export const App: React.FC = () => {
   const [currentContestNumber, setCurrentContestNumber] = useState<number>(3505);
   const [conferenceTargetNumber, setConferenceTargetNumber] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       await initializeSeedDataUI();
       const loaded = await getAllContestRecordsUI();
@@ -31,8 +34,9 @@ export const App: React.FC = () => {
           setCurrentContestNumber(maxContest);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao inicializar dados:", err);
+      setError(err?.message || "Falha ao carregar dados operacionais.");
     } finally {
       setIsLoading(false);
     }
@@ -73,6 +77,9 @@ export const App: React.FC = () => {
                 currentContestNumber={currentContestNumber}
                 onNavigateToGenerator={() => setActiveTab("generator")}
                 onNavigateToConference={() => setActiveTab("conference")}
+                isLoading={isLoading}
+                error={error}
+                onRetry={loadData}
               />
             )}
 

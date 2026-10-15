@@ -1,0 +1,55 @@
+{
+  "backupVersion": "1.0.0",
+  "createdAt": "2026-10-15T12:40:40.419Z",
+  "sourceBaseDir": "/app/applet/certification/c5-memory-v2/research/evidence-v2",
+  "fileCount": 9,
+  "totalBytes": 57197329,
+  "files": [
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t100.json",
+      "sizeBytes": 1766925,
+      "sha256": "65e270c5956efb89d05106296b423d05afe884aedaa5cf28d1c186747f35887a"
+    },
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t1000.json",
+      "sizeBytes": 7850249,
+      "sha256": "1a2dc6a85c159949c450f9bb7f9603e5d11b904df7b0473ae7ce2a4fa520ba7a"
+    },
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t2000.json",
+      "sizeBytes": 14615813,
+      "sha256": "7875405b5da05a2af9ce62c9571ec9e71bb7ed465dd07682f9f0bed9f24ee128"
+    },
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t3788.json",
+      "sizeBytes": 26720838,
+      "sha256": "56fb2ef515d2fb827847f08e11738478471d5cff95cb098e42845cb5192748f1"
+    },
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t500.json",
+      "sizeBytes": 4470531,
+      "sha256": "9f38a3252bb392efc3a6d6d4f1d602ca3ce3ed933ad2d9b487bf04761782baac"
+    },
+    {
+      "relativePath": "checkpoints/state_experiment_a_k20_canonical_t100.json",
+      "sizeBytes": 1766873,
+      "sha256": "41e1997ebb6cf140802035037de7f24885e891ebdf18107e72fa411734d3a1c2"
+    },
+    {
+      "relativePath": "locks/experiment_a_k20_canonical.lock",
+      "sizeBytes": 86,
+      "sha256": "42ce7652821f403b4f7885cbc652321f60cab3dc04e2c1dc94888ea54bdba1a5"
+    },
+    {
+      "relativePath": "raw/experiment-a/canonical_k10.json",
+      "sizeBytes": 5529,
+      "sha256": "ca5876f3635dc900abf2805cceb55707c671f9c6ecffc4ddb1c97211881ba284"
+    },
+    {
+      "relativePath": "t3788_progress.json",
+      "sizeBytes": 485,
+      "sha256": "d0b2e7d8b970b4b2678a639ebc6a53b0686dc45d5705359c181f0538f86c43ac"
+    }
+  ],
+  "manifestSha256": "2069fe39b9729515727cb858ed66485753df6cb8e5c69606198a092d4513e82a"
+}

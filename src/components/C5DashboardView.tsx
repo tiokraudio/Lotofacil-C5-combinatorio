@@ -12,6 +12,8 @@ import {
   ArrowRight,
   BarChart3,
   FileSpreadsheet,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { ContestRecord, ContestStatus } from "../c5-memory/types";
 import {
@@ -25,6 +27,9 @@ interface C5DashboardViewProps {
   currentContestNumber: number;
   onNavigateToGenerator: () => void;
   onNavigateToConference: () => void;
+  isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
@@ -32,6 +37,9 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
   currentContestNumber,
   onNavigateToGenerator,
   onNavigateToConference,
+  isLoading = false,
+  error = null,
+  onRetry,
 }) => {
   // Estado para o seletor do Relatório Mensal (UI-1D requisito 9)
   const [selectedYear, setSelectedYear] = useState<number>(2026);
@@ -82,6 +90,47 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-8 pb-16 animate-pulse" role="status" aria-label="Carregando Painel Operacional">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div className="h-6 w-48 bg-slate-800 rounded mb-2" />
+          <div className="h-4 w-96 bg-slate-800/60 rounded" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="h-64 bg-slate-900/60 border border-slate-800 rounded-2xl p-6" />
+          <div className="h-64 bg-slate-900/60 border border-slate-800 rounded-2xl p-6" />
+        </div>
+        <div className="h-96 bg-slate-900/60 border border-slate-800 rounded-2xl p-6" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 pb-16">
+        <div className="bg-rose-950/40 border border-rose-500/30 rounded-2xl p-6 text-rose-200 shadow-xl">
+          <div className="flex items-start gap-4">
+            <AlertTriangle className="w-6 h-6 text-rose-400 shrink-0 mt-0.5" />
+            <div className="space-y-2">
+              <h2 className="text-base font-bold text-rose-100">Erro ao carregar o Painel Operacional</h2>
+              <p className="text-sm text-rose-300/90">{error}</p>
+              {onRetry && (
+                <button
+                  onClick={onRetry}
+                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-lg shadow-rose-600/20"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Tentar novamente</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const currentBadge = getStatusBadge(dashboardDTO.currentStatus);
 
   return (
@@ -116,6 +165,30 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Banner de Base Vazia se nenhum concurso registrado */}
+      {records.length === 0 && (
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 text-center shadow-xl">
+          <div className="max-w-md mx-auto space-y-3">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/20">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-100">Nenhum concurso registrado ainda</h3>
+            <p className="text-xs text-slate-400">
+              O banco de dados operacional está pronto e limpo. Gere o primeiro conjunto combinatório C5 para o concurso ativo ou importe registros anteriores.
+            </p>
+            <div className="pt-2">
+              <button
+                onClick={onNavigateToGenerator}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/20 cursor-pointer transition-all"
+              >
+                <span>Gerar primeiro C5</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Grid Superior: Concurso Atual & Último Resultado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
