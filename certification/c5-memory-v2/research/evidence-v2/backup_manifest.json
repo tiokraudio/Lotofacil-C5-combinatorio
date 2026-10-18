@@ -1,0 +1,45 @@
+{
+  "backupVersion": "1.0.0",
+  "createdAt": "2026-10-16T12:53:45.449Z",
+  "sourceBaseDir": "/app/applet/certification/c5-memory-v2/research/evidence-v2",
+  "fileCount": 7,
+  "totalBytes": 55431066,
+  "files": [
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t100.json",
+      "sizeBytes": 1766939,
+      "sha256": "53c64fb02f99421b48e6f0045924407e5bc15bbc41ec8ee14e46ae0455675257"
+    },
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t1000.json",
+      "sizeBytes": 7850354,
+      "sha256": "fddd7c62b945d89b2294859b1c8ba834a0943e50c6c7dcbfcc08ddb9e68d17a0"
+    },
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t2000.json",
+      "sizeBytes": 14615970,
+      "sha256": "fe33f076c7fa8d33468f48dfeb0e8b49fba85199d94efef974c458092f104420"
+    },
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t3788.json",
+      "sizeBytes": 26721238,
+      "sha256": "d812d36badde665b7b1e91acdebf59123c7fd8608247046555e96ab630a8ff89"
+    },
+    {
+      "relativePath": "checkpoints/state_experiment_a_k10_canonical_t500.json",
+      "sizeBytes": 4470669,
+      "sha256": "b0e0f3bb84e2c981a534e6233d7a6a9d1a77a48f31e75aaacf91b674b36af962"
+    },
+    {
+      "relativePath": "raw/experiment-a/canonical_k10.json",
+      "sizeBytes": 5529,
+      "sha256": "aa7cb148a7266763c246b3d010a5672a86274918db31045085a4725bb4e2e99a"
+    },
+    {
+      "relativePath": "t3788_progress.json",
+      "sizeBytes": 367,
+      "sha256": "5a25ba75447376e5d18b890fd4597eb1477ba5701e77919589ac08fa8fa9fd9b"
+    }
+  ],
+  "manifestSha256": "edd1a75670c45cfa27c8088c44b103217704031c7f09b6b9cb568a3ffce1280f"
+}

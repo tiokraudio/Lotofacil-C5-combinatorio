@@ -14,11 +14,11 @@ export const App: React.FC = () => {
   const [currentContestNumber, setCurrentContestNumber] = useState<number>(3505);
   const [conferenceTargetNumber, setConferenceTargetNumber] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
-    setError(null);
+    setLoadError(null);
     try {
       await initializeSeedDataUI();
       const loaded = await getAllContestRecordsUI();
@@ -36,7 +36,7 @@ export const App: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Erro ao inicializar dados:", err);
-      setError(err?.message || "Falha ao carregar dados operacionais.");
+      setLoadError(err?.message ?? "Falha ao carregar registros do banco operacional.");
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +78,7 @@ export const App: React.FC = () => {
                 onNavigateToGenerator={() => setActiveTab("generator")}
                 onNavigateToConference={() => setActiveTab("conference")}
                 isLoading={isLoading}
-                error={error}
+                error={loadError}
                 onRetry={loadData}
               />
             )}

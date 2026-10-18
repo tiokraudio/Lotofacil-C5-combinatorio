@@ -1,0 +1,13 @@
+{
+  "t3788Status": "IN_PROGRESS",
+  "experimentACompleted": 1,
+  "experimentBCompleted": 0,
+  "rawCompleted": 1,
+  "horizonRecordsCompleted": 5,
+  "currentK": 10,
+  "currentSeedIndex": null,
+  "lastPersistedCheckpoint": "state_experiment_a_k10_canonical_t500.json",
+  "latestBackupSha256": "60ec00f3043add9ae545ab642e16d98a4d5f183b3f1b73c83824719c3f98458f",
+  "latestBackupPath": "/app/applet/public/c5-memory-t3788-execution-backup.tar.gz",
+  "updatedAt": "2026-10-16T12:53:46.733Z"
+}

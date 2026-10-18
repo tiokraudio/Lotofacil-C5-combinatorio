@@ -183,6 +183,22 @@ export async function runT3788BatchExecution(params: {
   let currentSeedIndex: number | null = null;
   let lastPersistedCheckpoint: string | null = null;
 
+  // Salva estado inicial antes de começar
+  const initialCounts = countCompletedEvidence(baseDir);
+  saveProgressState({
+    t3788Status: "IN_PROGRESS",
+    experimentACompleted: initialCounts.expACompleted,
+    experimentBCompleted: initialCounts.expBCompleted,
+    rawCompleted: initialCounts.totalRaw,
+    horizonRecordsCompleted: initialCounts.totalHorizonRecords,
+    currentK,
+    currentSeedIndex,
+    lastPersistedCheckpoint: initialCounts.lastCheckpoint,
+    latestBackupSha256: null,
+    latestBackupPath: null,
+    updatedAt: new Date().toISOString(),
+  }, baseDir);
+
   // 1. EXECUÇÃO DO EXPERIMENTO A (5 trajetórias)
   if (batch === "ALL" || batch === "EXP_A") {
     console.log("\n>>> INICIANDO LOTE: EXPERIMENTO A (5 trajetórias canônicas)...");
@@ -219,6 +235,22 @@ export async function runT3788BatchExecution(params: {
       lastPersistedCheckpoint = `state_experiment_a_k${k}_canonical_t3788.json`;
       trajectoriesExecutedThisRun++;
       console.log(`[EXP_A_DONE] Canônica K=${k} concluída! ML Fingerprint: ${res.mlFinalFingerprint.slice(0, 16)}...`);
+
+      const interCounts = countCompletedEvidence(baseDir);
+      const bRes = exportBatchBackup(baseDir);
+      saveProgressState({
+        t3788Status: "IN_PROGRESS",
+        experimentACompleted: interCounts.expACompleted,
+        experimentBCompleted: interCounts.expBCompleted,
+        rawCompleted: interCounts.totalRaw,
+        horizonRecordsCompleted: interCounts.totalHorizonRecords,
+        currentK,
+        currentSeedIndex,
+        lastPersistedCheckpoint: interCounts.lastCheckpoint ?? lastPersistedCheckpoint,
+        latestBackupSha256: bRes?.archiveSha256 ?? null,
+        latestBackupPath: bRes?.archivePath ?? null,
+        updatedAt: new Date().toISOString(),
+      }, baseDir);
     }
 
     // Exporta backup do lote Exp A
@@ -276,6 +308,22 @@ export async function runT3788BatchExecution(params: {
       lastPersistedCheckpoint = `state_experiment_b_k${k}_s${s}_t3788.json`;
       trajectoriesExecutedThisRun++;
       console.log(`[EXP_B_DONE] K=${k} seed=${s} concluída! ML Fingerprint: ${res.mlFinalFingerprint.slice(0, 16)}...`);
+
+      const interCounts = countCompletedEvidence(baseDir);
+      const bRes = exportBatchBackup(baseDir);
+      saveProgressState({
+        t3788Status: "IN_PROGRESS",
+        experimentACompleted: interCounts.expACompleted,
+        experimentBCompleted: interCounts.expBCompleted,
+        rawCompleted: interCounts.totalRaw,
+        horizonRecordsCompleted: interCounts.totalHorizonRecords,
+        currentK,
+        currentSeedIndex,
+        lastPersistedCheckpoint: interCounts.lastCheckpoint ?? lastPersistedCheckpoint,
+        latestBackupSha256: bRes?.archiveSha256 ?? null,
+        latestBackupPath: bRes?.archivePath ?? null,
+        updatedAt: new Date().toISOString(),
+      }, baseDir);
     }
 
     // Exporta backup após cada K concluído
