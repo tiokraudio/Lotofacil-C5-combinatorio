@@ -1,60 +1,23 @@
 {
-  "title": "C5-Memory 2.1.0 — Manifesto Oficial de Auditoria do Código-Fonte (UI 2.0)",
-  "version": "2.1.0",
-  "generatedAt": "2026-10-27T21:25:10.304Z",
+  "title": "C5-Memory 2.1.0 (UI 2.0) — Manifesto Oficial de Auditoria e Reprodutibilidade",
+  "version": "2.1.0-ui2-audit-r19",
+  "generatedAt": "2026-10-29T12:18:59.886Z",
   "environment": {
-    "nodeVersion": "v22.23.4",
-    "npmVersion": "10.9.9",
+    "node": "v22.23.4",
     "platform": "linux",
     "arch": "x64"
   },
   "package": {
     "filename": "c5-memory-ui2-audit-package.tar.gz",
     "absolutePath": "/app/applet/public/c5-memory-ui2-audit-package.tar.gz",
-    "sizeBytes": 302864,
-    "sha256": "96d27fe66737323b90ba24be355bc2edaa6ca80d270a2f5dfdfdd88d204ecbfd"
+    "sizeBytes": 322552,
+    "sha256": "694b4e285adc7cf8248be76279b31ee252c1a8ccb9b7c0299f2869a1f553ea2f"
   },
   "verifiedCommands": [
-    {
-      "command": "npx tsx src/c5-memory/testing/auditFixesVerification.test.ts",
-      "status": "PASS",
-      "description": "Suíte de verificação das correções bloqueantes de auditoria (P0: Limpeza, Tarifas Caixa e Rateios)"
-    },
-    {
-      "command": "npx tsx src/c5-memory/testing/integratedApplicationLifecycle.test.ts",
-      "status": "PASS",
-      "description": "Suíte integrada do ciclo de vida completo dos 4 módulos"
-    },
-    {
-      "command": "npx tsx src/c5-memory/testing/hardeningVerificationSuite.test.ts",
-      "status": "PASS",
-      "description": "Suíte de hardening técnico, compatibilidade semântica e retificação"
-    },
-    {
-      "command": "npx tsx src/c5-memory/analytics/tests/ui1dAnalytics.test.ts",
-      "status": "PASS",
-      "description": "Suíte de isolamento causal, denominadores e relatório mensal"
-    },
-    {
-      "command": "npx tsx src/c5-memory/testing/applicationDeliveryValidation.test.ts",
-      "status": "PASS",
-      "description": "Suíte de validação de entrega e regras financeiras da aplicação"
-    },
-    {
-      "command": "npx tsx src/storage/tests/crossStoreIntegrity.test.ts",
-      "status": "PASS",
-      "description": "Suíte de integridade da dupla persistência e controles negativos"
-    },
-    {
-      "command": "npx tsc --noEmit",
-      "status": "PASS",
-      "description": "Verificação de tipagem estrita TypeScript (zero erros)"
-    },
-    {
-      "command": "npm run build",
-      "status": "PASS",
-      "description": "Compilação de produção com empacotamento Vite (zero erros)"
-    }
+    "npm ci",
+    "npx tsx src/c5-memory/testing/auditFixesVerification.test.ts",
+    "npm run lint",
+    "npm run build"
   ],
   "exclusions": [
     {
@@ -78,7 +41,7 @@
       "reason": "Histórico Git interno dispensável para auditoria direta do código."
     }
   ],
-  "totalIncludedFiles": 102,
+  "totalIncludedFiles": 103,
   "files": [
     {
       "path": ".env.example",
@@ -92,8 +55,8 @@
     },
     {
       "path": "AUDIT_REPRODUCTION_GUIDE.md",
-      "sizeBytes": 22643,
-      "sha256": "e882af87b17f4774a0ad0bda05f4901d2e70c4a89021f8b3b4cf7fe9a8c2aeb2"
+      "sizeBytes": 19450,
+      "sha256": "1e493df900b2ec4afc8ebda23d90881200d4a4ae52c17db3013ea26c78638292"
     },
     {
       "path": "bun.lock",
@@ -127,8 +90,8 @@
     },
     {
       "path": "src/c5-memory/analytics/c5Analytics.ts",
-      "sizeBytes": 47190,
-      "sha256": "0edc132eb50240092bf15a0b439935b843d8a12715688a280019a4182d5fbe46"
+      "sizeBytes": 43360,
+      "sha256": "ab8cbb0313d5a5e5193c1fada03306941e996ac2fc77cdbab752635a482465e1"
     },
     {
       "path": "src/c5-memory/analytics/tests/ui1dAnalytics.test.ts",
@@ -262,8 +225,8 @@
     },
     {
       "path": "src/c5-memory/testing/auditFixesVerification.test.ts",
-      "sizeBytes": 298771,
-      "sha256": "4ff8451ea95c89f00dabcef3769e909eea2c9ffef03d8a076f5fbc223e67815a"
+      "sizeBytes": 375391,
+      "sha256": "c1b23a045b47d02066510d2aaa09f6c057312594fe10a1840ee03047dd5543ea"
     },
     {
       "path": "src/c5-memory/testing/createAuditPackage.ts",
@@ -289,6 +252,11 @@
       "path": "src/c5-memory/testing/integratedApplicationLifecycle.test.ts",
       "sizeBytes": 12830,
       "sha256": "b409ca2ff273016269f72af70aae634b9af44ee36fc137c3fa6e45aa912332a1"
+    },
+    {
+      "path": "src/c5-memory/testing/isolatedTestProofHarness.ts",
+      "sizeBytes": 29291,
+      "sha256": "a7fe77cba50f2ec4f41dd8b20bfa66dd1c6120c3b9641d5239af01018c12f679"
     },
     {
       "path": "src/c5-memory/testing/materializeAndValidateGoldenV3.ts",
@@ -512,8 +480,8 @@
     },
     {
       "path": "src/components/C5DashboardView.tsx",
-      "sizeBytes": 48164,
-      "sha256": "d25df4d1ff396cd8573ef73d5a5ce6260d9dbf8b46dd371101c899bc524464f7"
+      "sizeBytes": 49498,
+      "sha256": "5b273f710c1e1f05b3386612bdf732da4cefcebd80c542de5dea9b7475ada71d"
     },
     {
       "path": "src/components/C5MemoryView.tsx",
@@ -532,8 +500,8 @@
     },
     {
       "path": "src/components/HistoryView.tsx",
-      "sizeBytes": 36562,
-      "sha256": "5dfd47879ec1f46b1c4aefa161e391dbd3b51f51a8a6d07ec4125f260245b6d9"
+      "sizeBytes": 37873,
+      "sha256": "463c9c1c50c1c86e16bd4459d466c0480988cd87804cfca1c7a6409268e0164d"
     },
     {
       "path": "src/index.css",
@@ -572,8 +540,8 @@
     },
     {
       "path": "src/storage/storageManager210.ts",
-      "sizeBytes": 64498,
-      "sha256": "c0a9f791340d7658e4ccc6bb53680dcd690634d2b037d8ebe4076828261a5f05"
+      "sizeBytes": 62603,
+      "sha256": "d95510e8fa37cf8e5c96eab20d3ebf3f5748c457e77062f612ea2b41cc5055c9"
     },
     {
       "path": "src/storage/tests/crossStoreIntegrity.test.ts",
