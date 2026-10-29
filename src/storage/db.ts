@@ -2,16 +2,17 @@
  * Camada de Persistência IndexedDB para Lotofácil C5-Memory
  */
 
-import { ContestRecord, MemoryHistory, C5Game } from "../c5-memory/types";
+import { ContestRecord, MemoryHistory, C5Game, ContestAuditEvent } from "../c5-memory/types";
 import { createMemoryHistory } from "../c5-memory/history";
 
-const DB_NAME = "LotofacilC5DB";
-const DB_VERSION = 2;
+export const DB_NAME = "LotofacilC5DB";
+export const DB_VERSION = 4;
 
-const STORE_CONTESTS = "contests";
-const STORE_MEMORY_HISTORY = "c5_memory_history";
+export const STORE_CONTESTS = "contests";
+export const STORE_MEMORY_HISTORY = "c5_memory_history";
+export const STORE_AUDIT_EVENTS = "auditEvents";
 
-function openDB(): Promise<IDBDatabase> {
+export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
       reject(new Error("IndexedDB não disponível no ambiente atual."));
@@ -26,6 +27,9 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORE_MEMORY_HISTORY)) {
         db.createObjectStore(STORE_MEMORY_HISTORY, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(STORE_AUDIT_EVENTS)) {
+        db.createObjectStore(STORE_AUDIT_EVENTS, { keyPath: "id" });
       }
     };
 
@@ -108,3 +112,31 @@ export async function saveStoredMemoryHistory(history: MemoryHistory): Promise<v
     request.onerror = () => reject(request.error);
   });
 }
+
+export async function getAllAuditEvents(): Promise<ContestAuditEvent[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_AUDIT_EVENTS, "readonly");
+      const store = tx.objectStore(STORE_AUDIT_EVENTS);
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.warn("Falha ao ler auditEvents:", err);
+    return [];
+  }
+}
+
+export async function saveAuditEvent(event: ContestAuditEvent): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_AUDIT_EVENTS, "readwrite");
+    const store = tx.objectStore(STORE_AUDIT_EVENTS);
+    const request = store.put(event);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+

@@ -23,9 +23,11 @@ export const DERIVED_STORAGE_SOURCE = "c5_memory_history";
 export function reconstructHistoryFromCanonicalContests(
   contests: readonly ContestRecord[]
 ): MemoryHistory {
-  // Filtra apenas concursos confirmados (FROZEN ou COMPLETED)
+  // Filtra apenas concursos confirmados (FROZEN ou COMPLETED) que não sejam demo
   const confirmed = contests.filter(
-    c => c.algorithmVersion === "C5-Memory-2.0.0" && (c.status === "FROZEN" || c.status === "COMPLETED")
+    c => !c.isDemo &&
+      (c.algorithmVersion === "C5-Memory-2.0.0" || c.algorithmVersion === "C5-Memory-2.1.0") &&
+      (c.status === "FROZEN" || c.status === "COMPLETED")
   );
 
   // Ordena por concurso crescente para garantir determinismo estrito

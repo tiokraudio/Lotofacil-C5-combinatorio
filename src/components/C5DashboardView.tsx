@@ -14,6 +14,7 @@ import {
   FileSpreadsheet,
   AlertTriangle,
   RefreshCw,
+  Coins,
 } from "lucide-react";
 import { ContestRecord, ContestStatus } from "../c5-memory/types";
 import {
@@ -55,7 +56,7 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
   }, [records, selectedYear, selectedMonth]);
 
   // Status visual formatado
-  const getStatusBadge = (status: ContestStatus) => {
+  const getStatusBadge = (status: ContestStatus, financialStatus?: string) => {
     switch (status) {
       case "AVAILABLE":
         return {
@@ -76,8 +77,15 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
           icon: <Lock className="w-3.5 h-3.5" />,
         };
       case "COMPLETED":
+        if (financialStatus === "PENDING_HOMOLOGATION") {
+          return {
+            label: "Apurado (Pendente)",
+            classes: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+            icon: <Clock className="w-3.5 h-3.5" />,
+          };
+        }
         return {
-          label: "Concurso encerrado",
+          label: "Concurso homologado",
           classes: "bg-purple-500/10 text-purple-400 border-purple-500/30",
           icon: <CheckCircle2 className="w-3.5 h-3.5" />,
         };
@@ -131,7 +139,7 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
     );
   }
 
-  const currentBadge = getStatusBadge(dashboardDTO.currentStatus);
+  const currentBadge = getStatusBadge(dashboardDTO.currentStatus, dashboardDTO.currentRecord?.financialStatus);
 
   return (
     <div className="space-y-8 pb-16">
@@ -190,6 +198,54 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
         </div>
       )}
 
+      {/* Central de Controle Operacional: Próximas Ações e Pendências */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-850 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-100">Centro de Controle & Próxima Ação</h2>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                  Operacional Ativo
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                {dashboardDTO.currentStatus === "FROZEN"
+                  ? `O concurso #${dashboardDTO.currentContestNumber} está com as 5 apostas confirmadas e congeladas (SHA-256). Ação recomendada: apurar e conferir o resultado oficial.`
+                  : dashboardDTO.currentStatus === "PREVIEW"
+                  ? `Existe uma prévia gerada para o concurso #${dashboardDTO.currentContestNumber}. Ação recomendada: confirmar e congelar a aposta atômica.`
+                  : dashboardDTO.currentStatus === "COMPLETED"
+                  ? `O concurso #${dashboardDTO.currentContestNumber} foi concluído. Ação recomendada: gerar novo conjunto C5 para o próximo concurso (#${dashboardDTO.currentContestNumber + 1}).`
+                  : `Nenhuma aposta gerada para o concurso ativo #${dashboardDTO.currentContestNumber}. Ação recomendada: gerar os 5 jogos combinatórios C5.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            {dashboardDTO.currentStatus === "FROZEN" ? (
+              <button
+                onClick={onNavigateToConference}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/20 cursor-pointer"
+              >
+                <span>Conferir Concurso #{dashboardDTO.currentContestNumber}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                onClick={onNavigateToGenerator}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 cursor-pointer"
+              >
+                <span>{dashboardDTO.currentStatus === "PREVIEW" ? "Confirmar Prévia C5" : "Gerar Jogos C5"}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Grid Superior: Concurso Atual & Último Resultado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Card: Concurso Atual */}
@@ -247,7 +303,7 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>Algoritmo: <strong className="text-slate-200 font-mono">C5-Memory-2.0.0</strong></span>
+            <span>Algoritmo: <strong className="text-slate-200 font-mono">{dashboardDTO.currentRecord?.algorithmVersion || "C5-Memory-2.1.0"}</strong></span>
             {dashboardDTO.currentRecord?.frozenPayload && (
               <span className="font-mono text-[11px] text-slate-500">
                 SHA: {dashboardDTO.currentRecord.frozenPayload.sha256.substring(0, 8)}...
@@ -401,6 +457,106 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
                   em {dashboardDTO.scoredGames} jogos
                 </span>
               </div>
+            </div>
+
+            {/* Balanço Financeiro Auditável */}
+            <div className="bg-slate-950/80 p-5 rounded-xl border border-slate-800 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <div className="flex items-center gap-2">
+                  <Coins className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-sm font-bold text-slate-200">Balanço Financeiro Consolidado</h3>
+                </div>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  Base Oficial: R$ 3,50 / aposta simples (R$ 17,50 / concurso)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block">Total Investido</span>
+                  <span className="text-lg font-black font-mono text-slate-200 mt-0.5 block">
+                    R$ {dashboardDTO.totalCost.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-500">{dashboardDTO.confirmedContests} concursos confirmados</span>
+                </div>
+
+                <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block">
+                    {(dashboardDTO.manualConfirmedPrize ?? 0) > 0 ? "Prêmio Total Consolidado" : "Prêmios Oficiais"}
+                  </span>
+                  <span className="text-lg font-black font-mono text-emerald-400 mt-0.5 block">
+                    R$ {dashboardDTO.totalPrize.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    {dashboardDTO.winningContestsCount} premiados confirmados
+                    {(dashboardDTO.provisionalWinningContestsCount ?? 0) > 0 && (
+                      <span className="text-amber-400 block mt-0.5 font-medium">
+                        (+{dashboardDTO.provisionalWinningContestsCount} provisório{(dashboardDTO.provisionalWinningContestsCount ?? 0) > 1 ? "s" : ""})
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block">Saldo Líquido</span>
+                  <span
+                    className={`text-lg font-black font-mono mt-0.5 block ${
+                      dashboardDTO.netBalance >= 0 ? "text-emerald-400" : "text-amber-400"
+                    }`}
+                  >
+                    {dashboardDTO.netBalance >= 0 ? "+" : ""}R$ {dashboardDTO.netBalance.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-500">Prêmios menos Custo</span>
+                </div>
+
+                <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block">Retorno (ROI)</span>
+                  <span
+                    className={`text-lg font-black font-mono mt-0.5 block ${
+                      dashboardDTO.roiPercentage >= 0 ? "text-emerald-400" : "text-amber-400"
+                    }`}
+                  >
+                    {dashboardDTO.roiPercentage >= 0 ? "+" : ""}
+                    {dashboardDTO.roiPercentage.toFixed(1)}%
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono">(Prêmio - Custo) / Custo</span>
+                </div>
+              </div>
+
+              {(dashboardDTO.manualConfirmedPrize ?? 0) > 0 && (
+                <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-lg space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span className="font-semibold text-emerald-400">Oficial Caixa Confirmado:</span>
+                    <span className="font-mono">
+                      R$ {dashboardDTO.officialTotalPrize.toFixed(2)} (Saldo: R$ {dashboardDTO.officialNetBalance.toFixed(2)}, ROI: {dashboardDTO.officialRoiPercentage.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="font-semibold text-amber-300">Confirmação Manual Auditada:</span>
+                    <span className="font-mono text-amber-300">
+                      R$ {dashboardDTO.manualConfirmedPrize.toFixed(2)} (Segregado de saldo oficial até prova Caixa)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {dashboardDTO.hasPendingVariableRateio && (
+                <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-300 text-xs">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>
+                    <strong>Rateio Oficial da Caixa Pendente:</strong> Existem {dashboardDTO.pendingRateioContestsCount} concurso(s) homologado(s) com 14 ou 15 acertos aguardando comprovação documental oficial do rateio da Caixa. Saldo e ROI computam exclusivamente valores homologados.
+                  </span>
+                </div>
+              )}
+
+              {dashboardDTO.hasProvisionalVariableRateio && (
+                <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-300 text-xs">
+                  <Info className="w-4 h-4 shrink-0" />
+                  <span>
+                    <strong>Apuração Provisória em Aberto:</strong> Existem {dashboardDTO.provisionalPendingRateioContestsCount} concurso(s) com acertos provisórios de 14 ou 15 acertos aguardando conferência e homologação do sorteio pelo operador. Nenhum valor de rateio é reconhecido antes da homologação formal.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Faixas Relevantes de Premiação (11, 12, 13, 14, 15) com Denominador Explicito */}
@@ -617,7 +773,7 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Resumo do Mês */}
+            {/* Resumo Operacional do Mês */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
               <div>
                 <span className="text-xs text-slate-400">Concursos no Mês:</span>
@@ -654,36 +810,108 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
               </div>
             </div>
 
-            {/* Tabela do Mês por Concurso */}
+            {/* Demonstrativo Financeiro Mensal */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+              <div>
+                <span className="text-[11px] text-slate-400 block">Total Investido no Mês</span>
+                <span className="text-base font-bold font-mono text-slate-200 mt-0.5 block">
+                  R$ {monthlyReportDTO.totalCost.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">R$ 17,50 / concurso</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">
+                  {(monthlyReportDTO.manualConfirmedPrize ?? 0) > 0 ? "Prêmio Total Consolidado" : "Prêmios Confirmados"}
+                </span>
+                <span className="text-base font-bold font-mono text-emerald-400 mt-0.5 block">
+                  R$ {monthlyReportDTO.totalPrize.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-slate-500">{monthlyReportDTO.winningContestsCount} concurso(s) premiado(s)</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Saldo Líquido</span>
+                <span
+                  className={`text-base font-bold font-mono mt-0.5 block ${
+                    monthlyReportDTO.netBalance >= 0 ? "text-emerald-400" : "text-amber-400"
+                  }`}
+                >
+                  {monthlyReportDTO.netBalance >= 0 ? "+" : ""}R$ {monthlyReportDTO.netBalance.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-slate-500">Prêmios menos Custo</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Retorno (ROI) do Mês</span>
+                <span
+                  className={`text-base font-bold font-mono mt-0.5 block ${
+                    monthlyReportDTO.roiPercentage >= 0 ? "text-emerald-400" : "text-amber-400"
+                  }`}
+                >
+                  {monthlyReportDTO.roiPercentage >= 0 ? "+" : ""}{monthlyReportDTO.roiPercentage.toFixed(1)}%
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">Sem rateios estimados</span>
+              </div>
+            </div>
+
+            {(monthlyReportDTO.manualConfirmedPrize ?? 0) > 0 && (
+              <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1 text-xs">
+                <div className="flex items-center justify-between text-slate-300">
+                  <span className="font-semibold text-emerald-400">Oficial Caixa no Mês:</span>
+                  <span className="font-mono">
+                    R$ {monthlyReportDTO.officialTotalPrize.toFixed(2)} (Saldo: R$ {monthlyReportDTO.officialNetBalance.toFixed(2)}, ROI: {monthlyReportDTO.officialRoiPercentage.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-slate-400">
+                  <span className="font-semibold text-amber-300">Confirmação Manual no Mês:</span>
+                  <span className="font-mono text-amber-300">
+                    R$ {monthlyReportDTO.manualConfirmedPrize.toFixed(2)} (Segregado de saldo oficial até prova Caixa)
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {monthlyReportDTO.hasPendingVariableRateio && (
+              <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-300 text-xs">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>
+                  <strong>Rateio Oficial Pendente no Mês:</strong> {monthlyReportDTO.pendingRateioContestsCount} concurso(s) possuem acertos nas faixas variáveis (14 ou 15) aguardando homologação da Caixa. O saldo e o ROI consideram exclusivamente valores confirmados.
+                </span>
+              </div>
+            )}
+
+            {/* Tabela do Mês por Concurso com Colunas Financeiras */}
             <div className="overflow-x-auto bg-slate-950/80 rounded-xl border border-slate-800">
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-900/80 text-slate-400 uppercase font-mono text-[10px] border-b border-slate-800">
                   <tr>
-                    <th className="py-3 px-4">Concurso</th>
-                    <th className="py-3 px-4">Data</th>
-                    <th className="py-3 px-3 text-center">J1</th>
-                    <th className="py-3 px-3 text-center">J2</th>
-                    <th className="py-3 px-3 text-center">J3</th>
-                    <th className="py-3 px-3 text-center">J4</th>
-                    <th className="py-3 px-3 text-center">J5</th>
-                    <th className="py-3 px-4 text-right">Melhor</th>
+                    <th className="py-3 px-3">Concurso</th>
+                    <th className="py-3 px-3">Data</th>
+                    <th className="py-3 px-2 text-center">J1</th>
+                    <th className="py-3 px-2 text-center">J2</th>
+                    <th className="py-3 px-2 text-center">J3</th>
+                    <th className="py-3 px-2 text-center">J4</th>
+                    <th className="py-3 px-2 text-center">J5</th>
+                    <th className="py-3 px-2 text-center">Melhor</th>
+                    <th className="py-3 px-3 text-right">Custo</th>
+                    <th className="py-3 px-3 text-right">Prêmio Conf.</th>
+                    <th className="py-3 px-3 text-right">Saldo</th>
+                    <th className="py-3 px-3 text-center">Rateio</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-mono">
                   {monthlyReportDTO.contestRows.map(row => (
                     <tr key={row.contestNumber} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-3 px-4 font-bold text-slate-100">
-                        {row.contestNumber}
+                      <td className="py-3 px-3 font-bold text-slate-100">
+                        #{row.contestNumber}
                       </td>
-                      <td className="py-3 px-4 text-slate-400">
+                      <td className="py-3 px-3 text-slate-400">
                         {row.contestDate}
                       </td>
-                      <td className="py-3 px-3 text-center text-slate-300">{row.j1Hits}</td>
-                      <td className="py-3 px-3 text-center text-slate-300">{row.j2Hits}</td>
-                      <td className="py-3 px-3 text-center text-slate-300">{row.j3Hits}</td>
-                      <td className="py-3 px-3 text-center text-slate-300">{row.j4Hits}</td>
-                      <td className="py-3 px-3 text-center text-slate-300">{row.j5Hits}</td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-2 text-center text-slate-300">{row.j1Hits}</td>
+                      <td className="py-3 px-2 text-center text-slate-300">{row.j2Hits}</td>
+                      <td className="py-3 px-2 text-center text-slate-300">{row.j3Hits}</td>
+                      <td className="py-3 px-2 text-center text-slate-300">{row.j4Hits}</td>
+                      <td className="py-3 px-2 text-center text-slate-300">{row.j5Hits}</td>
+                      <td className="py-3 px-2 text-center">
                         <span
                           className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                             row.bestHits >= 11
@@ -693,6 +921,32 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
                         >
                           {row.bestHits}
                         </span>
+                      </td>
+                      <td className="py-3 px-3 text-right text-slate-300">
+                        R$ {row.cost.toFixed(2)}
+                      </td>
+                      <td className="py-3 px-3 text-right text-emerald-400 font-bold">
+                        R$ {row.prize.toFixed(2)}
+                      </td>
+                      <td
+                        className={`py-3 px-3 text-right font-bold ${
+                          row.netBalance >= 0 ? "text-emerald-400" : "text-amber-400"
+                        }`}
+                      >
+                        {row.netBalance >= 0 ? "+" : ""}R$ {row.netBalance.toFixed(2)}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        {row.hasPendingVariableRateio ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                            Pendente
+                          </span>
+                        ) : row.hasProvisionalVariableRateio ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/30">
+                            Provisório
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-500">-</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -711,7 +965,7 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
             Isolamento Causal & Separação de Probabilidades Teóricas:
           </strong>
           <p>
-            O algoritmo <strong>C5-Memory-2.0.0</strong> opera com critério de memória determinística para maximizar o afastamento combinatório relativo (MAX-LEXIMIN).
+            O algoritmo <strong>C5-Memory (2.0.0 / 2.1.0)</strong> opera com critério de memória determinística para maximizar o afastamento combinatório relativo (MAX-LEXIMIN).
             As métricas deste painel são exclusivamente descritivas e retrospectivas. O histórico observado de acertos <strong>jamais alimenta ou modifica</strong> a geração de apostas futuras nem altera as probabilidades matemáticas dos sorteios da Lotofácil.
           </p>
         </div>

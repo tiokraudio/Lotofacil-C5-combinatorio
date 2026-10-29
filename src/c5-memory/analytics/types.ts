@@ -64,6 +64,24 @@ export interface DashboardDTO {
     readonly tier15: HitTierMetric;
   };
   readonly evolutionSeries: readonly EvolutionPoint[];
+  // Indicadores Financeiros Reais
+  readonly totalCost: number;
+  readonly totalPrize: number;
+  readonly netBalance: number;
+  readonly roiPercentage: number;
+  // Indicadores Oficiais Caixa Estritos (P0.1 - Décima Primeira Rodada)
+  readonly officialTotalPrize: number;
+  readonly officialNetBalance: number;
+  readonly officialRoiPercentage: number;
+  readonly manualConfirmedPrize: number;
+  readonly manualInformedPrize: number;
+  readonly officialValidatedPrize: number;
+  readonly winningContestsCount: number;
+  readonly provisionalWinningContestsCount?: number;
+  readonly hasPendingVariableRateio: boolean;
+  readonly pendingRateioContestsCount: number;
+  readonly hasProvisionalVariableRateio?: boolean;
+  readonly provisionalPendingRateioContestsCount?: number;
 }
 
 export interface MonthlyContestRow {
@@ -76,6 +94,14 @@ export interface MonthlyContestRow {
   readonly j5Hits: number;
   readonly bestHits: number;
   readonly bestHitsCount: number;
+  readonly cost: number;
+  readonly prize: number;
+  readonly netBalance: number;
+  readonly officialPrize?: number;
+  readonly manualPrize?: number;
+  readonly officialNetBalance?: number;
+  readonly hasPendingVariableRateio?: boolean;
+  readonly hasProvisionalVariableRateio?: boolean;
 }
 
 export interface MonthlyReportDTO {
@@ -99,4 +125,22 @@ export interface MonthlyReportDTO {
     readonly tier15: HitTierMetric;
   };
   readonly contestRows: readonly MonthlyContestRow[];
+  // Indicadores Financeiros do Mês
+  readonly totalCost: number;
+  readonly totalPrize: number;
+  readonly netBalance: number;
+  readonly roiPercentage: number;
+  // Indicadores Oficiais Caixa Estritos (P0.1 - Décima Primeira Rodada)
+  readonly officialTotalPrize: number;
+  readonly officialNetBalance: number;
+  readonly officialRoiPercentage: number;
+  readonly manualConfirmedPrize: number;
+  readonly manualInformedPrize: number;
+  readonly officialValidatedPrize: number;
+  readonly winningContestsCount: number;
+  readonly provisionalWinningContestsCount?: number;
+  readonly hasPendingVariableRateio: boolean;
+  readonly pendingRateioContestsCount: number;
+  readonly hasProvisionalVariableRateio?: boolean;
+  readonly provisionalPendingRateioContestsCount?: number;
 }

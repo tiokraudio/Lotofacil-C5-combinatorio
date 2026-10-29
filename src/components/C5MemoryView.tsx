@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Layers,
   Printer,
+  Download,
 } from "lucide-react";
 import { ContestRecord } from "../c5-memory/types";
 import {
@@ -150,6 +151,32 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
 
   const handlePrintGames = () => {
     window.print();
+  };
+
+  const handleExportTxt = () => {
+    const targetGames = record?.games || draft?.games;
+    if (!targetGames || targetGames.length === 0) return;
+    const cNum = record?.contestNumber || draft?.contestNumber || contestNumber;
+    let txt = `LOTOFÁCIL - APOSTAS C5-MEMORY\n`;
+    txt += `Concurso: #${cNum}\n`;
+    txt += `Data: ${new Date().toLocaleDateString("pt-BR")}\n`;
+    txt += `Algoritmo: C5-Memory-2.1.0 (Critério MAX-LEXIMIN)\n`;
+    if (record?.frozenPayload) {
+      txt += `Hash SHA-256: ${record.frozenPayload.sha256}\n`;
+      txt += `Revisão Histórica: #${record.frozenPayload.historyRevision}\n`;
+    }
+    txt += `---------------------------------------------------\n`;
+    targetGames.forEach((g, i) => {
+      txt += `Jogo ${i + 1}: ${g.map(n => String(n).padStart(2, "0")).join(" ")}\n`;
+    });
+    txt += `---------------------------------------------------\n`;
+    const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `lotofacil-c5-concurso-${cNum}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleAdvanceToNextContest = () => {
@@ -391,6 +418,16 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Imprimir</span>
+                </button>
+
+                <button
+                  id="btn-export-frozen-txt"
+                  onClick={handleExportTxt}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 cursor-pointer transition-all"
+                  title="Baixar arquivo TXT com as apostas formatadas"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Baixar TXT</span>
                 </button>
 
                 <button

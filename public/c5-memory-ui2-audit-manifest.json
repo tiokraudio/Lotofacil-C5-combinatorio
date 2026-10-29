@@ -1,0 +1,562 @@
+{
+  "title": "C5-Memory 2.1.0 (UI 2.0) — Manifesto Oficial de Auditoria e Reprodutibilidade",
+  "version": "2.1.0-ui2-audit-r19",
+  "generatedAt": "2026-10-29T12:18:59.886Z",
+  "environment": {
+    "node": "v22.23.4",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "package": {
+    "filename": "c5-memory-ui2-audit-package.tar.gz",
+    "absolutePath": "/app/applet/public/c5-memory-ui2-audit-package.tar.gz",
+    "sizeBytes": 322552,
+    "sha256": "694b4e285adc7cf8248be76279b31ee252c1a8ccb9b7c0299f2869a1f553ea2f"
+  },
+  "verifiedCommands": [
+    "npm ci",
+    "npx tsx src/c5-memory/testing/auditFixesVerification.test.ts",
+    "npm run lint",
+    "npm run build"
+  ],
+  "exclusions": [
+    {
+      "pattern": "node_modules/",
+      "reason": "Dependências externas gerenciadas via npm ci / package-lock.json."
+    },
+    {
+      "pattern": "dist/",
+      "reason": "Artefatos de compilação descartáveis reproduzíveis via npm run build."
+    },
+    {
+      "pattern": "certification/c5-memory-v2/research/evidence-v2/checkpoints/",
+      "reason": "Grandes arquivos binários de checkpoints da pesquisa T3788 (>500MB), preservados no runner e em c5-memory-t3788-execution-backup.tar.gz."
+    },
+    {
+      "pattern": "public/*.tar.gz e public/*.bundle",
+      "reason": "Arquivos de backup previamente exportados para não inflar o pacote com cópias redundantes."
+    },
+    {
+      "pattern": ".git/",
+      "reason": "Histórico Git interno dispensável para auditoria direta do código."
+    }
+  ],
+  "totalIncludedFiles": 103,
+  "files": [
+    {
+      "path": ".env.example",
+      "sizeBytes": 299,
+      "sha256": "f6adaf92ddc3b79128dc8fae528cd324368d758bfa1bec24bd63938f9f976ba3"
+    },
+    {
+      "path": ".gitignore",
+      "sizeBytes": 40,
+      "sha256": "6ece5beb8a7d1c4b62fd5a7945285f271efcd046e6a3905eae16ef9077544f04"
+    },
+    {
+      "path": "AUDIT_REPRODUCTION_GUIDE.md",
+      "sizeBytes": 19450,
+      "sha256": "1e493df900b2ec4afc8ebda23d90881200d4a4ae52c17db3013ea26c78638292"
+    },
+    {
+      "path": "bun.lock",
+      "sizeBytes": 47054,
+      "sha256": "19024c3f8a6c80b730738ec73b1225b4ce7d00e0ac1f1b6b40ed1e15d293be18"
+    },
+    {
+      "path": "index.html",
+      "sizeBytes": 1349,
+      "sha256": "b574b545c7896eceb8318defb35de6e5514e44ea64e53384f1e3aa6e5ab5489f"
+    },
+    {
+      "path": "metadata.json",
+      "sizeBytes": 333,
+      "sha256": "5b1e0abbdc8bc8c465411d62e6271528d0d243866e193c07003a6ed9ee7ae6a7"
+    },
+    {
+      "path": "package-lock.json",
+      "sizeBytes": 31246,
+      "sha256": "61ed91827728921a528d357abd8b945cb8516378dcc0ba3d7e083061cdf79eb2"
+    },
+    {
+      "path": "package.json",
+      "sizeBytes": 678,
+      "sha256": "295783b8de87f176029bd8ee1402ddbecc85896274aa1b59837269e0db657e1b"
+    },
+    {
+      "path": "src/App.tsx",
+      "sizeBytes": 8397,
+      "sha256": "a4f1b887e20c859b6c2c272668574a58782710f9281b0c32029f9550d7394da0"
+    },
+    {
+      "path": "src/c5-memory/analytics/c5Analytics.ts",
+      "sizeBytes": 43360,
+      "sha256": "ab8cbb0313d5a5e5193c1fada03306941e996ac2fc77cdbab752635a482465e1"
+    },
+    {
+      "path": "src/c5-memory/analytics/tests/ui1dAnalytics.test.ts",
+      "sizeBytes": 7085,
+      "sha256": "9d4766e8a1c7333998ed10d49824764aab4daa1ef9309ba93f59a0cf32d2c11e"
+    },
+    {
+      "path": "src/c5-memory/analytics/types.ts",
+      "sizeBytes": 5086,
+      "sha256": "73df427a14abb98e703ae344c72046e3c4dd6cd3a9a25b4253d72ea7a120a25b"
+    },
+    {
+      "path": "src/c5-memory/application/service.ts",
+      "sizeBytes": 4856,
+      "sha256": "0f94073bb7ed3ca440cafbf87f9ccecdf3e23aebedd55c4317334535e256dbe4"
+    },
+    {
+      "path": "src/c5-memory/application/service210.ts",
+      "sizeBytes": 8685,
+      "sha256": "ed611fad19eb1e70043c683abb0623b8b424e03e2aac0eeeffd09dceda880424"
+    },
+    {
+      "path": "src/c5-memory/application/types.ts",
+      "sizeBytes": 1010,
+      "sha256": "e1619a5c758809e3296190d01aeeee538d7dd809775b77f1540417d0926cce45"
+    },
+    {
+      "path": "src/c5-memory/application/uiService.ts",
+      "sizeBytes": 17035,
+      "sha256": "9f2bf393837db8b1af12b02574b87ff85f4db5a485a38acb374ffadf816ebba4"
+    },
+    {
+      "path": "src/c5-memory/draft.ts",
+      "sizeBytes": 1833,
+      "sha256": "e69a67809d1fe882f0a75ceda4651c065486e8eca87f7ac7e957acb4e7588de1"
+    },
+    {
+      "path": "src/c5-memory/engine210.ts",
+      "sizeBytes": 6127,
+      "sha256": "98537bea83e86b1b590cee4e95d29eb5a7ac27ea0914b81589bb27f5a6fcaabb"
+    },
+    {
+      "path": "src/c5-memory/history.ts",
+      "sizeBytes": 920,
+      "sha256": "095ad398f150cedb576498b795f5d802b3fd4e53d9698cefe5cb3af7996ec9e8"
+    },
+    {
+      "path": "src/c5-memory/lotofacilRules.ts",
+      "sizeBytes": 4263,
+      "sha256": "b143ac2b78d68a5b72b5a3cc5e8ea74450ea7c96233f233afcfe71d418706061"
+    },
+    {
+      "path": "src/c5-memory/math.ts",
+      "sizeBytes": 6043,
+      "sha256": "a092d0f7f7a3d28b79ff7f6da81f986495c07b654d4578d3aca4256e26c47d1c"
+    },
+    {
+      "path": "src/c5-memory/pool.ts",
+      "sizeBytes": 1479,
+      "sha256": "9455580b03ea24bad24155742c6b6c1a4f2474ede4fe006c03262b375234fbcc"
+    },
+    {
+      "path": "src/c5-memory/prng.ts",
+      "sizeBytes": 1687,
+      "sha256": "8287bde3e01f1d545af9189d33f140920fe66d253a7c5e67b8f984ebd3c278f4"
+    },
+    {
+      "path": "src/c5-memory/research/backupStore.ts",
+      "sizeBytes": 22932,
+      "sha256": "cb4e9730aa173a8936797ed886d6df453a52978e9adefc1dd423b0dd193957bd"
+    },
+    {
+      "path": "src/c5-memory/research/combinatorics.ts",
+      "sizeBytes": 11580,
+      "sha256": "0f339ef5efdb5ee26791d7582c91d0480fd3521ef19107fc56caa57e23b59290"
+    },
+    {
+      "path": "src/c5-memory/research/engine.ts",
+      "sizeBytes": 20047,
+      "sha256": "426bfbc4c294fb7202bcb2b33bfe5f97fe314c8a84f0cbaba33598ae8af1471a"
+    },
+    {
+      "path": "src/c5-memory/research/evidenceStore.ts",
+      "sizeBytes": 43350,
+      "sha256": "ca83d3cdcf795a8c3fbb9af76e2fa8a1f568c72f39884668ab16e998773660eb"
+    },
+    {
+      "path": "src/c5-memory/research/protocolValidator.ts",
+      "sizeBytes": 5019,
+      "sha256": "a908d4cdddf7b526041b6075053ae21832233e2d3cd72b4d7e80871fd700e920"
+    },
+    {
+      "path": "src/c5-memory/research/runDefinitiveResearchV2.ts",
+      "sizeBytes": 17572,
+      "sha256": "de93fa4ad316725261fce98612c6cf80928c5485a3e7b0c8461fd4dc4db90907"
+    },
+    {
+      "path": "src/c5-memory/research/runIC10DefinitiveResearch.ts",
+      "sizeBytes": 20890,
+      "sha256": "d36ba1dd296cb765329ba30cd9d59092e44d05cbe0fd76e397ba36920a6130bd"
+    },
+    {
+      "path": "src/c5-memory/research/runT3788Batches.ts",
+      "sizeBytes": 14618,
+      "sha256": "e2c7531853c5b0871e2848a74c563c31cb67906fda6eaec676766e0cd44a27ac"
+    },
+    {
+      "path": "src/c5-memory/research/statistics.ts",
+      "sizeBytes": 3366,
+      "sha256": "43ed3920a68d8e55da79809cee29ab5ce9d7d1d43708ce865c9613447d91fd0b"
+    },
+    {
+      "path": "src/c5-memory/research/types.ts",
+      "sizeBytes": 2535,
+      "sha256": "b281264c9c7e87f9816661aa4037d7c6f4e91f48cd4513459e59659db784e602"
+    },
+    {
+      "path": "src/c5-memory/sha256.ts",
+      "sizeBytes": 2953,
+      "sha256": "1bc79b3dd93db9382b6daeaf96d61414e6cc1439535a9996594122601e0ca054"
+    },
+    {
+      "path": "src/c5-memory/structuralC5.ts",
+      "sizeBytes": 4269,
+      "sha256": "e9202d00f4ff20bb72833bcbc2c4b691307e4cf1fc29900d88becf5ad3520b00"
+    },
+    {
+      "path": "src/c5-memory/testing/applicationDeliveryValidation.test.ts",
+      "sizeBytes": 10358,
+      "sha256": "0ffd9dc87a01f492b5c97328d613bb9ca66e98f95b18bda6e3e5a0f46c8d169d"
+    },
+    {
+      "path": "src/c5-memory/testing/auditFixesVerification.test.ts",
+      "sizeBytes": 375391,
+      "sha256": "c1b23a045b47d02066510d2aaa09f6c057312594fe10a1840ee03047dd5543ea"
+    },
+    {
+      "path": "src/c5-memory/testing/createAuditPackage.ts",
+      "sizeBytes": 7491,
+      "sha256": "55f358596b85a877296858224ace8d84564b9b3853b4db128580fb3ec158d2dc"
+    },
+    {
+      "path": "src/c5-memory/testing/generatePostIncidentGoldenVectors.ts",
+      "sizeBytes": 2285,
+      "sha256": "a32e4d2a586561b19977f443d9b178a6018916fd8637761d626b0fecec270761"
+    },
+    {
+      "path": "src/c5-memory/testing/generatePostIncidentGoldenVectorsV3.ts",
+      "sizeBytes": 3958,
+      "sha256": "914d95b8a05f8cc9ac509c84d654e33ea31a56bd41f973fafcfa6efb89468fc7"
+    },
+    {
+      "path": "src/c5-memory/testing/hardeningVerificationSuite.test.ts",
+      "sizeBytes": 10944,
+      "sha256": "278f1ddb05f3ac4f0c7e27449ba832ba39458b4c7bc3bd3548ac36ff823c67ac"
+    },
+    {
+      "path": "src/c5-memory/testing/integratedApplicationLifecycle.test.ts",
+      "sizeBytes": 12830,
+      "sha256": "b409ca2ff273016269f72af70aae634b9af44ee36fc137c3fa6e45aa912332a1"
+    },
+    {
+      "path": "src/c5-memory/testing/isolatedTestProofHarness.ts",
+      "sizeBytes": 29291,
+      "sha256": "a7fe77cba50f2ec4f41dd8b20bfa66dd1c6120c3b9641d5239af01018c12f679"
+    },
+    {
+      "path": "src/c5-memory/testing/materializeAndValidateGoldenV3.ts",
+      "sizeBytes": 2784,
+      "sha256": "df03f32e7e7452249bfa43a57f2f99f90f60e7b5926008eeb7bde376131dd154"
+    },
+    {
+      "path": "src/c5-memory/testing/recert02CausalAudit.ts",
+      "sizeBytes": 3411,
+      "sha256": "20ed440a6e88a22394c5fda74001127994c3d37ae8caf28efaf114cf0adc256a"
+    },
+    {
+      "path": "src/c5-memory/testing/recert02IC0NegativeControls.test.ts",
+      "sizeBytes": 3857,
+      "sha256": "2c9483d753414cc085121bfd3b647ee5bad8a859282c0a35d905da623841ca2d"
+    },
+    {
+      "path": "src/c5-memory/testing/recert02IC1R1DeepPool486Audit.ts",
+      "sizeBytes": 5979,
+      "sha256": "98b30c96b41001b03c3734ba5789078e7fa45e37f66996cd779910fe1affaf35"
+    },
+    {
+      "path": "src/c5-memory/testing/recert02ReproductionMatrix.test.ts",
+      "sizeBytes": 6344,
+      "sha256": "7891ba0761ee09dfd5cb86d327efb9998ef47247bf74a9abe26eec52555eab11"
+    },
+    {
+      "path": "src/c5-memory/testing/recert0BrowserHarness.ts",
+      "sizeBytes": 4175,
+      "sha256": "87293c70a34dcd70f358ede9f0cf2e633f76933efb47cd8f418496fb01bc6ad4"
+    },
+    {
+      "path": "src/c5-memory/testing/recert0EquivalenceHarness.test.ts",
+      "sizeBytes": 7866,
+      "sha256": "803d15623865ade9dd0684e38a679853be80c5da38e595fc8bd87335be9d66bd"
+    },
+    {
+      "path": "src/c5-memory/testing/recert0GoldenIndependence.test.ts",
+      "sizeBytes": 5944,
+      "sha256": "4efad0edc1beef0306567eaa323b8867c8ce540e621153006d0a62e3115c7e63"
+    },
+    {
+      "path": "src/c5-memory/testing/recert0PostIncidentSuites.test.ts",
+      "sizeBytes": 8365,
+      "sha256": "985d68857c149f266822326a6c249afd6634a8f34913f2922c51b7ce6cb44818"
+    },
+    {
+      "path": "src/c5-memory/testing/referenceEvaluator210.ts",
+      "sizeBytes": 5261,
+      "sha256": "f16883a0340b68b353e8ff1e1a905e0c9995e44c016fb225054cfa9e6386fc02"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC10EquivalenceCertification.ts",
+      "sizeBytes": 32266,
+      "sha256": "b027a03522b5a4fe3264eac77259cc01a51e718dcdda4de7e9c5c3a6c35cf5a0"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC10R1Recertification.ts",
+      "sizeBytes": 8868,
+      "sha256": "365f213d742355689d30e8b3c07f0f7b05e66b5cd07b44012c6e5bc6f7a9fb95"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC10R2PreRunRecertification.ts",
+      "sizeBytes": 22763,
+      "sha256": "beb91404d075f57994a0ae71eb8f014377c8e031bdd4c06ca09fd1d7c7369afa"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC10R3FinalPreRunRecertification.ts",
+      "sizeBytes": 18773,
+      "sha256": "3f72a6c1eb94a7dafb068bffda28e56a662e055ce86bebca0a6f6df212dbcdbc"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC10R4FinalPreRunRecertification.ts",
+      "sizeBytes": 27692,
+      "sha256": "d5a8884117ff22f3cbe7e9c0a7b373de2b31877d124fdfc0ab8de70479e5b97d"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC10Recertification.ts",
+      "sizeBytes": 13471,
+      "sha256": "4c9184722f4d60b372312513b9487ba96c347854ba9eb1e80d991a79b0bfadc8"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC1CorpusAndMilestones.ts",
+      "sizeBytes": 10276,
+      "sha256": "01ab48b26405c68d3900644a050572ee2f10d00814b901a68e710bb82c284cae"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC1NegativeControls.test.ts",
+      "sizeBytes": 4363,
+      "sha256": "c0ec69b137c2c7abac870977e773c58b0cc9fa599483bf46d4339c7dc53a7ca4"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC1R2Recertification.test.ts",
+      "sizeBytes": 13107,
+      "sha256": "e1836b2fd00954fc57265d96df2d5fa4f616084297c488e2b58e65ec22c229f1"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC2FullAudit.ts",
+      "sizeBytes": 22926,
+      "sha256": "7f8bb6a8a6954663a2ce5748b65c47a68502d9fbdd6a5a073c6589ad6c187818"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC2R1ForensicScript.ts",
+      "sizeBytes": 2747,
+      "sha256": "c2e2e70ca72e62201113883cb907ad2fc5a3a5dccbb0ddc18d9a3b680b4b9456"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC2R2Suite.ts",
+      "sizeBytes": 16187,
+      "sha256": "76dba2f255acc5cd62b6f21a6e2eb3c0c3579e6805db2752dcdc3f60c295a9ff"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC2R3Recertification.ts",
+      "sizeBytes": 19856,
+      "sha256": "e6661b393d29330f0b80cd5cd0e1fae662622b772244b04a4c49b1dee4441ecd"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC3Recertification.ts",
+      "sizeBytes": 20347,
+      "sha256": "1e57a25da37a5ac2fd700137dc5db8dbcc97b5dec9f4b0de8bd523606e31b10f"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC4Recertification.ts",
+      "sizeBytes": 18727,
+      "sha256": "2d662f1b6b80e274d35c9a0f9e18bab26cc49976344d9b1405854bdb673c7dc4"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC5Recertification.ts",
+      "sizeBytes": 17721,
+      "sha256": "7e7ee93ea8395ff725982d31e948b774f8f341345b261c2f9404ff67f56c03a0"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC6Recertification.ts",
+      "sizeBytes": 28126,
+      "sha256": "ec584391504c2fdd7325d1765ee147525273b8e5cd00f1b8200d9f3015ad239e"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC7Recertification.ts",
+      "sizeBytes": 19057,
+      "sha256": "14c57c73b74f5eca26a0ec10ed94a1f6c188be3fcebee8ea30c49155fcdcea2e"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC8Recertification.ts",
+      "sizeBytes": 15866,
+      "sha256": "3d70b6bd9c939d7b76c3649284663124b19623c5c376f8688a322c99604ce77d"
+    },
+    {
+      "path": "src/c5-memory/testing/run002IC9Recertification.ts",
+      "sizeBytes": 28594,
+      "sha256": "5af56ab78db9dc4bfe23a8e64085a5aec9c5f36d9b6c3d789ebd5691730f0638"
+    },
+    {
+      "path": "src/c5-memory/testing/run002T3788OperationalReadinessCertification.ts",
+      "sizeBytes": 18377,
+      "sha256": "29b3e1efb41f947e490bbdb1fbaee78ebc6babd32001daab4e7c54a22444a075"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowser210ViaCDP.ts",
+      "sizeBytes": 3910,
+      "sha256": "7438ecb8cf6a23239add114d49286f1a96d27f1a9fd5a61bd2a5fb81ae060b93"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC10ViaCDP.ts",
+      "sizeBytes": 3553,
+      "sha256": "22e75fe1890d2a12f9f3a33c8bd7bb23365ab33626cd6ddaacef72fc8924a46c"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC3ViaCDP.ts",
+      "sizeBytes": 3936,
+      "sha256": "ef88141f12acd7f2eca6caa10b3a1adaf53c7b370c80ad4e5a7bba5addf5ca34"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC4ViaCDP.ts",
+      "sizeBytes": 3841,
+      "sha256": "7be1100edb97c30a0c9b2f0ef30a69c5c5e6490b5ac09260a72389446b1b7f5e"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC5ViaCDP.ts",
+      "sizeBytes": 3991,
+      "sha256": "dca14f5158d4d4967878c3bfa1e9570dbba582ed0062d9944d29c454b9aa4873"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC6ViaCDP.ts",
+      "sizeBytes": 3946,
+      "sha256": "7db5d7b69ff4e5e395de661118742eda2f776670e30534f7b45899ae05ea4a95"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC7ViaCDP.ts",
+      "sizeBytes": 3940,
+      "sha256": "61f6e156056455f2e597b715767ccff47042cb4246a8e4446a4fd213304b3b50"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC8ViaCDP.ts",
+      "sizeBytes": 3952,
+      "sha256": "0b51a14acbcfb22994cb5762e0ce0c02925c2690dcb9382a9b7310011235294e"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserIC9ViaCDP.ts",
+      "sizeBytes": 3982,
+      "sha256": "d0f9625975dd28041753bece1f9a1d17911d27ea67dd32572dd3828ce5812d48"
+    },
+    {
+      "path": "src/c5-memory/testing/runBrowserSuiteViaCDP.ts",
+      "sizeBytes": 4343,
+      "sha256": "9b3a453667e85870b64b7274dddc9e931ec44c0487348c3adbef8e99351bd8b9"
+    },
+    {
+      "path": "src/c5-memory/types.ts",
+      "sizeBytes": 6971,
+      "sha256": "71edbbfe5792f9f8a7d5d247b4ff7428c940683cbb204d65a36d5c8aa80c7f8d"
+    },
+    {
+      "path": "src/components/AuditView.tsx",
+      "sizeBytes": 8092,
+      "sha256": "1b49a22625214a3c9bb84a1f0ad8422b9c9ab3a7932524903248fcf8e17f5e94"
+    },
+    {
+      "path": "src/components/Ball.tsx",
+      "sizeBytes": 1464,
+      "sha256": "749b82389c10ac4c887f62ddbbf2627301fcc9d2936cf4425e7e0bcb223c7ea7"
+    },
+    {
+      "path": "src/components/C5DashboardView.tsx",
+      "sizeBytes": 49498,
+      "sha256": "5b273f710c1e1f05b3386612bdf732da4cefcebd80c542de5dea9b7475ada71d"
+    },
+    {
+      "path": "src/components/C5MemoryView.tsx",
+      "sizeBytes": 23676,
+      "sha256": "2112f1464144ed9683b5227549dcb344193dbc1348c47dae11a361c5a2cae820"
+    },
+    {
+      "path": "src/components/ConferenceView.tsx",
+      "sizeBytes": 31921,
+      "sha256": "0a26910622444db425f891889be0887d02f41b1a7685eae6325fcf221d990f2d"
+    },
+    {
+      "path": "src/components/Header.tsx",
+      "sizeBytes": 3075,
+      "sha256": "4805512696324040791ba3aac0eed237fe5ef5e8f1501c4852bfc1d84735a9cb"
+    },
+    {
+      "path": "src/components/HistoryView.tsx",
+      "sizeBytes": 37873,
+      "sha256": "463c9c1c50c1c86e16bd4459d466c0480988cd87804cfca1c7a6409268e0164d"
+    },
+    {
+      "path": "src/index.css",
+      "sizeBytes": 330,
+      "sha256": "15681ff70b0ca59698a28fa486969d60c7ae7e8a0d3d98118df5260493ec53c8"
+    },
+    {
+      "path": "src/main.tsx",
+      "sizeBytes": 236,
+      "sha256": "14a10dee4aaa2130d9f57c136db7f16f95f524d60d77146b17776e91c2ab626c"
+    },
+    {
+      "path": "src/storage/backupManager.ts",
+      "sizeBytes": 11532,
+      "sha256": "2838d7e5d9a07d52fbb7ae93fede05123126d14c941d66c1d24529a737aa7e71"
+    },
+    {
+      "path": "src/storage/crossStoreAudit.ts",
+      "sizeBytes": 4556,
+      "sha256": "c94e064186a568c94f7f5d2e61dfbcf3f20a083889efb83009a95930bb85ada7"
+    },
+    {
+      "path": "src/storage/db.ts",
+      "sizeBytes": 4954,
+      "sha256": "b700d38ab78786c5292f1c8b7a5531fa75acc013a0c8199f18cdfeea3af5c76f"
+    },
+    {
+      "path": "src/storage/memoryTransaction.ts",
+      "sizeBytes": 5279,
+      "sha256": "2d11d39482e4f1481eb7a17b8362022f32a3552786f65dfa042f09942f016174"
+    },
+    {
+      "path": "src/storage/seedData.ts",
+      "sizeBytes": 6096,
+      "sha256": "4dba096c8454328de39cd5b19ca2e0b587043e0fb8695e893fb8a82b95618597"
+    },
+    {
+      "path": "src/storage/storageManager210.ts",
+      "sizeBytes": 62603,
+      "sha256": "d95510e8fa37cf8e5c96eab20d3ebf3f5748c457e77062f612ea2b41cc5055c9"
+    },
+    {
+      "path": "src/storage/tests/crossStoreIntegrity.test.ts",
+      "sizeBytes": 4633,
+      "sha256": "dd0e694f3bff308a188a396c7ad7a5f671f409baa712eac0082cb52eab6907f6"
+    },
+    {
+      "path": "tsconfig.json",
+      "sizeBytes": 511,
+      "sha256": "2729130b72c949fd0340c22b32870eebbea4fed1d6b75417512bff06091bd9a1"
+    },
+    {
+      "path": "vite.config.ts",
+      "sizeBytes": 280,
+      "sha256": "bbd8568badb410e9e4b6ce810ea42eac5a6709d2fe489e766147f5255503fc41"
+    }
+  ]
+}

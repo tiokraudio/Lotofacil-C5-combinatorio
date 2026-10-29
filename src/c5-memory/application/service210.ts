@@ -26,7 +26,11 @@ import {
   reconstructHistoryCrossVersion,
   confirmMemoryBetAtomic210,
   scoreContestAtomic210,
+  ScoreContestOptions,
+  validateOfficialLotofacilResult,
 } from "../../storage/storageManager210";
+
+export { validateOfficialLotofacilResult };
 
 export interface OperationalStateDTO210 {
   readonly contestNumber: number;
@@ -242,9 +246,10 @@ export async function getMemoryAuditDetails210(
 export async function scoreContestOperation210(
   contestNumber: number,
   officialResult: readonly number[],
-  db: IDBDatabase
+  db: IDBDatabase,
+  options?: ScoreContestOptions
 ): Promise<ContestRecord> {
-  return scoreContestAtomic210(db, contestNumber, officialResult);
+  return scoreContestAtomic210(db, contestNumber, officialResult, options);
 }
 
 // Aliases padronizados da Application Boundary

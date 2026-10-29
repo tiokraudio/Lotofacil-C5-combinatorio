@@ -13,33 +13,16 @@ import { ContestRecord, Draft, FrozenMemoryPayload, MemoryHistory, C5Game } from
 import { freezeDraft } from "../c5-memory/draft";
 import { formatGameCanonical, createMemoryHistory } from "../c5-memory/history";
 
-export const STORE_CONTESTS = "contests";
-export const STORE_MEMORY_HISTORY = "c5_memory_history";
-export const DB_NAME = "LotofacilC5DB";
-export const DB_VERSION = 2;
+import {
+  DB_NAME,
+  DB_VERSION,
+  STORE_CONTESTS,
+  STORE_MEMORY_HISTORY,
+  STORE_AUDIT_EVENTS,
+  openDB,
+} from "./db";
 
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof indexedDB === "undefined") {
-      reject(new Error("IndexedDB não disponível no ambiente atual."));
-      return;
-    }
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = event => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_CONTESTS)) {
-        db.createObjectStore(STORE_CONTESTS, { keyPath: "contestNumber" });
-      }
-      if (!db.objectStoreNames.contains(STORE_MEMORY_HISTORY)) {
-        db.createObjectStore(STORE_MEMORY_HISTORY, { keyPath: "id" });
-      }
-    };
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
+export { DB_NAME, DB_VERSION, STORE_CONTESTS, STORE_MEMORY_HISTORY, STORE_AUDIT_EVENTS };
 
 export interface AtomicConfirmationResult {
   readonly record: ContestRecord;
