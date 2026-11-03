@@ -160,7 +160,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
     let txt = `LOTOFÁCIL - APOSTAS C5-MEMORY\n`;
     txt += `Concurso: #${cNum}\n`;
     txt += `Data: ${new Date().toLocaleDateString("pt-BR")}\n`;
-    txt += `Algoritmo: C5-Memory-2.1.0 (Critério MAX-LEXIMIN)\n`;
+    txt += `Algoritmo: C5-Memory 3.0 (Critério MAX-LEXIMIN & Distância de Johnson)\n`;
     if (record?.frozenPayload) {
       txt += `Hash SHA-256: ${record.frozenPayload.sha256}\n`;
       txt += `Revisão Histórica: #${record.frozenPayload.historyRevision}\n`;
@@ -199,7 +199,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
               <span className="text-xs text-slate-400">AVAILABLE → PREVIEW → FROZEN → COMPLETED</span>
             </div>
             <h1 className="text-2xl font-bold text-slate-100">
-              Gerador C5-Memory-2.1.0
+              Gerador C5-Memory 3.0
             </h1>
           </div>
 
@@ -281,12 +281,12 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
               {isGenerating ? (
                 <>
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>Avaliando K=500 candidatos...</span>
+                  <span>Avaliando K=500 candidatos e verificando duplicatas...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" />
-                  <span>Gerar C5 (Memory-2.1.0)</span>
+                  <span>Gerar C5 (Memory 3.0)</span>
                 </>
               )}
             </button>
@@ -307,7 +307,6 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
                   Concurso {draft.contestNumber}
                 </h3>
               </div>
-
               <div className="flex items-center gap-2">
                 <button
                   id="btn-discard-preview"
@@ -330,29 +329,60 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
               </div>
             </div>
 
-            {/* Metadados do Draft */}
+            {/* Metadados do Draft C5-Memory 3.0 */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-xs">
               <div>
                 <span className="text-slate-500 block">Índice no Pool:</span>
                 <span className="font-mono text-slate-200 font-bold">#{draft.poolIndex} de K=500</span>
               </div>
               <div>
-                <span className="text-slate-500 block">Perfil Leximin:</span>
+                <span className="text-slate-500 block">Perfil Leximin (Distâncias):</span>
                 <span className="font-mono text-emerald-400 font-bold">
                   [{draft.leximinProfile.join(", ")}]
                 </span>
               </div>
               <div>
-                <span className="text-slate-500 block">Revisão H:</span>
-                <span className="font-mono text-slate-200">Rev {draft.historyRevision}</span>
+                <span className="text-slate-500 block">Comparação Score:</span>
+                <span className="font-mono text-slate-200">
+                  {(draft as any).scoringHistorySource === "OFFICIAL_CONTEST_DRAWS" || (draft as any).comparisonHistoryType === "OFFICIAL_DRAWS"
+                    ? `Sorteios Oficiais (${(draft as any).scoringHistorySize || 3816} conc.)`
+                    : `Histórico H (Rev ${draft.historyRevision})`}
+                </span>
               </div>
               <div>
-                <span className="text-slate-500 block">Fingerprint H:</span>
-                <span className="font-mono text-slate-400 text-[11px]">
-                  {draft.historyFingerprint.substring(0, 10)}...
+                <span className="text-slate-500 block">Filtro Anti-Duplicatas:</span>
+                <span className="font-mono text-emerald-400 font-semibold">
+                  {(draft as any).metrics?.rejectedDuplicateOfficialCount ?? 0} oficiais • {(draft as any).metrics?.rejectedDuplicateGeneratedCount ?? 0} em H
                 </span>
               </div>
             </div>
+
+            {/* Banner de Cobertura da Base Oficial */}
+            {(draft as any).isHistoricalExclusionComplete ? (
+              <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs px-3.5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>
+                    <strong>Base Histórica Completa:</strong> {(draft as any).officialCoverage?.totalLoaded || 3816} concursos (concurso {(draft as any).officialCoverage?.firstContest || 1} ao {(draft as any).officialCoverage?.lastContest || 3816}) • Exclusão histórica 100% comprovada.
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] text-slate-400 shrink-0">
+                  Caixa Econômica Federal
+                </span>
+              </div>
+            ) : (
+              <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs px-3.5 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>
+                    <strong>Aviso de Cobertura Parcial:</strong> {(draft as any).officialCoverage?.limitationNotice || "Base oficial incompleta. Exclusão histórica completa não pode ser garantida."}
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] text-amber-400 font-bold shrink-0">
+                  COBERTURA PARCIAL
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Os 5 Jogos Gerados */}

@@ -806,7 +806,8 @@ export function filterC5MemoryRecords(
     if (!includeDemo && isRecordFixture(r)) return false;
     return (
       (r.algorithmVersion as string) === "C5-Memory-2.0.0" ||
-      (r.algorithmVersion as string) === "C5-Memory-2.1.0"
+      (r.algorithmVersion as string) === "C5-Memory-2.1.0" ||
+      (r.algorithmVersion as string) === "C5-Memory-3.0"
     );
   });
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import { LayoutDashboard, Sparkles, CheckCircle2, History, ShieldCheck } from "lucide-react";
 
-export type NavTab = "dashboard" | "generator" | "conference" | "history" | "audit";
+export type NavTab = "dashboard" | "generator" | "conference" | "history";
 
 interface HeaderProps {
   activeTab: NavTab;
@@ -19,7 +19,6 @@ export const Header: React.FC<HeaderProps> = ({
     { id: "generator", label: "Gerador", icon: <Sparkles className="w-4 h-4" /> },
     { id: "conference", label: "Conferência", icon: <CheckCircle2 className="w-4 h-4" /> },
     { id: "history", label: "Histórico", icon: <History className="w-4 h-4" /> },
-    { id: "audit", label: "Auditoria", icon: <ShieldCheck className="w-4 h-4" /> },
   ];
 
   return (
@@ -34,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-100 tracking-tight text-lg">Lotofácil C5</span>
                 <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                  Memory-2.0.0
+                  Memory 3.0
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">

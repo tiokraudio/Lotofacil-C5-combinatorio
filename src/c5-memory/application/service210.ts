@@ -19,6 +19,17 @@ import {
   generateC5Draft210,
   ALGORITHM_VERSION_2_1_0
 } from "../engine210";
+import {
+  Draft30,
+  FrozenMemoryPayload30,
+  generateC5Draft30,
+  ALGORITHM_VERSION_3_0_0,
+} from "../engine30";
+import {
+  getAllOfficialLotofacilDraws,
+  fetchLatestOfficialLotofacilContest,
+  setVerifiedLatestOfficialReference,
+} from "../officialDraws";
 import { formatGameCanonical } from "../history";
 import { syncSha256 } from "../sha256";
 import {
@@ -95,31 +106,68 @@ function saveContestToStore(db: IDBDatabase, record: ContestRecord): Promise<voi
 }
 
 /**
- * 1. AVAILABLE -> PREVIEW: Gera explicitamente um Draft 2.1.0 estrutural
- * Invariante: Zero efeitos colaterais no histórico ('c5_memory_history')
+ * 1. AVAILABLE -> PREVIEW: Gera explicitamente um Draft C5-Memory 3.0 estrutural
+ * Invariantes:
+ * - Exatamente 5 jogos por operação;
+ * - Rejeição estrita de qualquer duplicata contra sorteios oficiais e jogos gerados anteriores;
+ * - Uso dos concursos oficiais anteriores como histórico de comparação quando H estiver vazio.
+ */
+export interface GenerateDraftOptions {
+  readonly customFetch?: typeof fetch;
+  readonly timeoutMs?: number;
+  readonly skipDynamicVerification?: boolean;
+}
+
+/**
+ * 1. AVAILABLE -> PREVIEW: Geração de Prévia C5-Memory 3.0
+ * 
+ * Antes de gerar o draft, consulta dinamicamente a referência oficial da Caixa via fetchLatestOfficialLotofacilContest().
+ * Quando houver uma referência válida, registra-a com setVerifiedLatestOfficialReference() e faz o motor utilizar esse estado.
+ * Se a consulta falhar ou exceder o timeout, preserva a geração offline com status UNVERIFIED_OFFLINE (sem selo de cobertura integral).
  */
 export async function generateMemoryDraft210(
   contestNumber: number,
-  db: IDBDatabase
-): Promise<Draft210> {
+  db: IDBDatabase,
+  options?: GenerateDraftOptions
+): Promise<any> {
   const existing = await getContestFromStore(db, contestNumber);
   if (existing && (existing.status === "FROZEN" || existing.status === "COMPLETED")) {
     throw new Error(`CONTEST_ALREADY_LOCKED: Concurso ${contestNumber} já está no estado ${existing.status}`);
   }
 
+  // 1. Consulta dinâmica à referência do último concurso oficial antes de gerar o draft
+  if (!options?.skipDynamicVerification) {
+    try {
+      const dynamicRef = await fetchLatestOfficialLotofacilContest(
+        options?.customFetch,
+        options?.timeoutMs ?? 3000
+      );
+      if (dynamicRef) {
+        setVerifiedLatestOfficialReference(dynamicRef);
+      } else {
+        // Se a consulta falhar ou exceder o timeout, preserva o modo offline com status UNVERIFIED_OFFLINE
+        setVerifiedLatestOfficialReference(null);
+      }
+    } catch {
+      // Falha de rede ou timeout: preserva o modo offline com status UNVERIFIED_OFFLINE
+      setVerifiedLatestOfficialReference(null);
+    }
+  }
+
   // Carrega histórico canônico a partir dos concursos confirmados no banco
   const allContests = await getAllContestsFromStore(db);
   const canonicalHistory = reconstructHistoryCrossVersion(allContests);
+  const officialDraws = getAllOfficialLotofacilDraws(allContests);
 
-  // Gera aposta Structural C5 via motor 2.1.0
-  const draft = generateC5Draft210(contestNumber, canonicalHistory);
+  // Gera aposta Structural C5 via motor 3.0 (utilizando o estado de cobertura atualizado)
+  const draft = generateC5Draft30(contestNumber, canonicalHistory, officialDraws);
 
   // Grava exclusivamente o draft em status PREVIEW no store 'contests'
   const previewRecord: ContestRecord = {
     contestNumber,
     contestDate: existing?.contestDate || new Date().toISOString().split("T")[0],
     status: "PREVIEW",
-    algorithmVersion: ALGORITHM_VERSION_2_1_0 as any,
+    algorithmVersion: ALGORITHM_VERSION_3_0_0 as any,
     games: draft.games,
     draft: draft as any,
     createdAt: existing?.createdAt || new Date().toISOString(),
@@ -129,6 +177,8 @@ export async function generateMemoryDraft210(
   await saveContestToStore(db, previewRecord);
   return draft;
 }
+
+export const generateMemoryDraft30 = generateMemoryDraft210;
 
 /**
  * 2. PREVIEW -> FROZEN: Confirmação Atômica
@@ -187,7 +237,7 @@ export async function getMemoryOperationalState210(
   return {
     contestNumber,
     status: record?.status || "AVAILABLE",
-    algorithmVersion: record?.algorithmVersion || ALGORITHM_VERSION_2_1_0,
+    algorithmVersion: record?.algorithmVersion || ALGORITHM_VERSION_3_0_0,
     games: record?.games || [],
     draft: record?.draft as any,
     frozenPayload: record?.frozenPayload as any,
@@ -209,11 +259,10 @@ export async function getMemoryAuditDetails210(
   db: IDBDatabase
 ): Promise<AuditDetailsDTO210> {
   const record = await getContestFromStore(db, contestNumber);
-
   if (!record || !record.frozenPayload) {
     return {
       contestNumber,
-      algorithmVersion: record?.algorithmVersion || ALGORITHM_VERSION_2_1_0,
+      algorithmVersion: record?.algorithmVersion || ALGORITHM_VERSION_3_0_0,
       status: record?.status || "AVAILABLE",
       isCryptographicallyValid: false,
     };

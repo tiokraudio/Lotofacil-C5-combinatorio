@@ -42,7 +42,7 @@ export interface FrozenMemoryPayload {
 }
 
 export type ContestStatus = "AVAILABLE" | "PREVIEW" | "FROZEN" | "COMPLETED";
-export type AlgorithmVersion = "C5-Memory-2.1.0" | "C5-Memory-2.0.0" | "C5-1.0.0";
+export type AlgorithmVersion = "C5-Memory-3.0" | "C5-Memory-2.1.0" | "C5-Memory-2.0.0" | "C5-1.0.0";
 
 export type RateioConfirmationSource =
   | "MANUAL_ENTRY"

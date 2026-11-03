@@ -440,9 +440,14 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
       )}
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{errorMsg}</span>
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-semibold text-amber-200">Fonte Oficial Caixa Indisponível Online:</span> {errorMsg}
+            <p className="text-xs text-amber-400/80 mt-1">
+              A apuração pode ser realizada normalmente através da conferência manual física: selecione as 15 dezenas sorteadas abaixo.
+            </p>
+          </div>
         </div>
       )}
 
