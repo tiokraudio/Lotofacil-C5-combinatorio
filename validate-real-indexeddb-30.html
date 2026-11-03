@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>C5-Memory 3.0 — Validação com IndexedDB Real</title>
+</head>
+<body style="background: #020617; color: #f8fafc; font-family: monospace; padding: 24px;">
+  <h1 style="color: #10b981; font-size: 1.25rem;">C5-MEMORY 3.0 — VALIDAÇÃO EM CHROMIUM REAL (V8, WebCrypto, Native IndexedDB)</h1>
+  <div id="status" style="margin: 12px 0; color: #94a3b8;">Inicializando suíte de testes em IndexedDB nativo...</div>
+  <pre id="results" style="background: #0f172a; padding: 16px; border-radius: 8px; border: 1px solid #1e293b; max-height: 80vh; overflow: auto; font-size: 11px; line-height: 1.5;"></pre>
+
+  <script type="module">
+    import { runRealIndexedDbValidation } from "/src/c5-memory/testing/realIndexedDbRunner.ts";
+
+    async function execute() {
+      const statusEl = document.getElementById("status");
+      const resultsEl = document.getElementById("results");
+      try {
+        statusEl.textContent = "Executando testes no IndexedDB real do Chromium...";
+        const report = await runRealIndexedDbValidation();
+        window.__REAL_INDEXEDDB_RESULTS__ = report;
+        statusEl.textContent = report.allChecksPassed
+          ? "SUCESSO: Todos os testes em IndexedDB real passaram com êxito."
+          : "FALHA: Divergência encontrada durante a execução.";
+        statusEl.style.color = report.allChecksPassed ? "#10b981" : "#ef4444";
+        resultsEl.textContent = JSON.stringify(report, null, 2);
+      } catch (err) {
+        statusEl.textContent = "ERRO FATAL: " + err.message;
+        statusEl.style.color = "#ef4444";
+        resultsEl.textContent = err.stack || err.message;
+        window.__REAL_INDEXEDDB_RESULTS__ = { error: err.message, stack: err.stack, allChecksPassed: false };
+      }
+    }
+
+    execute();
+  </script>
+</body>
+</html>
