@@ -58,6 +58,12 @@ export type ResultSource =
   | "MANUAL_CONFERENCE"
   | "HISTORICAL_FIXTURE";
 
+import type { Draft30, FrozenMemoryPayload30 } from "./engine30";
+import type { Draft210, FrozenMemoryPayload210 } from "./engine210";
+
+export type AnyDraft = Draft30 | Draft210 | Draft;
+export type AnyFrozenPayload = FrozenMemoryPayload30 | FrozenMemoryPayload210 | FrozenMemoryPayload;
+
 export interface ContestRecord {
   readonly id?: string;
   readonly contestNumber: number;
@@ -65,8 +71,8 @@ export interface ContestRecord {
   readonly status: ContestStatus;
   readonly algorithmVersion: AlgorithmVersion;
   readonly games: readonly C5Game[];
-  readonly draft?: Draft;
-  readonly frozenPayload?: FrozenMemoryPayload;
+  readonly draft?: AnyDraft;
+  readonly frozenPayload?: AnyFrozenPayload;
   readonly officialResult?: readonly number[];
   readonly gameHits?: readonly number[];
   readonly bestHits?: number;

@@ -22,6 +22,7 @@ import {
   AuditDetailsDTO210,
 } from "./service210";
 import { Draft210 } from "../engine210";
+import { Draft30, FrozenMemoryPayload30 } from "../engine30";
 import {
   buildC5Dashboard,
   buildC5MonthlyReport,
@@ -29,7 +30,7 @@ import {
   isContestPendingProvisionalRateio,
 } from "../analytics/c5Analytics";
 
-export type { Draft210, OperationalStateDTO210, AuditDetailsDTO210 };
+export type { Draft30, Draft210, FrozenMemoryPayload30, OperationalStateDTO210, AuditDetailsDTO210 };
 export {
   buildC5Dashboard,
   buildC5MonthlyReport,
@@ -91,9 +92,9 @@ export function openAppDB(): Promise<IDBDatabase> {
 
 /**
  * 1. AVAILABLE -> PREVIEW
- * Gera um Draft 2.1.0 estrutural através da Application Layer homologada.
+ * Gera um Draft 3.0 estrutural através da Application Layer homologada.
  */
-export async function generateMemoryDraftUI(contestNumber: number): Promise<Draft210> {
+export async function generateMemoryDraftUI(contestNumber: number): Promise<Draft30> {
   const db = await openAppDB();
   return generateMemoryDraft210(contestNumber, db);
 }
@@ -104,7 +105,7 @@ export async function generateMemoryDraftUI(contestNumber: number): Promise<Draf
  */
 export async function confirmMemoryDraftUI(
   contestNumber: number,
-  draft: Draft210
+  draft: Draft30 | Draft210
 ): Promise<ContestRecord> {
   const db = await openAppDB();
   return confirmMemoryDraft210(contestNumber, draft, db);

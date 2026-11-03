@@ -48,8 +48,8 @@ export interface OperationalStateDTO210 {
   readonly status: ContestStatus;
   readonly algorithmVersion: string;
   readonly games: readonly C5Game[];
-  readonly draft?: Draft210;
-  readonly frozenPayload?: FrozenMemoryPayload210;
+  readonly draft?: Draft30 | Draft210;
+  readonly frozenPayload?: FrozenMemoryPayload30 | FrozenMemoryPayload210;
   readonly historyRevision: number;
   readonly historyFingerprint: string;
   readonly officialResult?: readonly number[];
@@ -129,7 +129,7 @@ export async function generateMemoryDraft210(
   contestNumber: number,
   db: IDBDatabase,
   options?: GenerateDraftOptions
-): Promise<any> {
+): Promise<Draft30> {
   const existing = await getContestFromStore(db, contestNumber);
   if (existing && (existing.status === "FROZEN" || existing.status === "COMPLETED")) {
     throw new Error(`CONTEST_ALREADY_LOCKED: Concurso ${contestNumber} já está no estado ${existing.status}`);
@@ -167,9 +167,9 @@ export async function generateMemoryDraft210(
     contestNumber,
     contestDate: existing?.contestDate || new Date().toISOString().split("T")[0],
     status: "PREVIEW",
-    algorithmVersion: ALGORITHM_VERSION_3_0_0 as any,
+    algorithmVersion: ALGORITHM_VERSION_3_0_0,
     games: draft.games,
-    draft: draft as any,
+    draft,
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -182,11 +182,11 @@ export const generateMemoryDraft30 = generateMemoryDraft210;
 
 /**
  * 2. PREVIEW -> FROZEN: Confirmação Atômica
- * Delega estritamente à confirmação multi-store certificada no IC3.
+ * Valida e congela o draft C5-Memory 3.0 (ou 2.1.0 legado) com integridade criptográfica SHA-256.
  */
 export async function confirmMemoryDraft210(
   contestNumber: number,
-  draft: Draft210,
+  draft: Draft30 | Draft210,
   db: IDBDatabase
 ): Promise<ContestRecord> {
   const result = await confirmMemoryBetAtomic210(
@@ -198,6 +198,8 @@ export async function confirmMemoryDraft210(
   );
   return result.record;
 }
+
+export const confirmMemoryDraft30 = confirmMemoryDraft210;
 
 /**
  * 3. PREVIEW -> AVAILABLE: Descarte de Prévia

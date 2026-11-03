@@ -29,6 +29,7 @@ import {
   OfficialDrawsCoverageStatus,
   isGameIdenticalToAnyOfficialDraw,
   isGameIdenticalToAnyPreviousGame,
+  LatestOfficialContestReference,
 } from "./officialDraws";
 
 export const ALGORITHM_VERSION_3_0_0 = "C5-Memory-3.0" as const;
@@ -84,6 +85,9 @@ export interface FrozenMemoryPayload30 {
   readonly poolMasterSeed: string;
   readonly historyFingerprint: string;
   readonly historyRevision: number;
+  readonly officialReference?: LatestOfficialContestReference | null;
+  readonly officialCoverage?: OfficialDrawsCoverageStatus;
+  readonly isHistoricalExclusionComplete?: boolean;
   readonly sha256: string;
   readonly frozenAt: string;
 }
@@ -259,6 +263,9 @@ export function freezeDraft30(draft: Draft30): FrozenMemoryPayload30 {
     poolMasterSeed: draft.poolMasterSeed,
     historyFingerprint: draft.historyFingerprint,
     historyRevision: draft.historyRevision,
+    officialReference: draft.officialCoverage?.verifiedReference || null,
+    officialCoverage: draft.officialCoverage,
+    isHistoricalExclusionComplete: draft.isHistoricalExclusionComplete,
     sha256: sha256Hash,
     frozenAt: new Date().toISOString(),
   };

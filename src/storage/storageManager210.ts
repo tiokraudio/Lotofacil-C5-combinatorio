@@ -23,7 +23,7 @@ import {
   isValidIso8601Timestamp,
 } from "../c5-memory/types";
 import { Draft210, FrozenMemoryPayload210, freezeDraft210, ALGORITHM_VERSION_2_1_0 } from "../c5-memory/engine210";
-import { ALGORITHM_VERSION_3_0_0, freezeDraft30 } from "../c5-memory/engine30";
+import { Draft30, FrozenMemoryPayload30, ALGORITHM_VERSION_3_0_0, freezeDraft30 } from "../c5-memory/engine30";
 import { formatGameCanonical, createMemoryHistory } from "../c5-memory/history";
 import { calculateHits } from "../c5-memory/math";
 import {
@@ -82,7 +82,7 @@ export function reconstructHistoryCrossVersion(
 export async function confirmMemoryBetAtomic210(
   db: IDBDatabase,
   contestNumber: number,
-  draft: Draft210,
+  draft: Draft30 | Draft210,
   expectedRevision: number,
   expectedFingerprint: string,
   injectedFailurePoint?: "AFTER_CONTEST_WRITE" | "BEFORE_COMPLETE"
@@ -152,17 +152,19 @@ export async function confirmMemoryBetAtomic210(
         }
 
         // 4. Congelar criptograficamente o Draft (3.0 ou 2.1.0)
-        const isV3 = (draft as any).algorithmVersion === ALGORITHM_VERSION_3_0_0;
-        const frozenPayload = isV3 ? freezeDraft30(draft as any) : freezeDraft210(draft as any);
+        const isV3 = draft.algorithmVersion === ALGORITHM_VERSION_3_0_0;
+        const frozenPayload: FrozenMemoryPayload30 | FrozenMemoryPayload210 = isV3
+          ? freezeDraft30(draft as Draft30)
+          : freezeDraft210(draft as Draft210);
 
         const newRecord: ContestRecord = {
           contestNumber,
           contestDate: currentContest?.contestDate || new Date().toISOString().split("T")[0],
           status: "FROZEN",
-          algorithmVersion: ((draft as any).algorithmVersion || ALGORITHM_VERSION_3_0_0) as any,
+          algorithmVersion: draft.algorithmVersion,
           games: draft.games,
-          draft: draft as any,
-          frozenPayload: frozenPayload as any,
+          draft,
+          frozenPayload,
           totalCost: COST_PER_CONTEST,
           createdAt: currentContest?.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString(),

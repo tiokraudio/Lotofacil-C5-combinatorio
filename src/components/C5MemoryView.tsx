@@ -19,7 +19,7 @@ import {
   confirmMemoryDraftUI,
   discardMemoryDraftUI,
   getMemoryOperationalStateUI,
-  Draft210,
+  Draft30,
 } from "../c5-memory/application/uiService";
 import { Ball } from "./Ball";
 
@@ -36,7 +36,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
 }) => {
   const [contestNumber, setContestNumber] = useState<number>(currentContestNumber);
   const [record, setRecord] = useState<ContestRecord | null>(null);
-  const [draft, setDraft] = useState<Draft210 | null>(null);
+  const [draft, setDraft] = useState<Draft30 | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [copiedHash, setCopiedHash] = useState(false);
@@ -57,8 +57,8 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
     try {
       const state = await getMemoryOperationalStateUI(cNum);
       setHistoryRevision(state.historyRevision);
-      if (state.draft) {
-        setDraft(state.draft);
+      if (state.draft && (state.draft.algorithmVersion === "C5-Memory-3.0" || "metrics" in state.draft)) {
+        setDraft(state.draft as Draft30);
       } else {
         setDraft(null);
       }
@@ -344,26 +344,26 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
               <div>
                 <span className="text-slate-500 block">Comparação Score:</span>
                 <span className="font-mono text-slate-200">
-                  {(draft as any).scoringHistorySource === "OFFICIAL_CONTEST_DRAWS" || (draft as any).comparisonHistoryType === "OFFICIAL_DRAWS"
-                    ? `Sorteios Oficiais (${(draft as any).scoringHistorySize || 3816} conc.)`
+                  {draft.scoringHistorySource === "OFFICIAL_CONTEST_DRAWS"
+                    ? `Sorteios Oficiais (${draft.scoringHistorySize || 3816} conc.)`
                     : `Histórico H (Rev ${draft.historyRevision})`}
                 </span>
               </div>
               <div>
                 <span className="text-slate-500 block">Filtro Anti-Duplicatas:</span>
                 <span className="font-mono text-emerald-400 font-semibold">
-                  {(draft as any).metrics?.rejectedDuplicateOfficialCount ?? 0} oficiais • {(draft as any).metrics?.rejectedDuplicateGeneratedCount ?? 0} em H
+                  {draft.metrics?.rejectedDuplicateOfficialCount ?? 0} oficiais • {draft.metrics?.rejectedDuplicateGeneratedCount ?? 0} em H
                 </span>
               </div>
             </div>
 
             {/* Banner de Cobertura da Base Oficial */}
-            {(draft as any).isHistoricalExclusionComplete ? (
+            {draft.isHistoricalExclusionComplete ? (
               <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs px-3.5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>
-                    <strong>Base Histórica Completa:</strong> {(draft as any).officialCoverage?.totalLoaded || 3816} concursos (concurso {(draft as any).officialCoverage?.firstContest || 1} ao {(draft as any).officialCoverage?.lastContest || 3816}) • Exclusão histórica 100% comprovada.
+                    <strong>Base Histórica Completa:</strong> {draft.officialCoverage?.totalLoaded || 3816} concursos (concurso {draft.officialCoverage?.firstContest || 1} ao {draft.officialCoverage?.lastContest || 3816}) • Exclusão histórica 100% comprovada.
                   </span>
                 </div>
                 <span className="font-mono text-[11px] text-slate-400 shrink-0">
@@ -375,7 +375,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
                   <span>
-                    <strong>Aviso de Cobertura Parcial:</strong> {(draft as any).officialCoverage?.limitationNotice || "Base oficial incompleta. Exclusão histórica completa não pode ser garantida."}
+                    <strong>Aviso de Cobertura Parcial:</strong> {draft.officialCoverage?.limitationNotice || "Base oficial incompleta. Exclusão histórica completa não pode ser garantida."}
                   </span>
                 </div>
                 <span className="font-mono text-[11px] text-amber-400 font-bold shrink-0">
