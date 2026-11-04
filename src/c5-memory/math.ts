@@ -19,21 +19,7 @@ export function isValidLotofacilGame(game: readonly number[]): boolean {
  * Quantidade de dezenas coincidentes entre dois jogos
  */
 export function countIntersection(a: readonly number[], b: readonly number[]): number {
-  let count = 0;
-  let i = 0;
-  let j = 0;
-  while (i < a.length && j < b.length) {
-    if (a[i] === b[j]) {
-      count++;
-      i++;
-      j++;
-    } else if (a[i] < b[j]) {
-      i++;
-    } else {
-      j++;
-    }
-  }
-  return count;
+  return fastPopcount25(gameToMask25(a) & gameToMask25(b));
 }
 
 /**

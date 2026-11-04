@@ -53,7 +53,7 @@ export interface PDFReportOptions {
   };
 }
 
-export function generateC5FinancialReportPDF(options: PDFReportOptions): void {
+export function generateC5FinancialReportPDF(options: PDFReportOptions): jsPDF {
   const { periodLabel, appliedFilters, records, financialSummary } = options;
 
   const doc = new jsPDF({
@@ -383,7 +383,10 @@ export function generateC5FinancialReportPDF(options: PDFReportOptions): void {
     doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: "right" });
   }
 
-  // Baixa o PDF
+  // Baixa o PDF no navegador se estiver em ambiente DOM
   const sanitizedPeriod = periodLabel.replace(/[^a-zA-Z0-9_-]/g, "_");
-  doc.save(`relatorio-c5-memory-${sanitizedPeriod}.pdf`);
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
+    doc.save(`relatorio-c5-memory-${sanitizedPeriod}.pdf`);
+  }
+  return doc;
 }
