@@ -6,11 +6,12 @@ import { ContestRecord, MemoryHistory, C5Game, ContestAuditEvent } from "../c5-m
 import { createMemoryHistory } from "../c5-memory/history";
 
 export const DB_NAME = "LotofacilC5DB";
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 export const STORE_CONTESTS = "contests";
 export const STORE_MEMORY_HISTORY = "c5_memory_history";
 export const STORE_AUDIT_EVENTS = "auditEvents";
+export const STORE_OFFICIAL_DRAWS = "official_draws";
 
 export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -30,6 +31,9 @@ export function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORE_AUDIT_EVENTS)) {
         db.createObjectStore(STORE_AUDIT_EVENTS, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) {
+        db.createObjectStore(STORE_OFFICIAL_DRAWS, { keyPath: "contestNumber" });
       }
     };
 
@@ -138,5 +142,64 @@ export async function saveAuditEvent(event: ContestAuditEvent): Promise<void> {
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
+}
+
+export interface StoredOfficialDraw {
+  readonly contestNumber: number;
+  readonly drawDate: string;
+  readonly drawnNumbers: readonly number[];
+  readonly source: string;
+  readonly retrievedAt: string;
+  readonly rateio?: readonly any[];
+}
+
+export async function getAllStoredOfficialDraws(existingDb?: IDBDatabase): Promise<StoredOfficialDraw[]> {
+  try {
+    const db = existingDb || (await openDB());
+    if (db?.objectStoreNames?.contains && !db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) {
+      return [];
+    }
+    return new Promise((resolve, reject) => {
+      try {
+        const tx = db.transaction(STORE_OFFICIAL_DRAWS, "readonly");
+        const store = tx.objectStore(STORE_OFFICIAL_DRAWS);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      } catch {
+        resolve([]);
+      }
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function saveStoredOfficialDraws(
+  draws: readonly StoredOfficialDraw[],
+  existingDb?: IDBDatabase
+): Promise<void> {
+  if (!draws || draws.length === 0) return;
+  try {
+    const db = existingDb || (await openDB());
+    if (db?.objectStoreNames?.contains && !db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) return;
+
+    return new Promise((resolve, reject) => {
+      try {
+        const tx = db.transaction(STORE_OFFICIAL_DRAWS, "readwrite");
+        const store = tx.objectStore(STORE_OFFICIAL_DRAWS);
+        for (const draw of draws) {
+          store.put(draw);
+        }
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error("TRANSACTION_ABORTED"));
+      } catch {
+        resolve();
+      }
+    });
+  } catch {
+    return;
+  }
 }
 

@@ -23,6 +23,7 @@ import { formatGameCanonical } from "./history";
 import { isValidLotofacilGame, distanceBetweenGames } from "./math";
 import { syncSha256 } from "./sha256";
 import officialHistoricalDataRaw from "./data/officialHistoricalDraws.json";
+import { getAllStoredOfficialDraws, saveStoredOfficialDraws, StoredOfficialDraw } from "../storage/db";
 
 export interface OfficialLotofacilDrawRecord {
   readonly contestNumber: number;
@@ -314,6 +315,342 @@ export async function fetchLatestOfficialLotofacilContest(
   return null;
 }
 
+export interface FetchedOfficialDrawDetails {
+  readonly contestNumber: number;
+  readonly drawDate: string;
+  readonly drawnNumbers: readonly number[];
+  readonly source: string;
+  readonly retrievedAt: string;
+  readonly rateio?: readonly any[];
+}
+
+export interface HistoricalSyncResult {
+  readonly success: boolean;
+  readonly syncedCount: number;
+  readonly lastContest: number | null;
+  readonly latestExpectedContest: number | null;
+  readonly isCoverageUpToDate: boolean;
+  readonly isCompleteHistoricalCoverage: boolean;
+  readonly reason?: string;
+  readonly syncedContests: readonly number[];
+}
+
+let additionalSyncedDraws: OfficialLotofacilDrawRecord[] = [];
+
+export function getAdditionalSyncedOfficialDraws(): readonly OfficialLotofacilDrawRecord[] {
+  return additionalSyncedDraws;
+}
+
+export function setAdditionalSyncedOfficialDraws(
+  draws: readonly OfficialLotofacilDrawRecord[]
+): void {
+  additionalSyncedDraws = [...draws];
+  cachedOfficialDraws = null;
+  cachedCoverageStatus = null;
+}
+
+/**
+ * Busca os dados oficiais de um concurso específico na Caixa Econômica Federal ou espelhos auditados.
+ */
+export async function fetchOfficialDrawDetails(
+  contestNumber: number,
+  customFetch?: typeof fetch,
+  timeoutMs: number = 4000
+): Promise<FetchedOfficialDrawDetails | null> {
+  const fetchFn =
+    customFetch ||
+    (typeof globalThis !== "undefined" && typeof globalThis.fetch === "function"
+      ? globalThis.fetch.bind(globalThis)
+      : undefined);
+
+  if (!fetchFn || !Number.isInteger(contestNumber) || contestNumber <= 0) {
+    return null;
+  }
+
+  const endpoints = [
+    {
+      url: `https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/${contestNumber}`,
+      source: "Caixa Econômica Federal — Portal Oficial de Loterias (servicebus2.caixa.gov.br)",
+      parser: (data: any): FetchedOfficialDrawDetails | null => {
+        const cNum = typeof data?.numero === "number" ? data.numero : parseInt(String(data?.numero), 10);
+        if (cNum !== contestNumber) return null;
+        let isoDate = "";
+        const rawDate = data?.dataApuracao;
+        if (typeof rawDate === "string") {
+          const trimmed = rawDate.trim();
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+            const [d, m, y] = trimmed.split("/");
+            isoDate = `${y}-${m}-${d}`;
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+            isoDate = trimmed;
+          }
+        }
+        if (!isoDate) return null;
+
+        const rawNums = data?.listaDezenas || data?.dezenasSorteadasOrdemSorteio;
+        if (!Array.isArray(rawNums) || rawNums.length !== 15) return null;
+        const nums = rawNums.map(n => Number(n)).sort((a, b) => a - b);
+        const val = validateOfficialDrawRecord({ contestNumber: cNum, drawDate: isoDate, drawnNumbers: nums });
+        if (!val.valid) return null;
+
+        return {
+          contestNumber: cNum,
+          drawDate: isoDate,
+          drawnNumbers: nums,
+          source: "Caixa Econômica Federal — Portal Oficial de Loterias (servicebus2.caixa.gov.br)",
+          retrievedAt: new Date().toISOString(),
+          rateio: Array.isArray(data?.listaRateioPremio) ? data.listaRateioPremio : undefined,
+        };
+      },
+    },
+    {
+      url: `https://loteriascaixa-api.herokuapp.com/api/lotofacil/${contestNumber}`,
+      source: "Espelho Verificado Loterias Caixa API (loteriascaixa-api.herokuapp.com)",
+      parser: (data: any): FetchedOfficialDrawDetails | null => {
+        const rawNum = data?.concurso ?? data?.numero;
+        const cNum = typeof rawNum === "number" ? rawNum : parseInt(String(rawNum), 10);
+        if (cNum !== contestNumber) return null;
+        let isoDate = "";
+        const rawDate = data?.data;
+        if (typeof rawDate === "string") {
+          const trimmed = rawDate.trim();
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+            const [d, m, y] = trimmed.split("/");
+            isoDate = `${y}-${m}-${d}`;
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+            isoDate = trimmed;
+          }
+        }
+        if (!isoDate) return null;
+
+        const rawNums = data?.dezenas;
+        if (!Array.isArray(rawNums) || rawNums.length !== 15) return null;
+        const nums = rawNums.map(n => Number(n)).sort((a, b) => a - b);
+        const val = validateOfficialDrawRecord({ contestNumber: cNum, drawDate: isoDate, drawnNumbers: nums });
+        if (!val.valid) return null;
+
+        return {
+          contestNumber: cNum,
+          drawDate: isoDate,
+          drawnNumbers: nums,
+          source: "Espelho Verificado Loterias Caixa API (loteriascaixa-api.herokuapp.com)",
+          retrievedAt: new Date().toISOString(),
+          rateio: Array.isArray(data?.premiacoes) ? data.premiacoes : undefined,
+        };
+      },
+    },
+    {
+      url: `https://api.guidi.dev.br/loteria/lotofacil/${contestNumber}`,
+      source: "API Guidi (Espelho Verificado)",
+      parser: (data: any): FetchedOfficialDrawDetails | null => {
+        const rawNum = data?.concurso ?? data?.numero;
+        const cNum = typeof rawNum === "number" ? rawNum : parseInt(String(rawNum), 10);
+        if (cNum !== contestNumber) return null;
+        let isoDate = "";
+        const rawDate = data?.dataApuracao || data?.data;
+        if (typeof rawDate === "string") {
+          const trimmed = rawDate.trim();
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+            const [d, m, y] = trimmed.split("/");
+            isoDate = `${y}-${m}-${d}`;
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+            isoDate = trimmed;
+          }
+        }
+        if (!isoDate) return null;
+
+        const rawNums = data?.dezenas || data?.listaDezenas;
+        if (!Array.isArray(rawNums) || rawNums.length !== 15) return null;
+        const nums = rawNums.map(n => Number(n)).sort((a, b) => a - b);
+        const val = validateOfficialDrawRecord({ contestNumber: cNum, drawDate: isoDate, drawnNumbers: nums });
+        if (!val.valid) return null;
+
+        return {
+          contestNumber: cNum,
+          drawDate: isoDate,
+          drawnNumbers: nums,
+          source: "API Guidi (Espelho Verificado)",
+          retrievedAt: new Date().toISOString(),
+        };
+      },
+    },
+  ];
+
+  for (const ep of endpoints) {
+    let timeoutId: any = null;
+    let controller: AbortController | null = null;
+    try {
+      if (typeof AbortController !== "undefined") {
+        controller = new AbortController();
+      }
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          if (controller) {
+            try { controller.abort(); } catch {}
+          }
+          reject(new Error("CONTEST_FETCH_TIMEOUT"));
+        }, timeoutMs);
+        if (typeof timeoutId?.unref === "function") {
+          timeoutId.unref();
+        }
+      });
+
+      const fetchPromise = (async () => {
+        const res = await fetchFn(ep.url, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          signal: controller?.signal,
+        });
+        if (!res || !res.ok) return null;
+        const json = await res.json();
+        return ep.parser(json);
+      })();
+
+      const parsed = await Promise.race([fetchPromise, timeoutPromise]);
+      if (parsed) return parsed;
+    } catch {
+      // Tenta próximo endpoint
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Sincronização incremental automática da base histórica oficial da Lotofácil.
+ * Identifica os concursos ausentes entre a base local e a referência oficial da Caixa,
+ * busca incrementalmente na fonte oficial, valida os dados recebidos e os persiste no IndexedDB.
+ */
+export async function syncMissingOfficialDraws(
+  db?: IDBDatabase,
+  customFetch?: typeof fetch,
+  timeoutMs: number = 4000
+): Promise<HistoricalSyncResult> {
+  // 1. Carrega sorteios adicionais já armazenados no IndexedDB (se fornecido)
+  if (db) {
+    try {
+      const stored = await getAllStoredOfficialDraws(db);
+      const validatedList: OfficialLotofacilDrawRecord[] = [];
+      for (const s of stored) {
+        if (validateOfficialDrawRecord(s).valid) {
+          validatedList.push({
+            contestNumber: s.contestNumber,
+            drawDate: s.drawDate,
+            drawnNumbers: Object.freeze([...s.drawnNumbers].sort((a, b) => a - b)),
+          });
+        }
+      }
+      additionalSyncedDraws = validatedList.sort((a, b) => a.contestNumber - b.contestNumber);
+      resetOfficialDrawsCache();
+    } catch (err) {
+      console.warn("Aviso ao carregar official_draws do IndexedDB:", err);
+    }
+  }
+
+  // 2. Consulta dinamicamente a referência oficial da Caixa
+  const latestRef = await fetchLatestOfficialLotofacilContest(customFetch, timeoutMs);
+  if (!latestRef) {
+    setVerifiedLatestOfficialReference(null);
+    const cov = getOfficialDrawsCoverageStatus();
+    return {
+      success: false,
+      syncedCount: 0,
+      lastContest: cov.lastContest,
+      latestExpectedContest: null,
+      isCoverageUpToDate: false,
+      isCompleteHistoricalCoverage: false,
+      reason: "Sem conexão com os servidores oficiais da Caixa (modo offline).",
+      syncedContests: [],
+    };
+  }
+
+  setVerifiedLatestOfficialReference(latestRef);
+
+  // 3. Determina o último concurso atualmente carregado
+  let cov = getOfficialDrawsCoverageStatus({ verifiedReference: latestRef });
+  let currentLast = cov.lastContest || 3816;
+  const targetLast = latestRef.contestNumber;
+
+  if (currentLast >= targetLast) {
+    return {
+      success: true,
+      syncedCount: 0,
+      lastContest: currentLast,
+      latestExpectedContest: targetLast,
+      isCoverageUpToDate: cov.isCoverageUpToDate,
+      isCompleteHistoricalCoverage: cov.isCompleteHistoricalCoverage,
+      syncedContests: [],
+    };
+  }
+
+  // 4. Busca incremental dos concursos ausentes
+  const newlySynced: StoredOfficialDraw[] = [];
+  let syncFailed = false;
+  let failureReason: string | undefined = undefined;
+
+  for (let c = currentLast + 1; c <= targetLast; c++) {
+    const details = await fetchOfficialDrawDetails(c, customFetch, timeoutMs);
+    if (!details) {
+      syncFailed = true;
+      failureReason = `Falha ao obter dados oficiais do concurso ${c} da Caixa.`;
+      break;
+    }
+
+    const val = validateOfficialDrawRecord(details);
+    if (!val.valid) {
+      syncFailed = true;
+      failureReason = `Dados do concurso ${c} recebidos da Caixa falharam na validação: ${val.reason}`;
+      break;
+    }
+
+    newlySynced.push({
+      contestNumber: details.contestNumber,
+      drawDate: details.drawDate,
+      drawnNumbers: details.drawnNumbers,
+      source: details.source,
+      retrievedAt: details.retrievedAt,
+      rateio: details.rateio,
+    });
+  }
+
+  if (newlySynced.length > 0) {
+    if (db) {
+      try {
+        await saveStoredOfficialDraws(newlySynced, db);
+      } catch (err) {
+        console.warn("Aviso ao salvar novos sorteios no IndexedDB:", err);
+      }
+    }
+
+    // Atualiza cache em memória
+    additionalSyncedDraws = [
+      ...additionalSyncedDraws,
+      ...newlySynced.map(s => ({
+        contestNumber: s.contestNumber,
+        drawDate: s.drawDate,
+        drawnNumbers: Object.freeze([...s.drawnNumbers].sort((a, b) => a - b)),
+      })),
+    ].sort((a, b) => a.contestNumber - b.contestNumber);
+
+    resetOfficialDrawsCache();
+  }
+
+  cov = getOfficialDrawsCoverageStatus({ verifiedReference: latestRef });
+
+  return {
+    success: !syncFailed,
+    syncedCount: newlySynced.length,
+    lastContest: cov.lastContest,
+    latestExpectedContest: targetLast,
+    isCoverageUpToDate: cov.isCoverageUpToDate,
+    isCompleteHistoricalCoverage: cov.isCompleteHistoricalCoverage,
+    reason: failureReason,
+    syncedContests: newlySynced.map(d => d.contestNumber),
+  };
+}
+
 export interface EvaluateOfficialDrawsOptions {
   readonly verifiedReference?: LatestOfficialContestReference | null;
   readonly expectedLastContest?: number | null;
@@ -462,9 +799,15 @@ export function evaluateOfficialDraws(
   let isCryptographicallyVerified = false;
   let cryptoLimitationNotice: string | null = null;
 
+  const baselineDraws = validatedDraws.slice(0, 3816);
+  const baselineComputedSha256 = computeCanonicalDrawsSha256(baselineDraws);
+
   if (!declaredSha256 || declaredSha256.length !== 64) {
     cryptoLimitationNotice = "Hash SHA-256 ausente ou inválido no arquivo de dados históricos. Falha de integridade criptográfica.";
-  } else if (declaredSha256 !== computedSha256) {
+  } else if (
+    declaredSha256 !== computedSha256 &&
+    (validatedDraws.length <= 3816 || declaredSha256 !== baselineComputedSha256)
+  ) {
     cryptoLimitationNotice = `Divergência de integridade criptográfica SHA-256 (declarado: ${declaredSha256}, computado: ${computedSha256}). Arquivo potencialmente adulterado ou corrompido.`;
   } else {
     isCryptographicallyVerified = true;
@@ -511,7 +854,7 @@ export function evaluateOfficialDraws(
     // Sem conexão ou confirmação da referência atual da Caixa
     isCoverageUpToDate = false;
     updateVerificationStatus = "UNVERIFIED_OFFLINE";
-    updateLimitationNotice = "Atualização não pôde ser verificada: ausência de conexão ou confirmação da referência atual do último concurso oficial da Caixa. Exclusão histórica completa não pode ser garantida sem confirmação.";
+    updateLimitationNotice = `Atualização não pôde ser verificada: ausência de conexão ou confirmação da referência atual do último concurso oficial da Caixa. Modo offline / sem conexão com a Caixa — base histórica verificada até o concurso ${Number.isFinite(maxContest) ? maxContest : 3816}. Exclusão completa até o concurso ${Number.isFinite(maxContest) ? maxContest : 3816}.`;
   }
 
   // 5. Condição estrita para cobertura histórica completa:
@@ -567,18 +910,26 @@ let cachedCoverageStatus: OfficialDrawsCoverageStatus | null = null;
 /**
  * Carrega e valida rigorosamente todos os sorteios do repositório histórico padrão
  */
-function loadAndValidateHistoricalDraws(options?: EvaluateOfficialDrawsOptions): {
+export function loadAndValidateHistoricalDraws(options?: EvaluateOfficialDrawsOptions): {
   draws: OfficialLotofacilDrawRecord[];
   coverage: OfficialDrawsCoverageStatus;
 } {
+  const combinedRawDataset =
+    additionalSyncedDraws.length > 0
+      ? {
+          ...officialHistoricalDataRaw,
+          draws: [...(officialHistoricalDataRaw as any).draws, ...additionalSyncedDraws],
+        }
+      : officialHistoricalDataRaw;
+
   if (options) {
-    return evaluateOfficialDraws(officialHistoricalDataRaw, options);
+    return evaluateOfficialDraws(combinedRawDataset, options);
   }
   if (cachedOfficialDraws && cachedCoverageStatus) {
     return { draws: cachedOfficialDraws, coverage: cachedCoverageStatus };
   }
 
-  const result = evaluateOfficialDraws(officialHistoricalDataRaw);
+  const result = evaluateOfficialDraws(combinedRawDataset);
   cachedOfficialDraws = result.draws;
   cachedCoverageStatus = result.coverage;
 

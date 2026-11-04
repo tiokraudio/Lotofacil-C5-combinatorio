@@ -19,6 +19,9 @@ import {
   confirmMemoryDraftUI,
   discardMemoryDraftUI,
   getMemoryOperationalStateUI,
+  getOfficialHistoricalCoverageUI,
+  syncOfficialHistoricalDrawsUI,
+  OfficialDrawsCoverageStatus,
   Draft30,
 } from "../c5-memory/application/uiService";
 import { Ball } from "./Ball";
@@ -43,6 +46,8 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
   const [copiedGames, setCopiedGames] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [historyRevision, setHistoryRevision] = useState<number>(0);
+  const [coverageStatus, setCoverageStatus] = useState<OfficialDrawsCoverageStatus | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   useEffect(() => {
     setContestNumber(currentContestNumber);
@@ -50,7 +55,33 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
 
   useEffect(() => {
     loadContestData(contestNumber);
+    refreshCoverage();
   }, [contestNumber]);
+
+  const refreshCoverage = async () => {
+    try {
+      const cov = await getOfficialHistoricalCoverageUI();
+      setCoverageStatus(cov);
+    } catch (e) {
+      console.warn("Falha ao obter status de cobertura:", e);
+    }
+  };
+
+  const handleSyncCaixa = async () => {
+    setIsSyncing(true);
+    setErrorMsg(null);
+    try {
+      const res = await syncOfficialHistoricalDrawsUI();
+      await refreshCoverage();
+      if (res.syncedCount > 0) {
+        // Notificação discreta de sincronização bem-sucedida
+      }
+    } catch (e: any) {
+      console.warn("Aviso na sincronização com Caixa:", e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const loadContestData = async (cNum: number) => {
     setErrorMsg(null);
@@ -93,6 +124,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
       const newDraft = await generateMemoryDraftUI(contestNumber);
       setDraft(newDraft);
       await loadContestData(contestNumber);
+      await refreshCoverage();
       setIsGenerating(false);
       onContestUpdated();
     } catch (err: any) {
@@ -270,6 +302,42 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
             </p>
           </div>
 
+          {/* Status de Sincronização da Base Oficial Caixa */}
+          {coverageStatus && (
+            <div className="max-w-md mx-auto p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 bg-slate-950/70 border-slate-800">
+              <div className="flex items-center gap-2.5 text-left">
+                {coverageStatus.isCompleteHistoricalCoverage ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                )}
+                <div>
+                  <span className="font-semibold text-slate-200 block">
+                    {coverageStatus.isCompleteHistoricalCoverage
+                      ? "Base Oficial Caixa Sincronizada"
+                      : coverageStatus.updateVerificationStatus === "UNVERIFIED_OFFLINE"
+                      ? "Modo Offline / Sem Conexão Caixa"
+                      : "Base Oficial Desatualizada"}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    {coverageStatus.totalLoaded} concursos carregados (1 ao {coverageStatus.lastContest || 3816}) • Exclusão histórica ativa
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSyncCaixa}
+                disabled={isSyncing || isGenerating}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                title="Sincronizar resultados com a API oficial da Caixa"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-emerald-400" : ""}`} />
+                <span>{isSyncing ? "Sincronizando..." : "Sincronizar"}</span>
+              </button>
+            </div>
+          )}
+
           <div>
             <button
               id="btn-generate-c5"
@@ -281,7 +349,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
               {isGenerating ? (
                 <>
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>Avaliando K=500 candidatos e verificando duplicatas...</span>
+                  <span>Sincronizando com a Caixa e avaliando K=500 candidatos...</span>
                 </>
               ) : (
                 <>

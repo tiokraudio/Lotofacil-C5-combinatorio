@@ -29,8 +29,10 @@ import {
   getAllOfficialLotofacilDraws,
   fetchLatestOfficialLotofacilContest,
   setVerifiedLatestOfficialReference,
+  syncMissingOfficialDraws,
 } from "../officialDraws";
 import { formatGameCanonical } from "../history";
+import { isValidLotofacilGame } from "../math";
 import { syncSha256 } from "../sha256";
 import {
   STORE_CONTESTS,
@@ -121,8 +123,8 @@ export interface GenerateDraftOptions {
 /**
  * 1. AVAILABLE -> PREVIEW: Geração de Prévia C5-Memory 3.0
  * 
- * Antes de gerar o draft, consulta dinamicamente a referência oficial da Caixa via fetchLatestOfficialLotofacilContest().
- * Quando houver uma referência válida, registra-a com setVerifiedLatestOfficialReference() e faz o motor utilizar esse estado.
+ * Antes de gerar o draft, sincroniza automaticamente concursos ausentes na fonte oficial da Caixa.
+ * Compara candidatos contra Base A (todos os resultados oficiais) e Base B (todos os jogos registrados do usuário).
  * Se a consulta falhar ou exceder o timeout, preserva a geração offline com status UNVERIFIED_OFFLINE (sem selo de cobertura integral).
  */
 export async function generateMemoryDraft210(
@@ -135,19 +137,14 @@ export async function generateMemoryDraft210(
     throw new Error(`CONTEST_ALREADY_LOCKED: Concurso ${contestNumber} já está no estado ${existing.status}`);
   }
 
-  // 1. Consulta dinâmica à referência do último concurso oficial antes de gerar o draft
+  // 1. Sincronização automática incremental com a fonte oficial da Caixa antes de gerar
   if (!options?.skipDynamicVerification) {
     try {
-      const dynamicRef = await fetchLatestOfficialLotofacilContest(
+      await syncMissingOfficialDraws(
+        db,
         options?.customFetch,
-        options?.timeoutMs ?? 3000
+        options?.timeoutMs ?? 4000
       );
-      if (dynamicRef) {
-        setVerifiedLatestOfficialReference(dynamicRef);
-      } else {
-        // Se a consulta falhar ou exceder o timeout, preserva o modo offline com status UNVERIFIED_OFFLINE
-        setVerifiedLatestOfficialReference(null);
-      }
     } catch {
       // Falha de rede ou timeout: preserva o modo offline com status UNVERIFIED_OFFLINE
       setVerifiedLatestOfficialReference(null);
@@ -159,8 +156,34 @@ export async function generateMemoryDraft210(
   const canonicalHistory = reconstructHistoryCrossVersion(allContests);
   const officialDraws = getAllOfficialLotofacilDraws(allContests);
 
-  // Gera aposta Structural C5 via motor 3.0 (utilizando o estado de cobertura atualizado)
-  const draft = generateC5Draft30(contestNumber, canonicalHistory, officialDraws);
+  // Extrai todos os jogos já registrados pelo usuário em qualquer concurso (Base B completa)
+  const allUserGamesMap = new Map<string, C5Game>();
+  for (const c of allContests) {
+    if (Array.isArray(c.games)) {
+      for (const g of c.games) {
+        if (isValidLotofacilGame(g)) {
+          allUserGamesMap.set(formatGameCanonical(g), g);
+        }
+      }
+    }
+    if (c.draft && Array.isArray(c.draft.games)) {
+      for (const g of c.draft.games) {
+        if (isValidLotofacilGame(g)) {
+          allUserGamesMap.set(formatGameCanonical(g), g);
+        }
+      }
+    }
+  }
+  const allUserRegisteredGames = Array.from(allUserGamesMap.values());
+
+  // Gera aposta Structural C5 via motor 3.0 (utilizando Base A de oficiais e Base B completa do usuário)
+  const draft = generateC5Draft30(
+    contestNumber,
+    canonicalHistory,
+    officialDraws,
+    undefined,
+    allUserRegisteredGames
+  );
 
   // Grava exclusivamente o draft em status PREVIEW no store 'contests'
   const previewRecord: ContestRecord = {

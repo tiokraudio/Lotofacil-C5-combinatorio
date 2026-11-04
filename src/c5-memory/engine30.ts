@@ -113,7 +113,8 @@ export function selectBestStructuralCandidate30MaxLeximin(
   userHistoryGames: readonly C5Game[],
   officialDraws: readonly C5Game[] = getAllOfficialLotofacilDraws(),
   poolSizeK: number = DEFAULT_POOL_SIZE_K,
-  coverageStatusOverride?: OfficialDrawsCoverageStatus
+  coverageStatusOverride?: OfficialDrawsCoverageStatus,
+  allUserRegisteredGames?: readonly C5Game[]
 ): StructuralPoolSelectionResult30 {
   const prng = new StructuralPRNG(poolMasterSeed);
   const coverage = coverageStatusOverride || getOfficialDrawsCoverageStatus();
@@ -122,6 +123,12 @@ export function selectBestStructuralCandidate30MaxLeximin(
   const hasUserHistory = userHistoryGames.length > 0;
   const scoringHistory: readonly C5Game[] = hasUserHistory ? userHistoryGames : officialDraws;
   const scoringHistorySource = hasUserHistory ? "USER_GENERATED_GAMES" : "OFFICIAL_CONTEST_DRAWS";
+
+  // Base B completa para verificação anti-duplicatas do usuário
+  const userGamesToCheck =
+    allUserRegisteredGames && allUserRegisteredGames.length > 0
+      ? allUserRegisteredGames
+      : userHistoryGames;
 
   let bestCandidate: StructuralPoolCandidate30 | null = null;
   let bestProfile: readonly number[] | null = null;
@@ -138,7 +145,7 @@ export function selectBestStructuralCandidate30MaxLeximin(
       throw new Error(`Invariante C5 violada no candidato ${k} do pool 3.0.`);
     }
 
-    // Regra 1: Rejeitar qualquer candidato contendo jogo idêntico a sorteio oficial
+    // Regra 1 (Base A): Rejeitar qualquer candidato contendo jogo idêntico a sorteio oficial
     let hasOfficialDrawDuplicate = false;
     for (let i = 0; i < games.length; i++) {
       if (isGameIdenticalToAnyOfficialDraw(games[i], officialDraws)) {
@@ -151,11 +158,11 @@ export function selectBestStructuralCandidate30MaxLeximin(
       continue;
     }
 
-    // Regra 2: Rejeitar qualquer candidato contendo jogo idêntico a jogo já gerado pelo usuário em H_gen
+    // Regra 2 (Base B): Rejeitar qualquer candidato contendo jogo idêntico a jogo já gerado pelo usuário
     let hasPreviousGameDuplicate = false;
-    if (hasUserHistory) {
+    if (userGamesToCheck.length > 0) {
       for (let i = 0; i < games.length; i++) {
-        if (isGameIdenticalToAnyPreviousGame(games[i], userHistoryGames)) {
+        if (isGameIdenticalToAnyPreviousGame(games[i], userGamesToCheck)) {
           hasPreviousGameDuplicate = true;
           break;
         }
@@ -218,7 +225,8 @@ export function generateC5Draft30(
   contestNumber: number,
   history: MemoryHistory,
   officialDraws: readonly C5Game[] = getAllOfficialLotofacilDraws(),
-  coverageStatusOverride?: OfficialDrawsCoverageStatus
+  coverageStatusOverride?: OfficialDrawsCoverageStatus,
+  allUserRegisteredGames?: readonly C5Game[]
 ): Draft30 {
   const poolMasterSeed = derivePoolMasterSeed30(contestNumber, history.fingerprint);
   const selection = selectBestStructuralCandidate30MaxLeximin(
@@ -226,7 +234,8 @@ export function generateC5Draft30(
     history.games,
     officialDraws,
     DEFAULT_POOL_SIZE_K,
-    coverageStatusOverride
+    coverageStatusOverride,
+    allUserRegisteredGames
   );
 
   return {
