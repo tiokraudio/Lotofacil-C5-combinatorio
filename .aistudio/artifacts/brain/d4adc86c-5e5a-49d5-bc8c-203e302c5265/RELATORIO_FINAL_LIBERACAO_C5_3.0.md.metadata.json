@@ -1,0 +1,5 @@
+{
+  "summary": "Relatório de Auditoria Final e Liberação Operacional do C5-Memory 3.0, contendo a correção da divergência financeira do concurso 3816, a comprovação prática de persistência do filtro anti-duplicatas (PREVIEW e rascunhos) após fechamento e reabertura de conexão, a homologação dos 3 relatórios vetoriais PDF e a comprovação da preservação estrita dos algoritmos e dados existentes.",
+  "updatedAt": "2026-11-04T21:03:18.812618025Z",
+  "userFacing": true
+}

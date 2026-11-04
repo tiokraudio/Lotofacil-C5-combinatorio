@@ -64,7 +64,7 @@ export function generateC5FinancialReportPDF(options: PDFReportOptions): jsPDF {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 36; // 0.5 inch margins
+  const margin = 28; // ~10mm margins for clean printable area
 
   // Helper para formatar moeda brasileira
   const fmtMoney = (val: number) => {
@@ -234,9 +234,10 @@ export function generateC5FinancialReportPDF(options: PDFReportOptions): jsPDF {
     startY: cursorY,
     margin: { left: margin, right: margin },
     theme: "striped",
-    headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 },
-    bodyStyles: { fontSize: 8, textColor: [30, 41, 59] },
-    head: [["Mês", "Conc.", "Jogos", "Gasto (R$)", "Prêmio (R$)", "Saldo (R$)", "ROI (%)", "Premiados", "Melhor"]],
+    styles: { cellPadding: 2, fontSize: 7, overflow: "linebreak" },
+    headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7 },
+    bodyStyles: { fontSize: 7, textColor: [30, 41, 59] },
+    head: [["Mês", "Conc.", "Jogos", "Gasto", "Prêmio", "Saldo", "ROI", "Premiados", "Melhor"]],
     body: monthlyRows.length > 0 ? monthlyRows : [["Nenhum período", "0", "0", "R$ 0,00", "R$ 0,00", "R$ 0,00", "0%", "0", "—"]],
   });
 
@@ -321,19 +322,13 @@ export function generateC5FinancialReportPDF(options: PDFReportOptions): jsPDF {
     startY: cursorY,
     margin: { left: margin, right: margin },
     theme: "striped",
-    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7.5 },
-    bodyStyles: { fontSize: 7, textColor: [30, 41, 59] },
+    styles: { cellPadding: 2, fontSize: 6.5, overflow: "linebreak" },
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7 },
+    bodyStyles: { fontSize: 6.5, textColor: [30, 41, 59] },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
-      0: { cellWidth: 44, fontStyle: "bold" },
-      1: { cellWidth: 54 },
-      2: { cellWidth: 62 },
-      3: { cellWidth: 40 },
-      4: { cellWidth: 140, font: "courier" },
-      5: { cellWidth: 46 },
-      6: { cellWidth: 48 },
-      7: { cellWidth: 48 },
-      8: { cellWidth: 44 },
+      0: { fontStyle: "bold" },
+      4: { font: "courier" },
     },
     head: [["Conc.", "Data", "Status", "Melhor", "Dezenas Sorteadas (15)", "Custo", "Prêmio", "Saldo", "Fonte"]],
     body: detailedRows,
