@@ -191,7 +191,7 @@ export function isValidIso8601Timestamp(value: unknown): value is string {
 export interface ContestAuditEvent {
   readonly id: string;
   readonly contestNumber: number;
-  readonly operation: "SCORE_CONTEST";
+  readonly operation: "SCORE_CONTEST" | "RECTIFY_OFFICIAL_RESULT";
   readonly financialStatus: ContestFinancialStatus;
   readonly resultConfirmed: boolean;
   readonly operatorId?: string;

@@ -158,7 +158,7 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
               Painel Operacional & Desempenho
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-              Acompanhamento de desempenho real das apostas C5-Memory.
+              Acompanhamento de desempenho real das apostas.
             </p>
           </div>
 
@@ -214,12 +214,12 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
               </div>
               <p className="text-xs text-slate-400 mt-1 max-w-xl">
                 {dashboardDTO.currentStatus === "FROZEN"
-                  ? `O concurso #${dashboardDTO.currentContestNumber} está com as 5 apostas confirmadas e congeladas (SHA-256). Ação recomendada: apurar e conferir o resultado oficial.`
+                  ? `O concurso #${dashboardDTO.currentContestNumber} está com as 5 apostas confirmadas e congeladas (SHA-256).`
                   : dashboardDTO.currentStatus === "PREVIEW"
-                  ? `Existe uma prévia gerada para o concurso #${dashboardDTO.currentContestNumber}. Ação recomendada: confirmar e congelar a aposta atômica.`
+                  ? `Existe uma prévia gerada para o concurso #${dashboardDTO.currentContestNumber}.`
                   : dashboardDTO.currentStatus === "COMPLETED"
-                  ? `O concurso #${dashboardDTO.currentContestNumber} foi concluído. Ação recomendada: gerar novo conjunto C5 para o próximo concurso (#${dashboardDTO.currentContestNumber + 1}).`
-                  : `Nenhuma aposta gerada para o concurso ativo #${dashboardDTO.currentContestNumber}. Ação recomendada: gerar os 5 jogos combinatórios C5.`}
+                  ? `O concurso #${dashboardDTO.currentContestNumber} foi concluído. (#${dashboardDTO.currentContestNumber + 1}).`
+                  : `Nenhuma aposta gerada para o concurso ativo #${dashboardDTO.currentContestNumber}.`}
               </p>
             </div>
           </div>
@@ -303,7 +303,7 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>Algoritmo: <strong className="text-slate-200 font-mono">{dashboardDTO.currentRecord?.algorithmVersion || "C5-Memory-2.1.0"}</strong></span>
+            <span>Algoritmo: <strong className="text-slate-200 font-mono">{dashboardDTO.currentRecord?.algorithmVersion || "C5-Memory-3.0"}</strong></span>
             {dashboardDTO.currentRecord?.frozenPayload && (
               <span className="font-mono text-[11px] text-slate-500">
                 SHA: {dashboardDTO.currentRecord.frozenPayload.sha256.substring(0, 8)}...
@@ -965,8 +965,8 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
             Isolamento Causal & Separação de Probabilidades Teóricas:
           </strong>
           <p>
-            O algoritmo <strong>C5-Memory (2.0.0 / 2.1.0)</strong> opera com critério de memória determinística para maximizar o afastamento combinatório relativo (MAX-LEXIMIN).
-            As métricas deste painel são exclusivamente descritivas e retrospectivas. O histórico observado de acertos <strong>jamais alimenta ou modifica</strong> a geração de apostas futuras nem altera as probabilidades matemáticas dos sorteios da Lotofácil.
+            O algoritmo <strong>C5-Memory (3.0.0)</strong> opera com critério de memória determinística para maximizar o afastamento combinatório relativo (MAX-LEXIMIN).
+            As métricas deste painel são exclusivamente descritivas e retrospectivas. O histórico observado de acertos <strong>jamais alimenta ou modifica</strong> a geração de apostas futuras nem altera as probabilidades matemáticas dos sorteios oficiais.
           </p>
         </div>
       </div>

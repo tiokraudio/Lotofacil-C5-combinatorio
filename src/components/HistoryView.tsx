@@ -636,7 +636,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
               Histórico & Painel Financeiro
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Filtros multicritério, 16 indicadores consolidados, demonstrativos mensais/anuais e exportação vetorial PDF.
+              Filtros multicritério.
             </p>
           </div>
 
