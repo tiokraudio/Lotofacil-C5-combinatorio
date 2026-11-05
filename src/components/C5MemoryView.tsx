@@ -48,6 +48,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
   const [historyRevision, setHistoryRevision] = useState<number>(0);
   const [coverageStatus, setCoverageStatus] = useState<OfficialDrawsCoverageStatus | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ message: string; type: "success" | "warning" | "error" } | null>(null);
 
   useEffect(() => {
     setContestNumber(currentContestNumber);
@@ -57,6 +58,17 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
     loadContestData(contestNumber);
     refreshCoverage();
   }, [contestNumber]);
+
+  useEffect(() => {
+    // Na inicialização, carrega o estado persistido imediatamente
+    refreshCoverage();
+    // Se online, tenta sincronização incremental automática em segundo plano
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      syncOfficialHistoricalDrawsUI()
+        .then(() => refreshCoverage())
+        .catch(() => {});
+    }
+  }, []);
 
   const refreshCoverage = async () => {
     try {
@@ -70,14 +82,32 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
   const handleSyncCaixa = async () => {
     setIsSyncing(true);
     setErrorMsg(null);
+    setSyncFeedback(null);
     try {
       const res = await syncOfficialHistoricalDrawsUI();
       await refreshCoverage();
       if (res.syncedCount > 0) {
-        // Notificação discreta de sincronização bem-sucedida
+        setSyncFeedback({
+          message: `Sincronização concluída: ${res.syncedCount} concurso(s) importado(s) (${res.syncedContests.join(", ")}). Base oficial atualizada até o concurso #${res.lastContest}.`,
+          type: "success",
+        });
+      } else if (res.success) {
+        setSyncFeedback({
+          message: `Base histórica oficial já está atualizada até o concurso #${res.lastContest}.`,
+          type: "success",
+        });
+      } else {
+        setSyncFeedback({
+          message: res.reason || "Modo offline: sem conexão com os servidores da Caixa. Base preservada.",
+          type: "warning",
+        });
       }
     } catch (e: any) {
       console.warn("Aviso na sincronização com Caixa:", e);
+      setSyncFeedback({
+        message: e?.message || "Erro durante sincronização com a Caixa.",
+        type: "error",
+      });
     } finally {
       setIsSyncing(false);
     }
@@ -320,7 +350,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
                       : "Base Oficial Desatualizada"}
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    {coverageStatus.totalLoaded} concursos carregados (1 ao {coverageStatus.lastContest || 3816}) • Exclusão histórica ativa
+                    {coverageStatus.totalLoaded} concursos carregados (1 ao {coverageStatus.lastContest || coverageStatus.totalLoaded}) • Exclusão histórica ativa
                   </span>
                 </div>
               </div>
@@ -335,6 +365,25 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-emerald-400" : ""}`} />
                 <span>{isSyncing ? "Sincronizando..." : "Sincronizar"}</span>
               </button>
+            </div>
+          )}
+
+          {syncFeedback && (
+            <div
+              className={`max-w-md mx-auto p-3 rounded-xl border text-xs flex items-center gap-2.5 text-left ${
+                syncFeedback.type === "success"
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                  : syncFeedback.type === "warning"
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                  : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+              }`}
+            >
+              {syncFeedback.type === "success" ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0" />
+              )}
+              <span>{syncFeedback.message}</span>
             </div>
           )}
 

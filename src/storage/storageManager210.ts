@@ -37,6 +37,7 @@ import { syncSha256 } from "../c5-memory/sha256";
 export const STORE_CONTESTS = "contests";
 export const STORE_MEMORY_HISTORY = "c5_memory_history";
 export const STORE_AUDIT_EVENTS = "auditEvents";
+export const STORE_OFFICIAL_DRAWS = "official_draws";
 export const CANONICAL_STORAGE_SOURCE = "contests" as const;
 export const DERIVED_STORAGE_SOURCE = "c5_memory_history" as const;
 
@@ -1080,9 +1081,16 @@ export async function scoreContestAtomic210(
   const canonicalOfficialResult = [...officialResult].sort((a, b) => a - b);
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction([STORE_CONTESTS, STORE_AUDIT_EVENTS], "readwrite");
+    const storesToOpen = [STORE_CONTESTS, STORE_AUDIT_EVENTS];
+    if (db?.objectStoreNames?.contains && db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) {
+      storesToOpen.push(STORE_OFFICIAL_DRAWS);
+    }
+    const tx = db.transaction(storesToOpen, "readwrite");
     const contestStore = tx.objectStore(STORE_CONTESTS);
     const auditStore = tx.objectStore(STORE_AUDIT_EVENTS);
+    const officialStore = storesToOpen.includes(STORE_OFFICIAL_DRAWS)
+      ? tx.objectStore(STORE_OFFICIAL_DRAWS)
+      : null;
 
     let updatedRecord: ContestRecord | null = null;
 
@@ -1469,6 +1477,15 @@ export async function scoreContestAtomic210(
 
       contestStore.put(updatedRecord);
       auditStore.put(auditEvent);
+      if (officialStore && !isFixture && !record.isDemo) {
+        officialStore.put({
+          contestNumber,
+          drawDate: record.contestDate || new Date().toISOString().split("T")[0],
+          drawnNumbers: canonicalOfficialResult,
+          source: effectiveResultSource,
+          retrievedAt: options?.resultFetchedAt ?? new Date().toISOString(),
+        });
+      }
     };
   });
 }

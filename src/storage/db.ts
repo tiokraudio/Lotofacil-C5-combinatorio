@@ -180,26 +180,57 @@ export async function saveStoredOfficialDraws(
   existingDb?: IDBDatabase
 ): Promise<void> {
   if (!draws || draws.length === 0) return;
+  const db = existingDb || (await openDB());
+  if (db?.objectStoreNames?.contains && !db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) {
+    return;
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction(STORE_OFFICIAL_DRAWS, "readwrite");
+      const store = tx.objectStore(STORE_OFFICIAL_DRAWS);
+      for (const draw of draws) {
+        store.put(draw);
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("TRANSACTION_ABORTED"));
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+export async function getStoredOfficialDraw(
+  contestNumber: number,
+  existingDb?: IDBDatabase
+): Promise<StoredOfficialDraw | undefined> {
   try {
     const db = existingDb || (await openDB());
-    if (db?.objectStoreNames?.contains && !db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) return;
-
+    if (db?.objectStoreNames?.contains && !db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) {
+      return undefined;
+    }
     return new Promise((resolve, reject) => {
       try {
-        const tx = db.transaction(STORE_OFFICIAL_DRAWS, "readwrite");
+        const tx = db.transaction(STORE_OFFICIAL_DRAWS, "readonly");
         const store = tx.objectStore(STORE_OFFICIAL_DRAWS);
-        for (const draw of draws) {
-          store.put(draw);
-        }
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        tx.onabort = () => reject(tx.error || new Error("TRANSACTION_ABORTED"));
-      } catch {
-        resolve();
+        const request = store.get(contestNumber);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      } catch (err) {
+        reject(err);
       }
     });
   } catch {
-    return;
+    return undefined;
   }
 }
+
+export async function saveStoredOfficialDraw(
+  draw: StoredOfficialDraw,
+  existingDb?: IDBDatabase
+): Promise<void> {
+  return saveStoredOfficialDraws([draw], existingDb);
+}
+
 

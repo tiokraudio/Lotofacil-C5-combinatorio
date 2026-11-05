@@ -30,6 +30,7 @@ import {
   fetchLatestOfficialLotofacilContest,
   setVerifiedLatestOfficialReference,
   syncMissingOfficialDraws,
+  loadOfficialDrawsFromStorage,
 } from "../officialDraws";
 import { formatGameCanonical } from "../history";
 import { isValidLotofacilGame } from "../math";
@@ -150,6 +151,9 @@ export async function generateMemoryDraft210(
       setVerifiedLatestOfficialReference(null);
     }
   }
+
+  // Assegura que todos os sorteios em STORE_OFFICIAL_DRAWS estejam carregados na memória
+  await loadOfficialDrawsFromStorage(db);
 
   // Carrega histórico canônico a partir dos concursos confirmados no banco
   const allContests = await getAllContestsFromStore(db);

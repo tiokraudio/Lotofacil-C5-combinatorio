@@ -523,6 +523,93 @@ export async function fetchOfficialDrawDetails(
  * Identifica os concursos ausentes entre a base local e a referência oficial da Caixa,
  * busca incrementalmente na fonte oficial, valida os dados recebidos e os persiste no IndexedDB.
  */
+/**
+ * Carrega todos os sorteios oficiais armazenados em STORE_OFFICIAL_DRAWS no IndexedDB,
+ * sincroniza com quaisquer concursos concluídos do usuário e atualiza a base em memória.
+ */
+export async function loadOfficialDrawsFromStorage(
+  db?: IDBDatabase
+): Promise<OfficialLotofacilDrawRecord[]> {
+  if (db) {
+    try {
+      const stored = await getAllStoredOfficialDraws(db);
+      const validatedMap = new Map<number, OfficialLotofacilDrawRecord>();
+
+      for (const s of stored) {
+        if (validateOfficialDrawRecord(s).valid && s.contestNumber > 3816) {
+          validatedMap.set(s.contestNumber, {
+            contestNumber: s.contestNumber,
+            drawDate: s.drawDate,
+            drawnNumbers: Object.freeze([...s.drawnNumbers].sort((a, b) => a - b)),
+          });
+        }
+      }
+
+      // Se houver concursos em 'contests' concluídos que não estão em STORE_OFFICIAL_DRAWS, sincroniza
+      if (db?.objectStoreNames?.contains && db.objectStoreNames.contains("contests")) {
+        const userContests: ContestRecord[] = await new Promise(resolve => {
+          try {
+            const tx = db.transaction("contests", "readonly");
+            const store = tx.objectStore("contests");
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+          } catch {
+            resolve([]);
+          }
+        });
+
+        const missingInStore: StoredOfficialDraw[] = [];
+        for (const uc of userContests) {
+          if (
+            !uc.isDemo &&
+            !uc.isFixture &&
+            uc.status === "COMPLETED" &&
+            uc.officialResult &&
+            isValidLotofacilGame(uc.officialResult) &&
+            uc.contestNumber > 3816 &&
+            !validatedMap.has(uc.contestNumber)
+          ) {
+            const sorted = Object.freeze([...uc.officialResult].sort((a, b) => a - b));
+            const record: OfficialLotofacilDrawRecord = {
+              contestNumber: uc.contestNumber,
+              drawDate: uc.contestDate || new Date().toISOString().split("T")[0],
+              drawnNumbers: sorted,
+            };
+            validatedMap.set(uc.contestNumber, record);
+            missingInStore.push({
+              contestNumber: uc.contestNumber,
+              drawDate: record.drawDate,
+              drawnNumbers: sorted,
+              source: uc.resultSource || "HOMOLOGATED_CONTEST",
+              retrievedAt: uc.resultFetchedAt || new Date().toISOString(),
+            });
+          }
+        }
+
+        if (missingInStore.length > 0) {
+          await saveStoredOfficialDraws(missingInStore, db);
+        }
+      }
+
+      additionalSyncedDraws = Array.from(validatedMap.values()).sort(
+        (a, b) => a.contestNumber - b.contestNumber
+      );
+      resetOfficialDrawsCache();
+    } catch (err) {
+      console.warn("Aviso ao carregar official_draws do IndexedDB:", err);
+    }
+  }
+
+  const { draws } = loadAndValidateHistoricalDraws();
+  return draws;
+}
+
+/**
+ * Sincronização incremental automática da base histórica oficial da Lotofácil.
+ * Identifica os concursos ausentes entre a base local e a referência oficial da Caixa,
+ * busca incrementalmente na fonte oficial, valida os dados recebidos e os persiste no IndexedDB.
+ */
 export async function syncMissingOfficialDraws(
   db?: IDBDatabase,
   customFetch?: typeof fetch,
@@ -530,30 +617,18 @@ export async function syncMissingOfficialDraws(
 ): Promise<HistoricalSyncResult> {
   // 1. Carrega sorteios adicionais já armazenados no IndexedDB (se fornecido)
   if (db) {
-    try {
-      const stored = await getAllStoredOfficialDraws(db);
-      const validatedList: OfficialLotofacilDrawRecord[] = [];
-      for (const s of stored) {
-        if (validateOfficialDrawRecord(s).valid) {
-          validatedList.push({
-            contestNumber: s.contestNumber,
-            drawDate: s.drawDate,
-            drawnNumbers: Object.freeze([...s.drawnNumbers].sort((a, b) => a - b)),
-          });
-        }
-      }
-      additionalSyncedDraws = validatedList.sort((a, b) => a.contestNumber - b.contestNumber);
-      resetOfficialDrawsCache();
-    } catch (err) {
-      console.warn("Aviso ao carregar official_draws do IndexedDB:", err);
-    }
+    await loadOfficialDrawsFromStorage(db);
   }
 
-  // 2. Consulta dinamicamente a referência oficial da Caixa
+  // 2. Determina o último concurso atualmente carregado
+  let cov = getOfficialDrawsCoverageStatus();
+  let currentLast = cov.lastContest || 3816;
+
+  // 3. Consulta dinamicamente a referência oficial da Caixa
   const latestRef = await fetchLatestOfficialLotofacilContest(customFetch, timeoutMs);
   if (!latestRef) {
     setVerifiedLatestOfficialReference(null);
-    const cov = getOfficialDrawsCoverageStatus();
+    cov = getOfficialDrawsCoverageStatus();
     return {
       success: false,
       syncedCount: 0,
@@ -567,13 +642,10 @@ export async function syncMissingOfficialDraws(
   }
 
   setVerifiedLatestOfficialReference(latestRef);
-
-  // 3. Determina o último concurso atualmente carregado
-  let cov = getOfficialDrawsCoverageStatus({ verifiedReference: latestRef });
-  let currentLast = cov.lastContest || 3816;
   const targetLast = latestRef.contestNumber;
 
   if (currentLast >= targetLast) {
+    cov = getOfficialDrawsCoverageStatus({ verifiedReference: latestRef });
     return {
       success: true,
       syncedCount: 0,
@@ -619,22 +691,36 @@ export async function syncMissingOfficialDraws(
     if (db) {
       try {
         await saveStoredOfficialDraws(newlySynced, db);
+        // Confirmação obrigatória: reler diretamente do IndexedDB para atestar persistência
+        const persisted = await getAllStoredOfficialDraws(db);
+        const persistedSet = new Set(persisted.map(p => p.contestNumber));
+        const allPersisted = newlySynced.every(d => persistedSet.has(d.contestNumber));
+        if (!allPersisted) {
+          syncFailed = true;
+          failureReason = "Falha de persistência: um ou mais sorteios não foram confirmados no IndexedDB.";
+        }
       } catch (err) {
         console.warn("Aviso ao salvar novos sorteios no IndexedDB:", err);
+        syncFailed = true;
+        failureReason = `Falha ao salvar novos sorteios no IndexedDB: ${err}`;
       }
     }
 
-    // Atualiza cache em memória
-    additionalSyncedDraws = [
-      ...additionalSyncedDraws,
-      ...newlySynced.map(s => ({
-        contestNumber: s.contestNumber,
-        drawDate: s.drawDate,
-        drawnNumbers: Object.freeze([...s.drawnNumbers].sort((a, b) => a - b)),
-      })),
-    ].sort((a, b) => a.contestNumber - b.contestNumber);
+    if (db) {
+      await loadOfficialDrawsFromStorage(db);
+    } else {
+      // Atualiza cache em memória
+      additionalSyncedDraws = [
+        ...additionalSyncedDraws,
+        ...newlySynced.map(s => ({
+          contestNumber: s.contestNumber,
+          drawDate: s.drawDate,
+          drawnNumbers: Object.freeze([...s.drawnNumbers].sort((a, b) => a - b)),
+        })),
+      ].sort((a, b) => a.contestNumber - b.contestNumber);
 
-    resetOfficialDrawsCache();
+      resetOfficialDrawsCache();
+    }
   }
 
   cov = getOfficialDrawsCoverageStatus({ verifiedReference: latestRef });

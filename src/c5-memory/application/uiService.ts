@@ -31,6 +31,7 @@ import {
 } from "../analytics/c5Analytics";
 import {
   syncMissingOfficialDraws,
+  loadOfficialDrawsFromStorage,
   loadAndValidateHistoricalDraws,
   evaluateOfficialDraws,
   OfficialDrawsCoverageStatus,
@@ -490,6 +491,9 @@ export async function fetchAndScoreOfficialContestUI(
       }
     );
 
+    // Atualiza imediatamente o repositório de sorteios em memória para refletir a conferência oficial
+    await loadOfficialDrawsFromStorage(db);
+
     resolveOp!(updated);
     return {
       record: updated,
@@ -602,7 +606,9 @@ export async function scoreContestOperationUI(
   options?: ScoreContestOptions
 ): Promise<ContestRecord> {
   const db = await openAppDB();
-  return scoreContestOperation210(contestNumber, officialResult, db, options);
+  const updated = await scoreContestOperation210(contestNumber, officialResult, db, options);
+  await loadOfficialDrawsFromStorage(db);
+  return updated;
 }
 
 /**
@@ -841,7 +847,8 @@ export async function syncOfficialHistoricalDrawsUI(): Promise<HistoricalSyncRes
  */
 export async function getOfficialHistoricalCoverageUI(): Promise<OfficialDrawsCoverageStatus> {
   const db = await openAppDB();
-  // Assegura que sorteios adicionais em cache/DB estejam carregados
+  // Assegura que sorteios adicionais em STORE_OFFICIAL_DRAWS estejam lidos e persistidos
+  await loadOfficialDrawsFromStorage(db);
   const { coverage } = loadAndValidateHistoricalDraws();
   return coverage;
 }
