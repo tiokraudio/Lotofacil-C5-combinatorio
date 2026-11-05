@@ -140,26 +140,74 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
    * Apuração 100% Automática
    * Consulta a API oficial da Caixa, valida o resultado, calcula os acertos e apura financeiramente.
    */
+  // Separação entre concursos pendentes e apurados
+  const pendingContests = useMemo(() => {
+    return contests.filter(c => c.status === "FROZEN");
+  }, [contests]);
+
+  const completedContests = useMemo(() => {
+    return contests.filter(c => c.status === "COMPLETED");
+  }, [contests]);
+
+  // Identifica se o concurso atual selecionado já está homologado e salvo no banco
+  const isCurrentHomologated = useMemo(() => {
+    if (currentRecord) {
+      return (
+        currentRecord.status === "COMPLETED" &&
+        (currentRecord.financialStatus === "HOMOLOGATED" ||
+          (Array.isArray(currentRecord.officialResult) && currentRecord.officialResult.length === 15))
+      );
+    }
+    return contests.length > 0 && pendingContests.length === 0;
+  }, [currentRecord, contests, pendingContests]);
+
+  // Cálculos financeiros do concurso selecionado
+  const selectedContestFinancial = useMemo(() => {
+    if (!currentRecord) return null;
+    return calculateContestFinancialBreakdown(currentRecord);
+  }, [currentRecord]);
+
+  /**
+   * Apuração 100% Automática
+   * Consulta a API oficial da Caixa, valida o resultado, calcula os acertos e apura financeiramente.
+   * Se o concurso já estiver homologado e salvo, bloqueia reexecução imediatamente.
+   */
   const handleAutoScore = async (showFeedback: boolean = true) => {
+    // Bloqueio imediato no frontend se o concurso selecionado já estiver homologado
+    if (isCurrentHomologated && pendingContests.length === 0) {
+      if (showFeedback) {
+        setAutoScoreStatus("Resultado já conferido e salvo.");
+      }
+      return;
+    }
+
     setIsAutoScoring(true);
     setAutoScoreStatus("Consultando API oficial da Caixa...");
     setErrorMsg(null);
     if (showFeedback) setSuccessMsg(null);
 
     try {
-      const result: AutoScoreResultDTO = await autoScorePendingContestsUI();
+      const targetContest = currentRecord && currentRecord.status === "FROZEN"
+        ? currentRecord.contestNumber
+        : undefined;
+
+      const result: AutoScoreResultDTO = await autoScorePendingContestsUI(targetContest);
       if (result.scored > 0) {
         setSuccessMsg(
           `Apuração automática concluída: ${result.scored} concurso(s) conferido(s) e homologado(s) com a API da Caixa!`
         );
         onContestUpdated();
         await loadContests();
+        if (selectedContestNumber > 0) {
+          await loadSelectedContest(selectedContestNumber);
+        }
       } else if (result.pending > 0 && showFeedback) {
         setAutoScoreStatus(
           `${result.pending} concurso(s) pendente(s) aguardando apuração oficial da Caixa.`
         );
       } else if (showFeedback) {
-        setSuccessMsg("Todos os concursos registrados já foram apurados e homologados com a Caixa.");
+        setAutoScoreStatus("Resultado já conferido e salvo.");
+        setSuccessMsg("Resultado já conferido e salvo.");
       }
 
       if (result.errors.length > 0 && showFeedback) {
@@ -175,21 +223,6 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
       setTimeout(() => setAutoScoreStatus(null), 6000);
     }
   };
-
-  // Separação entre concursos pendentes e apurados
-  const pendingContests = useMemo(() => {
-    return contests.filter(c => c.status === "FROZEN");
-  }, [contests]);
-
-  const completedContests = useMemo(() => {
-    return contests.filter(c => c.status === "COMPLETED");
-  }, [contests]);
-
-  // Cálculos financeiros do concurso selecionado
-  const selectedContestFinancial = useMemo(() => {
-    if (!currentRecord) return null;
-    return calculateContestFinancialBreakdown(currentRecord);
-  }, [currentRecord]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16">
@@ -208,19 +241,24 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
               Conferir Resultados C5
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Busca automática de resultados da Caixa, contagem de acertos e homologação financeira sem intervenção humana.
+              Busca automática de resultados da Caixa, contagem de acertos e homologação financeira.
             </p>
           </div>
 
           {/* Botão de Busca e Status no Cabeçalho */}
           <div className="flex flex-wrap items-center gap-3">
-            {pendingContests.length > 0 ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold">
+            {isCurrentHomologated ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold font-mono">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Resultado já conferido e salvo</span>
+              </span>
+            ) : pendingContests.length > 0 ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold font-mono">
                 <Clock className="w-3.5 h-3.5 text-amber-400" />
                 <span>{pendingContests.length} pendente(s)</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold font-mono">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Todos apurados</span>
               </span>
@@ -230,13 +268,30 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
               id="btn-auto-score"
               data-testid="btn-auto-score"
               onClick={() => handleAutoScore(true)}
-              disabled={isAutoScoring}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
-              title="Buscar resultados da Caixa e apurar todos os concursos pendentes"
+              disabled={isAutoScoring || isCurrentHomologated}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                isCurrentHomologated
+                  ? "bg-slate-800 text-slate-400 border border-slate-700/80 cursor-not-allowed opacity-75"
+                  : isAutoScoring
+                  ? "bg-slate-800 text-slate-400 border border-slate-700 cursor-wait opacity-80"
+                  : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 cursor-pointer"
+              }`}
+              title={
+                isCurrentHomologated
+                  ? "Resultado já conferido e salvo. Concurso homologado e imutável no banco de dados."
+                  : isAutoScoring
+                  ? "Consultando API oficial da Caixa..."
+                  : "Buscar resultados da Caixa e apurar concurso"
+              }
             >
-              {isAutoScoring ? (
+              {isCurrentHomologated ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Resultado já conferido e salvo</span>
+                </>
+              ) : isAutoScoring ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
                   <span>Consultando Caixa...</span>
                 </>
               ) : (
@@ -303,12 +358,14 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
 
         <div className="flex items-center gap-2 text-xs">
           <span className="text-slate-500">Situação:</span>
-          {currentRecord?.status === "COMPLETED" ? (
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold font-mono text-[11px]">
-              HOMOLOGADO OFICIAL
+          {isCurrentHomologated ? (
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold font-mono text-[11px] flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              HOMOLOGADO OFICIAL — Resultado já conferido e salvo
             </span>
           ) : (
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold font-mono text-[11px]">
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold font-mono text-[11px] flex items-center gap-1">
+              <Clock className="w-3 h-3 text-amber-400" />
               PENDENTE DE APURAÇÃO
             </span>
           )}
@@ -351,7 +408,7 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="p-6 rounded-xl bg-amber-500/5 border border-amber-500/20 text-center space-y-2">
+              <div className="p-6 rounded-xl bg-amber-500/5 border border-amber-500/20 text-center space-y-3">
                 <Clock className="w-8 h-8 text-amber-400 mx-auto" />
                 <h4 className="text-sm font-bold text-slate-200">
                   Aguardando realização ou publicação do sorteio pela Caixa
@@ -359,6 +416,25 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
                   Os 5 jogos C5 estão congelados no banco com SHA-256 intacto. Clique em "Buscar Resultado Caixa" assim que o sorteio for encerrado pela CEF.
                 </p>
+                <div>
+                  <button
+                    onClick={() => handleAutoScore(true)}
+                    disabled={isAutoScoring}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                  >
+                    {isAutoScoring ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                        <span>Consultando Caixa...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Buscar Resultado Caixa</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
           </div>

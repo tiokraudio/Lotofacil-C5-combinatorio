@@ -181,10 +181,16 @@ export interface OfficialLotofacilResultData {
  * com fallback para espelhos verificados e homologação de integridade.
  */
 export async function fetchOfficialLotofacilResult(
-  contestNumber: number
+  contestNumber: number,
+  customFetch?: typeof fetch
 ): Promise<OfficialLotofacilResultData> {
   if (!Number.isInteger(contestNumber) || contestNumber <= 0) {
     throw new Error(`Número de concurso inválido: ${contestNumber}`);
+  }
+
+  const fetchFn = customFetch || (typeof fetch !== "undefined" ? fetch : undefined);
+  if (!fetchFn) {
+    throw new Error("Mecanismo de fetch não disponível no ambiente.");
   }
 
   // Tentativa 1: API Oficial Direta da Caixa Econômica Federal (servicebus2.caixa.gov.br)
@@ -192,7 +198,7 @@ export async function fetchOfficialLotofacilResult(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
     try {
-      const res = await fetch(`https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/${contestNumber}`, {
+      const res = await fetchFn(`https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/${contestNumber}`, {
         signal: controller.signal,
         headers: { Accept: "application/json" },
       });
@@ -243,7 +249,7 @@ export async function fetchOfficialLotofacilResult(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
     try {
-      const res = await fetch(`https://loteriascaixa-api.herokuapp.com/api/lotofacil/${contestNumber}`, {
+      const res = await fetchFn(`https://loteriascaixa-api.herokuapp.com/api/lotofacil/${contestNumber}`, {
         signal: controller.signal,
       });
       if (res.ok) {
@@ -296,7 +302,7 @@ export async function fetchOfficialLotofacilResult(
     const controller2 = new AbortController();
     const timer2 = setTimeout(() => controller2.abort(), 4000);
     try {
-      const res2 = await fetch(`https://api.guidi.dev.br/loteria/lotofacil/${contestNumber}`, {
+      const res2 = await fetchFn(`https://api.guidi.dev.br/loteria/lotofacil/${contestNumber}`, {
         signal: controller2.signal,
       });
       if (res2.ok) {
@@ -357,74 +363,218 @@ export interface AutoScoreResultDTO {
   readonly updatedRecords: ContestRecord[];
 }
 
+// Mapa de operações ativas em andamento para garantia de idempotência e bloqueio contra chamadas simultâneas / duplo clique
+const inFlightScoringOperations = new Map<number, Promise<ContestRecord>>();
+
+export interface ScoreOfficialContestResult {
+  readonly record: ContestRecord;
+  readonly alreadyScored: boolean;
+  readonly message: string;
+}
+
+/**
+ * Consulta e Apuração Oficial de um Concurso Específico (com bloqueio contra reexecução)
+ * 
+ * Regras Estritas:
+ * 1. Verifica preliminarmente o estado persistido no banco de dados.
+ *    Se estiver COMPLETED/HOMOLOGATED, retorna imediatamente sem executar nova chamada à API,
+ *    sem recalcular premiações e sem duplicar lançamentos.
+ * 2. Bloqueia chamadas simultâneas / duplo clique através de mutex em memória.
+ * 3. Se FROZEN: consulta a API da Caixa, valida 15 dezenas e executa scoring atômico.
+ * 4. Em caso de falha de rede ou API indisponível: preserva o concurso pendente permitindo retry posterior.
+ */
+export async function fetchAndScoreOfficialContestUI(
+  contestNumber: number,
+  options?: { customFetch?: typeof fetch; allowCorrection?: boolean }
+): Promise<ScoreOfficialContestResult> {
+  if (!Number.isInteger(contestNumber) || contestNumber <= 0) {
+    throw new Error(`Número de concurso inválido: ${contestNumber}`);
+  }
+
+  // 1. Idempotência / Bloqueio contra chamadas concorrentes simultâneas ou duplo clique
+  if (inFlightScoringOperations.has(contestNumber)) {
+    const existingPromise = inFlightScoringOperations.get(contestNumber)!;
+    const record = await existingPromise;
+    return {
+      record,
+      alreadyScored: true,
+      message: "Resultado já conferido e salvo",
+    };
+  }
+
+  // 2. Proteção no serviço: Verifica o estado persistido antes de qualquer consulta ou processamento
+  const db = await openAppDB();
+  const allRecords = await getAllContestRecordsUI();
+  const persisted = allRecords.find(c => c.contestNumber === contestNumber);
+
+  // Se já estiver COMPLETED/HOMOLOGATED, retorna imediatamente sem executar novamente a conferência
+  if (
+    persisted &&
+    persisted.status === "COMPLETED" &&
+    !options?.allowCorrection
+  ) {
+    return {
+      record: persisted,
+      alreadyScored: true,
+      message: "Resultado já conferido e salvo",
+    };
+  }
+
+  // Exceções: Apenas FROZEN ou COMPLETED (com allowCorrection) podem prosseguir
+  if (persisted && persisted.status !== "FROZEN" && persisted.status !== "COMPLETED") {
+    throw new Error(`CONTEST_NOT_FROZEN: O concurso #${contestNumber} está em status '${persisted.status}' e não pode ser conferido.`);
+  }
+
+  // Registra a operação em andamento
+  let resolveOp: (rec: ContestRecord) => void;
+  let rejectOp: (err: any) => void;
+  const opPromise = new Promise<ContestRecord>((res, rej) => {
+    resolveOp = res;
+    rejectOp = rej;
+  });
+  inFlightScoringOperations.set(contestNumber, opPromise);
+
+  try {
+    // 3. Consulta API oficial Caixa
+    const res = await fetchOfficialLotofacilResult(contestNumber, options?.customFetch);
+
+    // Validação estrita das dezenas e identificação do concurso
+    if (!res || !Array.isArray(res.drawnNumbers) || res.drawnNumbers.length !== 15) {
+      throw new Error(`Resultado inválido da Caixa para concurso #${contestNumber}: dezenas ausentes ou incompletas.`);
+    }
+
+    // 4. Rateio variável oficial se houver 14 ou 15 acertos
+    const confirmedVariablePrizes: Record<number, any> = {};
+    if (Array.isArray(res.rateioList)) {
+      for (const item of res.rateioList) {
+        const faixa = Number(item.faixa);
+        const rawVal = item.valorPremio ?? item.premio;
+        const valorPremio = typeof rawVal === "number" ? rawVal : parseFloat(String(rawVal || 0));
+        if (faixa === 1 && valorPremio > 0) {
+          confirmedVariablePrizes[15] = {
+            contestNumber,
+            tier: 15,
+            unitValue: valorPremio,
+            confirmationSource: "MANUAL_ENTRY",
+            confirmedAt: new Date().toISOString(),
+            operatorId: "SISTEMA_AUTONOMO_CAIXA",
+            notes: "Rateio oficial de 15 acertos apurado automaticamente da Caixa Econômica Federal",
+          };
+        } else if (faixa === 2 && valorPremio > 0) {
+          confirmedVariablePrizes[14] = {
+            contestNumber,
+            tier: 14,
+            unitValue: valorPremio,
+            confirmationSource: "MANUAL_ENTRY",
+            confirmedAt: new Date().toISOString(),
+            operatorId: "SISTEMA_AUTONOMO_CAIXA",
+            notes: "Rateio oficial de 14 acertos apurado automaticamente da Caixa Econômica Federal",
+          };
+        }
+      }
+    }
+
+    // 5. Apuração atômica: cálculos e homologação
+    const updated = await scoreContestOperation210(
+      contestNumber,
+      res.drawnNumbers,
+      db,
+      {
+        allowCorrection: options?.allowCorrection ?? false,
+        resultSource: res.source,
+        resultFetchedAt: res.fetchedAt,
+        resultConfirmed: true,
+        resultConfirmedBy: "SISTEMA_AUTONOMO_CAIXA",
+        resultConfirmedAt: new Date().toISOString(),
+        confirmedVariablePrizes,
+      }
+    );
+
+    resolveOp!(updated);
+    return {
+      record: updated,
+      alreadyScored: false,
+      message: `Concurso #${contestNumber} conferido e homologado com sucesso!`,
+    };
+  } catch (err) {
+    rejectOp!(err);
+    throw err;
+  } finally {
+    inFlightScoringOperations.delete(contestNumber);
+  }
+}
+
 /**
  * Apuração 100% Automática de Concursos C5 Pendentes (FROZEN -> COMPLETED)
- * 1. Identifica concursos com jogos congelados pendentes de apuração.
- * 2. Consulta a API oficial da Caixa.
- * 3. Valida as 15 dezenas e integridade dos dados.
- * 4. Calcula acertos, custos, prêmios e ROI sem exigir confirmação manual.
+ * 1. Identifica concursos com jogos congelados pendentes de apuração (ou o concurso selecionado).
+ * 2. Bloqueia qualquer concurso já COMPLETED/HOMOLOGATED sem tocar na API.
+ * 3. Consulta a API oficial da Caixa para concursos FROZEN.
+ * 4. Valida as 15 dezenas e integridade dos dados.
+ * 5. Calcula acertos, custos, prêmios e ROI sem exigir confirmação manual.
  */
-export async function autoScorePendingContestsUI(): Promise<AutoScoreResultDTO> {
-  const db = await openAppDB();
+export async function autoScorePendingContestsUI(
+  targetContestNumber?: number,
+  customFetch?: typeof fetch
+): Promise<AutoScoreResultDTO> {
   const all = await getAllContestRecordsUI();
-  const pending = all.filter(c => c.status === "FROZEN" && !c.isDemo && !c.isFixture);
 
+  // Se um concurso específico for solicitado
+  if (targetContestNumber !== undefined && targetContestNumber > 0) {
+    const target = all.find(c => c.contestNumber === targetContestNumber);
+    if (!target) {
+      return {
+        processed: 0,
+        scored: 0,
+        pending: 0,
+        errors: [{ contestNumber: targetContestNumber, reason: "Concurso não encontrado no banco." }],
+        updatedRecords: [],
+      };
+    }
+
+    // Se já estiver COMPLETED/HOMOLOGATED: bloqueia imediatamente sem consulta à API
+    if (target.status === "COMPLETED") {
+      return {
+        processed: 1,
+        scored: 0,
+        pending: 0,
+        errors: [],
+        updatedRecords: [target],
+      };
+    }
+
+    try {
+      const res = await fetchAndScoreOfficialContestUI(targetContestNumber, { customFetch });
+      return {
+        processed: 1,
+        scored: res.alreadyScored ? 0 : 1,
+        pending: 0,
+        errors: [],
+        updatedRecords: [res.record],
+      };
+    } catch (err: any) {
+      return {
+        processed: 1,
+        scored: 0,
+        pending: 1,
+        errors: [{ contestNumber: targetContestNumber, reason: err.message || "Erro na consulta automática da Caixa." }],
+        updatedRecords: [],
+      };
+    }
+  }
+
+  // Processamento padrão: todos os concursos FROZEN
+  const pending = all.filter(c => c.status === "FROZEN" && !c.isDemo && !c.isFixture);
   const updatedRecords: ContestRecord[] = [];
   const errors: Array<{ contestNumber: number; reason: string }> = [];
   let scoredCount = 0;
 
   for (const rec of pending) {
     try {
-      const res = await fetchOfficialLotofacilResult(rec.contestNumber);
-
-      // Prepara comprovantes de rateio variável oficial caso haja acertos de 14 ou 15
-      const confirmedVariablePrizes: Record<number, any> = {};
-      if (Array.isArray(res.rateioList)) {
-        for (const item of res.rateioList) {
-          const faixa = Number(item.faixa);
-          const rawVal = item.valorPremio ?? item.premio;
-          const valorPremio = typeof rawVal === "number" ? rawVal : parseFloat(String(rawVal || 0));
-          if (faixa === 1 && valorPremio > 0) {
-            confirmedVariablePrizes[15] = {
-              contestNumber: rec.contestNumber,
-              tier: 15,
-              unitValue: valorPremio,
-              confirmationSource: "MANUAL_ENTRY",
-              confirmedAt: new Date().toISOString(),
-              operatorId: "SISTEMA_AUTONOMO_CAIXA",
-              notes: "Rateio oficial de 15 acertos apurado automaticamente da Caixa Econômica Federal",
-            };
-          } else if (faixa === 2 && valorPremio > 0) {
-            confirmedVariablePrizes[14] = {
-              contestNumber: rec.contestNumber,
-              tier: 14,
-              unitValue: valorPremio,
-              confirmationSource: "MANUAL_ENTRY",
-              confirmedAt: new Date().toISOString(),
-              operatorId: "SISTEMA_AUTONOMO_CAIXA",
-              notes: "Rateio oficial de 14 acertos apurado automaticamente da Caixa Econômica Federal",
-            };
-          }
-        }
+      const res = await fetchAndScoreOfficialContestUI(rec.contestNumber, { customFetch });
+      if (!res.alreadyScored) {
+        scoredCount++;
       }
-
-      const updated = await scoreContestOperation210(
-        rec.contestNumber,
-        res.drawnNumbers,
-        db,
-        {
-          allowCorrection: false,
-          resultSource: res.source,
-          resultFetchedAt: res.fetchedAt,
-          resultConfirmed: true,
-          resultConfirmedBy: "SISTEMA_AUTONOMO_CAIXA",
-          resultConfirmedAt: new Date().toISOString(),
-          confirmedVariablePrizes,
-        }
-      );
-
-      updatedRecords.push(updated);
-      scoredCount++;
+      updatedRecords.push(res.record);
     } catch (err: any) {
       errors.push({
         contestNumber: rec.contestNumber,

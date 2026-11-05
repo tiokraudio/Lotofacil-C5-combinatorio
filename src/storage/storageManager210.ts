@@ -1104,8 +1104,8 @@ export async function scoreContestAtomic210(
       }
 
       if (record.status === "COMPLETED" && !options?.allowCorrection) {
-        tx.abort();
-        reject(new Error("CONTEST_ALREADY_COMPLETED"));
+        // Idempotência estrita: se o concurso já estiver COMPLETED, retorna o registro persistido intacto sem novas gravações
+        updatedRecord = record;
         return;
       }
 

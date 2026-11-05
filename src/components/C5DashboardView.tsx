@@ -158,7 +158,7 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
               Painel Operacional & Desempenho
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-              Acompanhamento de desempenho real das apostas C5 observadas. Camada pura de leitura e agregação retrospectiva sem retroalimentação de geração.
+              Acompanhamento de desempenho real das apostas C5-Memory.
             </p>
           </div>
 
@@ -183,7 +183,7 @@ export const C5DashboardView: React.FC<C5DashboardViewProps> = ({
             </div>
             <h3 className="text-base font-bold text-slate-100">Nenhum concurso registrado ainda</h3>
             <p className="text-xs text-slate-400">
-              O banco de dados operacional está pronto e limpo. Gere o primeiro conjunto combinatório C5 para o concurso ativo ou importe registros anteriores.
+              O banco de dados operacional está pronto e limpo. Gere o primeiro conjunto combinatório C5.
             </p>
             <div className="pt-2">
               <button

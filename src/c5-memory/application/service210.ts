@@ -323,6 +323,12 @@ export async function scoreContestOperation210(
   db: IDBDatabase,
   options?: ScoreContestOptions
 ): Promise<ContestRecord> {
+  // Verificação de idempotência no serviço: se o concurso já estiver COMPLETED no banco,
+  // retorna imediatamente o registro persistido sem recalcular ou reescrever dados homologados.
+  const existing = await getContestFromStore(db, contestNumber);
+  if (existing && existing.status === "COMPLETED" && !options?.allowCorrection) {
+    return existing;
+  }
   return scoreContestAtomic210(db, contestNumber, officialResult, options);
 }
 
