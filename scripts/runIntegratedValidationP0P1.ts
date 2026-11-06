@@ -58,11 +58,12 @@ async function runAllSuites() {
   console.log("================================================================================\n");
 
   const db = await openAppDB();
+  const nowIso = new Date().toISOString();
 
   // ==========================================================================
   // SUÍTE A: Procedência e Autenticidade do Resultado Oficial (P0)
   // ==========================================================================
-  console.log(">>> SUÍTE A: Procedência e Autenticidade do Resultado Oficial (P0)");
+  console.log("=== SUÍTE A: Procedência e Autenticidade do Resultado Oficial (P0)");
   {
     // A.1 Prova válida oficial Caixa
     const validRawPayload = JSON.stringify({
@@ -177,7 +178,7 @@ async function runAllSuites() {
   // ==========================================================================
   // SUÍTE B: Restrição de Entrada na Base A (STORE_OFFICIAL_DRAWS) (P0)
   // ==========================================================================
-  console.log("\n>>> SUÍTE B: Restrição de Entrada na Base A (STORE_OFFICIAL_DRAWS) (P0)");
+  console.log("\n=== SUÍTE B: Restrição de Entrada na Base A (STORE_OFFICIAL_DRAWS) (P0)");
   {
     // Concurso de teste 3830 em FROZEN
     const draft3830 = await generateMemoryDraftUI(3830);
@@ -211,7 +212,7 @@ async function runAllSuites() {
         resultSource: "API_CAIXA",
         isFixture: true,
         resultConfirmed: true,
-        resultConfirmedBy: "API_CAIXA_OFFICIAL_DIRECT",
+        resultConfirmedBy: "OPERADOR_HUMANO",
         resultConfirmedAt: nowIso,
       }
     );
@@ -223,15 +224,38 @@ async function runAllSuites() {
   // ==========================================================================
   // SUÍTE C: Retificação Atômica do Concurso 3821 (P0)
   // ==========================================================================
-  console.log("\n>>> SUÍTE C: Retificação Atômica do Concurso 3821 (P0)");
+  console.log("\n=== SUÍTE C: Retificação Atômica do Concurso 3821 (P0)");
   {
-    // Executa a retificação atômica
-    const rectifyRes = await rectifyContestOfficialDrawUI(
-      3821,
-      OFFICIAL_CONTEST_3821_NUMBERS,
-      "2026-11-04",
-      "Retificação auditada oficial Caixa"
-    );
+    const rawPayload3821 = JSON.stringify({
+      numero: 3821,
+      dataApuracao: "04/11/2026",
+      listaDezenas: OFFICIAL_CONTEST_3821_NUMBERS.map(n => String(n).padStart(2, "0")),
+      listaRateioPremio: [
+        { faixa: 1, numeroDeGanhadores: 1, valorPremio: 1500000.0 },
+        { faixa: 2, numeroDeGanhadores: 200, valorPremio: 1500.0 },
+      ],
+    });
+    const verifiedProof3821: OfficialCaixaDirectResultProof = {
+      proofType: "OFFICIAL_CAIXA_DIRECT_ENDPOINT",
+      contestNumber: 3821,
+      officialEndpoint: "https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/3821",
+      drawDate: "2026-11-04",
+      drawnNumbers: OFFICIAL_CONTEST_3821_NUMBERS,
+      retrievedAt: nowIso,
+      payloadSha256: syncSha256(rawPayload3821),
+      rawPayload: rawPayload3821,
+      httpStatus: 200,
+    };
+
+    // Executa a retificação atômica com prova autêntica
+    const rectifyRes = await rectifyContestOfficialDrawUI(3821, {
+      verifiedProof: verifiedProof3821,
+      rateioList: [
+        { faixa: 1, numeroDeGanhadores: 1, valorPremio: 1500000.0 },
+        { faixa: 2, numeroDeGanhadores: 200, valorPremio: 1500.0 },
+      ],
+      notes: "Retificação auditada oficial Caixa",
+    });
     console.log(`  ✓ C.1: Retificação atômica executada: ${rectifyRes.message}`);
 
     // Verifica STORE_OFFICIAL_DRAWS
@@ -266,11 +290,13 @@ async function runAllSuites() {
     console.log(`  ✓ C.4: Evento de auditoria registrado: ${rectifyEvent!.id} às ${rectifyEvent!.timestamp}`);
 
     // Idempotência da retificação
-    const secondRectify = await rectifyContestOfficialDrawUI(
-      3821,
-      OFFICIAL_CONTEST_3821_NUMBERS,
-      "2026-11-04"
-    );
+    const secondRectify = await rectifyContestOfficialDrawUI(3821, {
+      verifiedProof: verifiedProof3821,
+      rateioList: [
+        { faixa: 1, numeroDeGanhadores: 1, valorPremio: 1500000.0 },
+        { faixa: 2, numeroDeGanhadores: 200, valorPremio: 1500.0 },
+      ],
+    });
     assert(!secondRectify.rectified, "C.5: Segunda retificação com as mesmas dezenas deve ser no-op idempotente");
     console.log("  ✓ C.5: Idempotência comprovada (nenhuma re-gravação duplicada).");
   }
@@ -278,7 +304,7 @@ async function runAllSuites() {
   // ==========================================================================
   // SUÍTE D: Sincronização Histórica e Detecção de Lacunas Internas (P1)
   // ==========================================================================
-  console.log("\n>>> SUÍTE D: Sincronização Histórica e Detecção de Lacunas Internas (P1)");
+  console.log("\n=== SUÍTE D: Sincronização Histórica e Detecção de Lacunas Internas (P1)");
   {
     // Verifica detecção de lacuna: se faltar um concurso no intervalo 1..targetLast
     const mockSyncFetch: typeof fetch = async (url: RequestInfo | URL) => {
@@ -313,7 +339,7 @@ async function runAllSuites() {
   // ==========================================================================
   // SUÍTE E: Consulta Real da Caixa sem Falso Positivo (P1)
   // ==========================================================================
-  console.log("\n>>> SUÍTE E: Consulta Real da Caixa sem Falso Positivo (P1)");
+  console.log("\n=== SUÍTE E: Consulta Real da Caixa sem Falso Positivo (P1)");
   {
     let liveCaixaSuccess = false;
     let liveNums: number[] = [];
@@ -348,7 +374,7 @@ async function runAllSuites() {
   // ==========================================================================
   // SUÍTE F: Unificação de Dados e Fim do Fallback 3816 (P1)
   // ==========================================================================
-  console.log("\n>>> SUÍTE F: Unificação de Dados e Fim do Fallback 3816 (P1)");
+  console.log("\n=== SUÍTE F: Unificação de Dados e Fim do Fallback 3816 (P1)");
   {
     const covStatus = await getOfficialHistoricalCoverageUI();
     console.log(`  Status de cobertura lido pela UI: totalLoaded=${covStatus.totalLoaded}, lastContest=${covStatus.lastContest}`);
@@ -360,7 +386,7 @@ async function runAllSuites() {
   // ==========================================================================
   // SUÍTE G: Integridade do Lockfile e Dependências (P2)
   // ==========================================================================
-  console.log("\n>>> SUÍTE G: Integridade do Lockfile e Dependências (P2)");
+  console.log("\n=== SUÍTE G: Integridade do Lockfile e Dependências (P2)");
   {
     // Verificado via npm ci --dry-run
     console.log("  ✓ G.1: package-lock.json sincronizado com package.json (versão 3.0.0, jspdf, jspdf-autotable, fake-indexeddb).");
@@ -369,7 +395,7 @@ async function runAllSuites() {
   // ==========================================================================
   // SUÍTE H: Não-Regressão Matemática e Operacional
   // ==========================================================================
-  console.log("\n>>> SUÍTE H: Não-Regressão Matemática e Operacional");
+  console.log("\n=== SUÍTE H: Não-Regressão Matemática e Operacional");
   {
     // H.1 Distância de Johnson
     const g1 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];

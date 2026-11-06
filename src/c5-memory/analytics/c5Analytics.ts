@@ -196,9 +196,9 @@ export function getAuthoritativeHits(record: ContestRecord): AuthoritativeHitsVa
         errorMessage: "Resultado de conferência manual não homologado: exige confirmação humana explícita (resultConfirmed === true), identificador do operador (resultConfirmedBy) e data/hora válida (resultConfirmedAt).",
       };
     }
-  } else if (record.resultConfirmed !== undefined) {
-    // Se resultConfirmed estiver assinalado em qualquer fonte (ex: true), exige que os metadados sejam íntegros
-    if (record.resultConfirmed === true && !isHumanConferenceValid(record)) {
+  } else if (record.resultSource !== "API_CAIXA" && record.resultConfirmed === true) {
+    // P0-06: Se resultConfirmed estiver assinalado em fontes não oficiais diretas, exige operador humano válido
+    if (!isHumanConferenceValid(record)) {
       return {
         valid: false,
         errorCode: "UNCONFIRMED_RESULT",
@@ -811,20 +811,68 @@ function createTierMetric(tier: number, count: number, totalScoredGames: number)
 }
 
 /**
- * Filtra exclusivamente registros canônicos C5-Memory (2.0.0 e 2.1.0),
- * isolando por padrão quaisquer dados de demonstração (isDemo === true).
+ * Estágios Canônicos do Ciclo de Vida do Concurso (Seção 3 — Unificar Painel e Histórico):
+ * 1. RECORDED: Concurso registrado/gerado com jogos válidos (AVAILABLE, PREVIEW, FROZEN).
+ * 2. RESULT_RECEIVED: Resultado oficial recebido (15 dezenas presentes).
+ * 3. RESULT_VALIDATED: Dezenas conferidas e acertos autoritativos válidos calculados.
+ * 4. HOMOLOGATED: Concurso COMPLETED com financialStatus HOMOLOGATED, sem rateio pendente e acertos válidos.
+ */
+export type ContestLifecycleStage =
+  | "RECORDED"
+  | "RESULT_RECEIVED"
+  | "RESULT_VALIDATED"
+  | "HOMOLOGATED";
+
+export function getContestLifecycleStage(record: ContestRecord): ContestLifecycleStage {
+  if (
+    record.status === "COMPLETED" &&
+    record.financialStatus === "HOMOLOGATED" &&
+    record.hasPendingVariableRateio !== true &&
+    getAuthoritativeHits(record).valid
+  ) {
+    return "HOMOLOGATED";
+  }
+  if (
+    record.status === "COMPLETED" &&
+    Array.isArray(record.officialResult) &&
+    record.officialResult.length === 15 &&
+    getAuthoritativeHits(record).valid
+  ) {
+    return "RESULT_VALIDATED";
+  }
+  if (
+    Array.isArray(record.officialResult) &&
+    record.officialResult.length === 15
+  ) {
+    return "RESULT_RECEIVED";
+  }
+  return "RECORDED";
+}
+
+/**
+ * Retorna o último concurso homologado de forma unificada para todas as views
+ */
+export function getLatestHomologatedContest(
+  records: readonly ContestRecord[]
+): ContestRecord | undefined {
+  const homologated = records
+    .filter(r => !isRecordFixture(r) && getContestLifecycleStage(r) === "HOMOLOGATED")
+    .sort((a, b) => a.contestNumber - b.contestNumber);
+  return homologated.length > 0 ? homologated[homologated.length - 1] : undefined;
+}
+
+/**
+ * Filtra registros operacionais canônicos, preservando registros históricos de todas as versões
+ * sem exclusão silenciosa e isolando por padrão quaisquer dados de demonstração (isDemo === true).
  */
 export function filterC5MemoryRecords(
   records: readonly ContestRecord[],
   includeDemo = false
 ): ContestRecord[] {
   return records.filter(r => {
+    if (!r || typeof r.contestNumber !== "number" || r.contestNumber <= 0) return false;
     if (!includeDemo && isRecordFixture(r)) return false;
-    return (
-      (r.algorithmVersion as string) === "C5-Memory-2.0.0" ||
-      (r.algorithmVersion as string) === "C5-Memory-2.1.0" ||
-      (r.algorithmVersion as string) === "C5-Memory-3.0"
-    );
+    return true;
   });
 }
 

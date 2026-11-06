@@ -99,11 +99,17 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
   const loadSelectedContest = async (cNum: number) => {
     setErrorMsg(null);
     try {
+      const allRecords = await getAllContestRecordsUI();
+      const existing = allRecords.find(r => r.contestNumber === cNum);
+      if (existing) {
+        setCurrentRecord(existing);
+        return;
+      }
       const state = await getMemoryOperationalStateUI(cNum);
       if (state.status !== "AVAILABLE" || state.draft || state.frozenPayload) {
         const rec: ContestRecord = {
           contestNumber: state.contestNumber,
-          contestDate: new Date().toISOString().split("T")[0],
+          contestDate: (state as any).contestDate || "",
           status: state.status,
           algorithmVersion: state.algorithmVersion as any,
           games: state.games,

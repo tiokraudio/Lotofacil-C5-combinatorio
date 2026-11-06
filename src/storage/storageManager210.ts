@@ -689,7 +689,7 @@ export interface RateioConfirmationValidationResult {
   readonly validatedUnitValue?: number;
   readonly reason?: string;
   readonly error?: Error;
-  readonly confirmationSource?: "OFFICIAL_CAIXA" | "MANUAL_ENTRY";
+  readonly confirmationSource?: "OFFICIAL_CAIXA" | "OFFICIAL_CAIXA_AUTOMATIC" | "MANUAL_ENTRY";
   readonly verifiedProof?: OfficialCaixaProof;
   readonly operatorId?: string;
   readonly confirmedAt?: string;
@@ -808,6 +808,23 @@ function validateRateioConfirmationDirect(
   // 4. Verificação por Origem de Confirmação
   const source = conf.confirmationSource;
 
+  if (source === "OFFICIAL_CAIXA_AUTOMATIC") {
+    if (!conf.confirmedAt || !isValidIso8601Timestamp(conf.confirmedAt)) {
+      return {
+        valid: false,
+        reason: "OFFICIAL_CAIXA_INVALID_TIMESTAMP: Timestamp de apuração informado não é um ISO 8601 válido.",
+      };
+    }
+    return {
+      valid: true,
+      validatedUnitValue: unitVal,
+      confirmationSource: "OFFICIAL_CAIXA_AUTOMATIC",
+      confirmedAt: conf.confirmedAt,
+      operatorId: undefined,
+      notes: conf.notes ?? "Rateio oficial apurado diretamente da Caixa Econômica Federal",
+    };
+  }
+
   if (source === "OFFICIAL_CAIXA") {
     const proofDoc = conf.officialProof ?? conf.documentProof ?? conf.proof;
     if (!proofDoc) {
@@ -859,12 +876,12 @@ function validateRateioConfirmationDirect(
       return {
         valid: true,
         validatedUnitValue: verifiedProof.unitValue,
-        confirmationSource: "OFFICIAL_CAIXA",
+        confirmationSource: source === "OFFICIAL_CAIXA_AUTOMATIC" ? "OFFICIAL_CAIXA_AUTOMATIC" : "OFFICIAL_CAIXA",
         verifiedProof,
         confirmedAt: conf.confirmedAt,
         officialPublishedAt,
         proofRetrievedAt,
-        operatorId: conf.operatorId ?? conf.confirmedBy,
+        operatorId: source === "OFFICIAL_CAIXA_AUTOMATIC" ? undefined : (conf.operatorId ?? conf.confirmedBy),
         notes: conf.notes ?? "Rateio oficial homologado com evidência documental auditável da Caixa",
       };
     } catch (err: any) {
@@ -890,6 +907,12 @@ function validateRateioConfirmationDirect(
       return {
         valid: false,
         reason: "MANUAL_ENTRY_MISSING_OPERATOR: Entrada manual exige operador responsável identificado (operatorId ou confirmedBy).",
+      };
+    }
+    if (operator.trim() === "API_CAIXA_OFFICIAL_DIRECT" || operator.trim() === "SISTEMA_AUTONOMO_CAIXA") {
+      return {
+        valid: false,
+        reason: `MANUAL_ENTRY_INVALID_OPERATOR: Identificador '${operator}' é uma constante de sistema e não pode ser utilizado como operador humano em MANUAL_ENTRY.`,
       };
     }
 
@@ -1159,6 +1182,16 @@ export async function scoreContestAtomic210(
 
       const isCurrentConfirmationValid = hasExplicitConfirmedFlag && hasValidOperator && hasValidTimestamp;
 
+      // P0-06: Separação estrita entre homologação automática direta da Caixa e confirmação humana
+      const isAutomaticOfficialCaixa =
+        effectiveResultSource === "API_CAIXA" &&
+        options?.resultProof !== undefined &&
+        validateOfficialCaixaDirectProof(
+          options.resultProof,
+          contestNumber,
+          canonicalOfficialResult
+        ).valid;
+
       // Validação estrita da confirmação humana ANTES de qualquer homologação ou persistência financeira
       if (isThirdParty) {
         if (options?.resultConfirmed !== true) {
@@ -1167,9 +1200,9 @@ export async function scoreContestAtomic210(
           return;
         }
 
-        if (!hasValidOperator) {
+        if (!hasValidOperator || options?.resultConfirmedBy === "API_CAIXA_OFFICIAL_DIRECT" || options?.resultConfirmedBy === "SISTEMA_AUTONOMO_CAIXA") {
           tx.abort();
-          reject(new Error("UNCONFIRMED_THIRD_PARTY_RESULT: Identificador do operador (resultConfirmedBy) é obrigatório para confirmar resultado de terceiros."));
+          reject(new Error("UNCONFIRMED_THIRD_PARTY_RESULT: Identificador real do operador (resultConfirmedBy) é obrigatório para confirmar resultado de terceiros (rejeitada constante de sistema)."));
           return;
         }
 
@@ -1180,9 +1213,9 @@ export async function scoreContestAtomic210(
         }
       } else if (isManual) {
         if (options?.resultConfirmed === true) {
-          if (!hasValidOperator) {
+          if (!hasValidOperator || options?.resultConfirmedBy === "API_CAIXA_OFFICIAL_DIRECT" || options?.resultConfirmedBy === "SISTEMA_AUTONOMO_CAIXA") {
             tx.abort();
-            reject(new Error("MANUAL_CONFERENCE_MISSING_OPERATOR: resultConfirmed === true exige identificador do operador (resultConfirmedBy)."));
+            reject(new Error("MANUAL_CONFERENCE_MISSING_OPERATOR: resultConfirmed === true exige identificador real do operador (resultConfirmedBy)."));
             return;
           }
           if (!hasValidTimestamp) {
@@ -1191,10 +1224,10 @@ export async function scoreContestAtomic210(
             return;
           }
         }
-      } else if (options?.resultConfirmed === true) {
-        if (!hasValidOperator) {
+      } else if (!isAutomaticOfficialCaixa && options?.resultConfirmed === true) {
+        if (!hasValidOperator || options?.resultConfirmedBy === "API_CAIXA_OFFICIAL_DIRECT" || options?.resultConfirmedBy === "SISTEMA_AUTONOMO_CAIXA") {
           tx.abort();
-          reject(new Error("UNCONFIRMED_RESULT: resultConfirmed === true exige identificador do operador (resultConfirmedBy)."));
+          reject(new Error("UNCONFIRMED_RESULT: resultConfirmed === true exige identificador real do operador (resultConfirmedBy)."));
           return;
         }
         if (!hasValidTimestamp) {
@@ -1239,7 +1272,7 @@ export async function scoreContestAtomic210(
               isOfficialCaixaProof: false,
               notes: "Registro de fixture/demonstração bloqueado para homologação financeira em produção.",
             };
-          } else if (!isCurrentConfirmationValid) {
+          } else if (!isCurrentConfirmationValid && !isAutomaticOfficialCaixa) {
             // Resultado provisório (PENDING_HOMOLOGATION): prêmios fixos e variáveis aguardam conferência humana
             if (h >= 14) {
               hasPendingVariableRateio = true;
@@ -1296,7 +1329,9 @@ export async function scoreContestAtomic210(
                 const unitVal = validation.validatedUnitValue!;
                 const tot = count * unitVal;
                 totalPrize += tot;
-                const isOfficial = validation.confirmationSource === "OFFICIAL_CAIXA";
+                const isOfficial =
+                  validation.confirmationSource === "OFFICIAL_CAIXA" ||
+                  validation.confirmationSource === "OFFICIAL_CAIXA_AUTOMATIC";
                 if (isOfficial) {
                   officialConfirmedPrize += tot;
                   officialValidatedPrize += tot;
@@ -1386,15 +1421,26 @@ export async function scoreContestAtomic210(
       // Preserva custo histórico registrado; se ausente, obtém custo padrão da época
       const totalCost = record.totalCost ?? getContestStandardCost(record.contestNumber, record.contestDate);
 
-      // P0-1: Não aceita record.resultConfirmed antigo como substituto silencioso da confirmação na operação atual
-      const finalResultConfirmed = isCurrentConfirmationValid;
-      const finalResultConfirmedBy = isCurrentConfirmationValid ? options!.resultConfirmedBy!.trim() : undefined;
-      const finalResultConfirmedAt = isCurrentConfirmationValid ? options!.resultConfirmedAt! : undefined;
+      // P0-06: Separação estrita entre homologação automática direta da Caixa e confirmação humana
+      const finalResultConfirmed = isAutomaticOfficialCaixa || isCurrentConfirmationValid;
+      const finalResultConfirmedBy = isCurrentConfirmationValid
+        ? options!.resultConfirmedBy!.trim()
+        : undefined; // P0-06: Nunca simular operador humano para confirmação automática
+      const finalResultConfirmedAt = isAutomaticOfficialCaixa
+        ? (options?.resultProof?.retrievedAt ?? options?.resultFetchedAt ?? new Date().toISOString())
+        : (isCurrentConfirmationValid ? options!.resultConfirmedAt! : undefined);
 
-      // P0 (Sétima Rodada): Bloqueio de homologação financeira para fixtures
-      // resultConfirmed: true, operador e timestamp NUNCA transformam fixture em concurso homologado!
+      // P0-05: Não homologar rateios variáveis sem comprovação!
+      // Se houver pendência de rateio variável (14 ou 15 acertos sem comprovação),
+      // o status financeiro permanece PENDING_HOMOLOGATION.
+      const isRateioFullyProven = !hasPendingVariableRateio;
+      const isHomologationAuthorized =
+        !isFixture &&
+        isRateioFullyProven &&
+        (isAutomaticOfficialCaixa || isCurrentConfirmationValid);
+
       const finalFinancialStatus: ContestFinancialStatus =
-        !isFixture && isCurrentConfirmationValid ? "HOMOLOGATED" : "PENDING_HOMOLOGATION";
+        isHomologationAuthorized ? "HOMOLOGATED" : "PENDING_HOMOLOGATION";
 
       // P0.2: Regra canônica única para hasPendingVariableRateio
       // Fixtures NUNCA persistem hasPendingVariableRateio: true.
@@ -1403,9 +1449,9 @@ export async function scoreContestAtomic210(
         !isFixture && Boolean(hasPendingVariableRateio);
 
       const finalHasProvisionalVariableRateio =
-        !isFixture && !isCurrentConfirmationValid && Boolean(hasProvisionalVariableRateio);
+        !isFixture && !isHomologationAuthorized && Boolean(hasProvisionalVariableRateio);
 
-      const isRecordScoredAndHomologated = !isFixture && isCurrentConfirmationValid;
+      const isRecordScoredAndHomologated = !isFixture && isHomologationAuthorized;
       const finalTotalPrize = isRecordScoredAndHomologated ? totalPrize : 0.00;
       const finalOfficialConfirmedPrize = isRecordScoredAndHomologated ? officialConfirmedPrize : 0.00;
       const finalManualConfirmedPrize = isRecordScoredAndHomologated ? manualConfirmedPrize : 0.00;
@@ -1505,13 +1551,14 @@ export async function scoreContestAtomic210(
         );
 
         if (isHomologatedCaixa && proofValidation.valid) {
+          const validProof = proofToSave as OfficialCaixaDirectResultProof;
           officialStore.put({
             contestNumber,
-            drawDate: record.contestDate || new Date().toISOString().split("T")[0],
+            drawDate: validProof.drawDate || record.contestDate,
             drawnNumbers: canonicalOfficialResult,
             source: effectiveResultSource,
-            retrievedAt: options?.resultFetchedAt ?? new Date().toISOString(),
-            resultProof: proofToSave as OfficialCaixaDirectResultProof,
+            retrievedAt: validProof.retrievedAt,
+            resultProof: validProof,
           });
         }
       }

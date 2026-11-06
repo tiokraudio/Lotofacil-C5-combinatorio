@@ -45,10 +45,11 @@ export type ContestStatus = "AVAILABLE" | "PREVIEW" | "FROZEN" | "COMPLETED";
 export type AlgorithmVersion = "C5-Memory-3.0" | "C5-Memory-2.1.0" | "C5-Memory-2.0.0" | "C5-1.0.0";
 
 export type RateioConfirmationSource =
+  | "OFFICIAL_CAIXA_AUTOMATIC"
+  | "OFFICIAL_CAIXA"
   | "MANUAL_ENTRY"
   | "OFFICIAL_SOURCE_RETRIEVED_UNVERIFIED"
   | "API_TERCEIROS"
-  | "OFFICIAL_CAIXA"
   | "MANUAL_CONFERENCE";
 
 export type ResultSource =
@@ -125,15 +126,50 @@ export interface ContestRecord {
   readonly updatedAt: string;
 }
 
+/**
+ * Prova Criptográfica de Procedência Direta da Caixa Econômica Federal.
+ * 
+ * NOTA DE AUDITORIA CRIPTOGRÁFICA:
+ * O hash SHA-256 (payloadSha256) atesta estritamente a integridade física dos bytes/caracteres
+ * do payload bruto (rawPayload) recebido pela aplicação e impede adulteração local de dados.
+ * O hash NÃO constitui assinatura digital ICP-Brasil da Caixa Econômica Federal.
+ */
 export interface OfficialCaixaDirectResultProof {
   readonly proofType: "OFFICIAL_CAIXA_DIRECT_ENDPOINT";
   readonly contestNumber: number;
   readonly officialEndpoint: string;
-  readonly drawDate: string;
-  readonly drawnNumbers: readonly number[];
-  readonly retrievedAt: string;
-  readonly payloadSha256: string;
-  readonly rawPayload?: string;
+  readonly httpStatus?: number; // Sucesso HTTP (estritamente 200)
+  readonly drawDate: string; // Data ISO YYYY-MM-DD
+  readonly drawnNumbers: readonly number[]; // 15 dezenas 1..25 ordenadas
+  readonly retrievedAt: string; // Timestamp ISO 8601 da captura
+  readonly payloadSha256: string; // 64 caracteres hexadecimais minúsculos
+  readonly rawPayload: string; // Payload bruto original obrigatório e não vazio
+}
+
+/**
+ * Validação e normalização de datas da Lotofácil (DD/MM/YYYY ou YYYY-MM-DD)
+ */
+export function parseOfficialCaixaDate(rawDate: unknown): string | null {
+  if (typeof rawDate !== "string") return null;
+  const trimmed = rawDate.trim();
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+    const [d, m, y] = trimmed.split("/").map(Number);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 2003 && y <= 2100) {
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      if (dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d) {
+        return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      }
+    }
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [y, m, d] = trimmed.split("-").map(Number);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 2003 && y <= 2100) {
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      if (dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d) {
+        return trimmed;
+      }
+    }
+  }
+  return null;
 }
 
 export function validateOfficialCaixaDirectProof(
@@ -154,6 +190,23 @@ export function validateOfficialCaixaDirectProof(
     };
   }
 
+  // 1. P0-02: Código HTTP de sucesso obrigatório
+  if (p.httpStatus !== undefined && p.httpStatus !== 200) {
+    return {
+      valid: false,
+      reason: `UNSUCCESSFUL_HTTP_STATUS: Código HTTP inválido no comprovante: esperado 200 (recebido: ${p.httpStatus}).`,
+    };
+  }
+
+  // 2. P0-02: Payload bruto original é ESTRITAMENTE OBRIGATÓRIO e NÃO VAZIO
+  if (typeof p.rawPayload !== "string" || p.rawPayload.trim().length === 0) {
+    return {
+      valid: false,
+      reason: "EMPTY_RAW_PAYLOAD: Payload bruto original da resposta oficial é obrigatório e não pode ser vazio.",
+    };
+  }
+
+  // 3. Validação do número do concurso declarado
   if (typeof p.contestNumber !== "number" || !Number.isInteger(p.contestNumber) || p.contestNumber <= 0) {
     return { valid: false, reason: `Número de concurso inválido no comprovante: ${String(p.contestNumber)}.` };
   }
@@ -165,6 +218,7 @@ export function validateOfficialCaixaDirectProof(
     };
   }
 
+  // 4. Validação da URL do endpoint oficial
   if (typeof p.officialEndpoint !== "string" || p.officialEndpoint.trim().length === 0) {
     return { valid: false, reason: "URL do endpoint oficial ausente ou vazia no comprovante." };
   }
@@ -198,10 +252,12 @@ export function validateOfficialCaixaDirectProof(
     return { valid: false, reason: `O hostname '${rawHostname}' não pertence ao domínio oficial *.caixa.gov.br.` };
   }
 
+  // 5. Validação de data do sorteio
   if (typeof p.drawDate !== "string" || p.drawDate.trim().length === 0) {
     return { valid: false, reason: "Data do sorteio ausente ou vazia no comprovante." };
   }
 
+  // 6. Validação das 15 dezenas no comprovante
   if (!Array.isArray(p.drawnNumbers) || p.drawnNumbers.length !== 15) {
     return {
       valid: false,
@@ -234,10 +290,12 @@ export function validateOfficialCaixaDirectProof(
     }
   }
 
+  // 7. Validação do timestamp de captura
   if (!isValidIso8601Timestamp(p.retrievedAt)) {
     return { valid: false, reason: `Data/hora de captura inválida no comprovante: ${String(p.retrievedAt)}.` };
   }
 
+  // 8. Validação do formato do SHA-256 declarado
   if (typeof p.payloadSha256 !== "string" || !/^[0-9a-f]{64}$/.test(p.payloadSha256)) {
     return {
       valid: false,
@@ -247,14 +305,77 @@ export function validateOfficialCaixaDirectProof(
     };
   }
 
-  if (typeof p.rawPayload === "string" && p.rawPayload.length > 0) {
-    const computed = syncSha256(p.rawPayload);
-    if (computed !== p.payloadSha256) {
-      return {
-        valid: false,
-        reason: `Divergência de hash SHA-256 entre payload bruto (${computed}) e payloadSha256 declarado (${p.payloadSha256}).`,
-      };
-    }
+  // 9. Recálculo obrigatório do SHA-256 a partir do rawPayload
+  const computedSha = syncSha256(p.rawPayload);
+  if (computedSha !== p.payloadSha256) {
+    return {
+      valid: false,
+      reason: `Divergência de hash SHA-256 entre payload bruto (${computedSha}) e payloadSha256 declarado (${p.payloadSha256}).`,
+    };
+  }
+
+  // 10. Validação semântica do conteúdo interno do rawPayload (parse JSON)
+  let parsedJson: any;
+  try {
+    parsedJson = JSON.parse(p.rawPayload);
+  } catch {
+    return {
+      valid: false,
+      reason: "O payload bruto não é um JSON válido.",
+    };
+  }
+
+  // 10a. Concurso no payload
+  const rawContest = Number(parsedJson.numero ?? parsedJson.concurso);
+  if (!Number.isInteger(rawContest) || rawContest !== p.contestNumber) {
+    return {
+      valid: false,
+      reason: `Número do concurso extraído do payload bruto (#${rawContest}) diverge do comprovante (#${p.contestNumber}).`,
+    };
+  }
+
+  // 10b. Data no payload
+  const rawDateStr = parsedJson.dataApuracao ?? parsedJson.data;
+  const parsedDrawDate = parseOfficialCaixaDate(rawDateStr);
+  if (!parsedDrawDate) {
+    return {
+      valid: false,
+      reason: `Data oficial extraída do payload bruto ('${rawDateStr}') é inválida ou ausente.`,
+    };
+  }
+  const declaredNormalizedDate = parseOfficialCaixaDate(p.drawDate) ?? p.drawDate;
+  if (parsedDrawDate !== declaredNormalizedDate) {
+    return {
+      valid: false,
+      reason: `Data extraída do payload bruto ('${parsedDrawDate}') diverge da data declarada no comprovante ('${p.drawDate}').`,
+    };
+  }
+
+  // 10c. Dezenas no payload
+  const rawDezenas = parsedJson.listaDezenas ?? parsedJson.dezenasSorteadasOrdemSorteio ?? parsedJson.dezenas;
+  if (!Array.isArray(rawDezenas) || rawDezenas.length !== 15) {
+    return {
+      valid: false,
+      reason: "Payload bruto não contém o array regulamentar de 15 dezenas oficiais.",
+    };
+  }
+  const payloadDrawn = rawDezenas
+    .map((n: any) => Number(n))
+    .filter((n: number) => Number.isInteger(n) && n >= 1 && n <= 25)
+    .sort((a: number, b: number) => a - b);
+  if (payloadDrawn.length !== 15 || new Set(payloadDrawn).size !== 15) {
+    return {
+      valid: false,
+      reason: "Dezenas extraídas do payload bruto contêm números repetidos ou fora do intervalo [1, 25].",
+    };
+  }
+
+  const proofDrawn = [...p.drawnNumbers].sort((a, b) => a - b);
+  if (payloadDrawn.some((n, idx) => n !== proofDrawn[idx])) {
+    return {
+      valid: false,
+      reason: `Dezenas extraídas do payload bruto (${payloadDrawn.join(", ")}) diferem das dezenas no comprovante (${proofDrawn.join(", ")}).`,
+    };
   }
 
   return { valid: true };
