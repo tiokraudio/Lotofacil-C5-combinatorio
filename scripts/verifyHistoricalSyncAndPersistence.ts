@@ -129,10 +129,27 @@ async function runCriticalValidation() {
     } catch {}
   }
 
-  // Dezenas validadas da Caixa
-  const rawCaixaNums = caixaApiResponse?.listaDezenas || caixaApiResponse?.dezenas || CONTEST_3821_CORRECT_NUMBERS;
+  if (!caixaApiResponse) {
+    throw new Error(
+      "TESTE 1 FALHOU: Falha legítima de rede — não foi possível obter resposta real dos servidores da Caixa nem de espelho verificado. Proibido fallback para constante."
+    );
+  }
+
+  const rawCaixaNums =
+    caixaApiResponse.listaDezenas ||
+    caixaApiResponse.dezenasSorteadasOrdemSorteio ||
+    caixaApiResponse.dezenas;
+
+  if (!Array.isArray(rawCaixaNums) || rawCaixaNums.length !== 15) {
+    throw new Error(
+      `TESTE 1 FALHOU: Resposta da Caixa não contém as 15 dezenas regulamentares (recebido: ${JSON.stringify(
+        rawCaixaNums
+      )}).`
+    );
+  }
+
   const caixaNumbers = rawCaixaNums.map((n: any) => Number(n)).sort((a: number, b: number) => a - b);
-  const caixaDate = caixaApiResponse?.dataApuracao || caixaApiResponse?.data || CONTEST_3821_DATE;
+  const caixaDate = caixaApiResponse.dataApuracao || caixaApiResponse.data || CONTEST_3821_DATE;
 
   console.log(`Concurso retornado pela Caixa: #${caixaApiResponse?.numero || caixaApiResponse?.concurso || 3821}`);
   console.log(`Data de apuração oficial Caixa: ${caixaDate}`);
@@ -240,8 +257,8 @@ async function runCriticalValidation() {
   const covReopened = getOfficialDrawsCoverageStatus();
   console.log(`Cobertura após reabertura: ${covReopened.totalLoaded} concursos (último: #${covReopened.lastContest})`);
 
-  if (covReopened.totalLoaded !== 3821 || covReopened.lastContest !== 3821) {
-    throw new Error(`TESTE 4 FALHOU: Cobertura totalLoaded = ${covReopened.totalLoaded}, esperado 3821!`);
+  if (covReopened.totalLoaded < 3821 || !covReopened.lastContest || covReopened.lastContest < 3821) {
+    throw new Error(`TESTE 4 FALHOU: Cobertura totalLoaded = ${covReopened.totalLoaded}, esperado pelo menos 3821!`);
   }
   console.log("✓ TESTE 4 APROVADO: Dezenas oficiais corretas e cobertura total mantidas intactas após reabertura.");
 
@@ -300,8 +317,8 @@ async function runCriticalValidation() {
     isCompleteHistoricalCoverage: covUI.isCompleteHistoricalCoverage,
   });
 
-  if (covUI.totalLoaded !== 3821 || covUI.lastContest !== 3821) {
-    throw new Error(`TESTE 7 FALHOU: Gerador não reflete 3.821 concursos corrigidos!`);
+  if (covUI.totalLoaded < 3821 || !covUI.lastContest || covUI.lastContest < 3821) {
+    throw new Error(`TESTE 7 FALHOU: Gerador não reflete pelo menos 3.821 concursos corrigidos!`);
   }
 
   // Gera prévia do 3822
@@ -310,10 +327,10 @@ async function runCriticalValidation() {
   console.log(`Prévia 3822 gerada com sucesso! Pool Index: ${draft3822.poolIndex}`);
   console.log(`Jogos gerados: 5 jogos de 15 dezenas.`);
 
-  if (draft3822.officialCoverage?.totalLoaded !== 3821) {
-    throw new Error(`TESTE 7 FALHOU: Draft 3822 foi gerado sem a base oficial corrigida de 3821 concursos!`);
+  if (!draft3822.officialCoverage || draft3822.officialCoverage.totalLoaded < 3821) {
+    throw new Error(`TESTE 7 FALHOU: Draft 3822 foi gerado sem a base oficial corrigida de pelo menos 3821 concursos!`);
   }
-  console.log("✓ TESTE 7 APROVADO: Gerador 3822 opera sobre a base oficial corrigida (1 ao 3821).");
+  console.log(`✓ TESTE 7 APROVADO: Gerador 3822 opera sobre a base oficial corrigida (cobertura: ${draft3822.officialCoverage.totalLoaded} concursos).`);
 
   // --------------------------------------------------------------------------
   // TESTE 8: Confirmação de Preservação de Jogos Congelados e Integridade Financeira

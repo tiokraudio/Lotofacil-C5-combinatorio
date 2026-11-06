@@ -12,7 +12,13 @@
  * - Reconstrução do estado operacional a partir da fonte canônica ('contests')
  */
 
-import { ContestRecord, ContestStatus, C5Game } from "../types";
+import {
+  ContestRecord,
+  ContestStatus,
+  C5Game,
+  ContestFinancialStatus,
+  ResultSource,
+} from "../types";
 import {
   Draft210,
   FrozenMemoryPayload210,
@@ -59,6 +65,17 @@ export interface OperationalStateDTO210 {
   readonly gameHits?: readonly number[];
   readonly bestHits?: number;
   readonly bestHitsCount?: number;
+  readonly financialStatus?: ContestFinancialStatus;
+  readonly resultSource?: ResultSource;
+  readonly resultConfirmed?: boolean;
+  readonly resultConfirmedBy?: string;
+  readonly resultConfirmedAt?: string;
+  readonly resultProof?: any;
+  readonly totalCost?: number;
+  readonly totalPrize?: number;
+  readonly officialConfirmedPrize?: number;
+  readonly officialNetBalance?: number;
+  readonly officialRoiPercentage?: number;
 }
 
 export interface AuditDetailsDTO210 {
@@ -276,6 +293,17 @@ export async function getMemoryOperationalState210(
     gameHits: record?.gameHits,
     bestHits: record?.bestHits,
     bestHitsCount: record?.bestHitsCount,
+    financialStatus: record?.financialStatus,
+    resultSource: record?.resultSource,
+    resultConfirmed: record?.resultConfirmed,
+    resultConfirmedBy: record?.resultConfirmedBy,
+    resultConfirmedAt: record?.resultConfirmedAt,
+    resultProof: record?.resultProof,
+    totalCost: record?.totalCost,
+    totalPrize: record?.totalPrize,
+    officialConfirmedPrize: record?.officialConfirmedPrize,
+    officialNetBalance: record?.officialNetBalance,
+    officialRoiPercentage: record?.officialRoiPercentage,
   };
 }
 

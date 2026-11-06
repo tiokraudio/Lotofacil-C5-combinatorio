@@ -21,6 +21,8 @@ import {
   ContestFinancialStatus,
   ContestAuditEvent,
   isValidIso8601Timestamp,
+  OfficialCaixaDirectResultProof,
+  validateOfficialCaixaDirectProof,
 } from "../c5-memory/types";
 import { Draft210, FrozenMemoryPayload210, freezeDraft210, ALGORITHM_VERSION_2_1_0 } from "../c5-memory/engine210";
 import { Draft30, FrozenMemoryPayload30, ALGORITHM_VERSION_3_0_0, freezeDraft30 } from "../c5-memory/engine30";
@@ -954,6 +956,7 @@ export interface ScoreContestOptions {
   readonly confirmedVariablePrizes?: Record<number, ConfirmedVariablePrize>;
   readonly isFixture?: boolean;
   readonly isDemo?: boolean;
+  readonly resultProof?: OfficialCaixaDirectResultProof;
 }
 
 /**
@@ -1435,6 +1438,7 @@ export async function scoreContestAtomic210(
         resultConfirmed: finalResultConfirmed,
         resultConfirmedAt: finalResultConfirmedAt,
         resultConfirmedBy: finalResultConfirmedBy,
+        resultProof: options?.resultProof ?? record.resultProof,
         updatedAt: new Date().toISOString(),
         isDemo: Boolean(
           record.isDemo ||
@@ -1477,14 +1481,39 @@ export async function scoreContestAtomic210(
 
       contestStore.put(updatedRecord);
       auditStore.put(auditEvent);
+
+      // P0 — Restringir a entrada na Base A (STORE_OFFICIAL_DRAWS):
+      // Incorporar concursos apenas se TODOS os 7 critérios forem atendidos:
+      // 1. status === "COMPLETED" (garantido)
+      // 2. financialStatus === "HOMOLOGATED"
+      // 3. resultConfirmed === true
+      // 4. resultSource === "API_CAIXA"
+      // 5. valid resultProof (validateOfficialCaixaDirectProof)
+      // 6. 15 números válidos e distintos (garantido por canonicalOfficialResult)
+      // 7. !isFixture && !record.isDemo
       if (officialStore && !isFixture && !record.isDemo) {
-        officialStore.put({
+        const isHomologatedCaixa =
+          finalFinancialStatus === "HOMOLOGATED" &&
+          finalResultConfirmed === true &&
+          effectiveResultSource === "API_CAIXA";
+
+        const proofToSave = options?.resultProof ?? record.resultProof;
+        const proofValidation = validateOfficialCaixaDirectProof(
+          proofToSave,
           contestNumber,
-          drawDate: record.contestDate || new Date().toISOString().split("T")[0],
-          drawnNumbers: canonicalOfficialResult,
-          source: effectiveResultSource,
-          retrievedAt: options?.resultFetchedAt ?? new Date().toISOString(),
-        });
+          canonicalOfficialResult
+        );
+
+        if (isHomologatedCaixa && proofValidation.valid) {
+          officialStore.put({
+            contestNumber,
+            drawDate: record.contestDate || new Date().toISOString().split("T")[0],
+            drawnNumbers: canonicalOfficialResult,
+            source: effectiveResultSource,
+            retrievedAt: options?.resultFetchedAt ?? new Date().toISOString(),
+            resultProof: proofToSave as OfficialCaixaDirectResultProof,
+          });
+        }
       }
     };
   });

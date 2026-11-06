@@ -9,7 +9,16 @@
  * - Analytics como entrada de seleção
  */
 
-import { ContestRecord, MemoryHistory, C5Game } from "../types";
+import {
+  ContestRecord,
+  MemoryHistory,
+  C5Game,
+  OfficialCaixaDirectResultProof,
+  validateOfficialCaixaDirectProof,
+  ContestAuditEvent,
+} from "../types";
+import { calculateHits } from "../math";
+import { syncSha256 } from "../sha256";
 import {
   generateMemoryDraft210,
   confirmMemoryDraft210,
@@ -179,6 +188,7 @@ export interface OfficialLotofacilResultData {
   readonly fetchedAt: string;
   readonly isIntermediarySource: boolean;
   readonly sourceDescription: string;
+  readonly resultProof?: OfficialCaixaDirectResultProof;
 }
 
 /**
@@ -208,7 +218,8 @@ export async function fetchOfficialLotofacilResult(
         headers: { Accept: "application/json" },
       });
       if (res.ok) {
-        const data = await res.json();
+        const rawText = await res.text();
+        const data = JSON.parse(rawText);
         const returnedContest = Number(data.numero ?? data.concurso);
         if (returnedContest === contestNumber) {
           const rawNums = data.listaDezenas || data.dezenasSorteadasOrdemSorteio;
@@ -226,6 +237,18 @@ export async function fetchOfficialLotofacilResult(
                 isoDate = `${y}-${m}-${d}`;
               }
 
+              const payloadSha256 = syncSha256(rawText);
+              const directProof: OfficialCaixaDirectResultProof = {
+                proofType: "OFFICIAL_CAIXA_DIRECT_ENDPOINT",
+                contestNumber,
+                officialEndpoint: `https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/${contestNumber}`,
+                drawDate: isoDate,
+                drawnNumbers: nums,
+                retrievedAt: new Date().toISOString(),
+                payloadSha256,
+                rawPayload: rawText,
+              };
+
               const prizes: Record<number, number> = { 11: 7.0, 12: 14.0, 13: 35.0 };
               return {
                 contestNumber,
@@ -237,6 +260,7 @@ export async function fetchOfficialLotofacilResult(
                 fetchedAt: new Date().toISOString(),
                 isIntermediarySource: false,
                 sourceDescription: "Caixa Econômica Federal — Portal Oficial de Loterias (servicebus2.caixa.gov.br)",
+                resultProof: directProof,
               };
             }
           }
@@ -437,6 +461,7 @@ export async function fetchAndScoreOfficialContestUI(
     resolveOp = res;
     rejectOp = rej;
   });
+  opPromise.catch(() => {}); // Previne UnhandledPromiseRejection quando não houver chamadas concorrentes
   inFlightScoringOperations.set(contestNumber, opPromise);
 
   try {
@@ -446,6 +471,25 @@ export async function fetchAndScoreOfficialContestUI(
     // Validação estrita das dezenas e identificação do concurso
     if (!res || !Array.isArray(res.drawnNumbers) || res.drawnNumbers.length !== 15) {
       throw new Error(`Resultado inválido da Caixa para concurso #${contestNumber}: dezenas ausentes ou incompletas.`);
+    }
+
+    // P0 — Bloquear a Homologação Automática a Partir de Fontes Intermediárias/Espelhos
+    // A conferência automática aceita EXCLUSIVAMENTE chamadas diretas da API da Caixa com prova de procedência válida.
+    if (res.isIntermediarySource || res.source !== "API_CAIXA" || !res.resultProof) {
+      throw new Error(
+        `HOMOLOGACAO_AUTOMATICA_BLOQUEADA: O resultado do concurso #${contestNumber} provém de fonte intermediária/espelho (${res.sourceDescription}). Homologação automática e inclusão na Base A exigem consulta direta exclusiva à API da Caixa (servicebus2.caixa.gov.br) com comprovação de procedência. O concurso permanece pendente (FROZEN).`
+      );
+    }
+
+    const proofValidation = validateOfficialCaixaDirectProof(
+      res.resultProof,
+      contestNumber,
+      res.drawnNumbers
+    );
+    if (!proofValidation.valid) {
+      throw new Error(
+        `PROVA_PROCEDENCIA_INVALIDA: A prova de procedência da Caixa falhou na validação: ${proofValidation.reason}. O concurso permanece pendente (FROZEN).`
+      );
     }
 
     // 4. Rateio variável oficial se houver 14 ou 15 acertos
@@ -461,9 +505,9 @@ export async function fetchAndScoreOfficialContestUI(
             tier: 15,
             unitValue: valorPremio,
             confirmationSource: "MANUAL_ENTRY",
-            confirmedAt: new Date().toISOString(),
-            operatorId: "SISTEMA_AUTONOMO_CAIXA",
-            notes: "Rateio oficial de 15 acertos apurado automaticamente da Caixa Econômica Federal",
+            confirmedAt: res.resultProof.retrievedAt,
+            operatorId: "API_CAIXA_OFFICIAL_DIRECT",
+            notes: "Rateio oficial de 15 acertos apurado da Caixa Econômica Federal",
           };
         } else if (faixa === 2 && valorPremio > 0) {
           confirmedVariablePrizes[14] = {
@@ -471,9 +515,9 @@ export async function fetchAndScoreOfficialContestUI(
             tier: 14,
             unitValue: valorPremio,
             confirmationSource: "MANUAL_ENTRY",
-            confirmedAt: new Date().toISOString(),
-            operatorId: "SISTEMA_AUTONOMO_CAIXA",
-            notes: "Rateio oficial de 14 acertos apurado automaticamente da Caixa Econômica Federal",
+            confirmedAt: res.resultProof.retrievedAt,
+            operatorId: "API_CAIXA_OFFICIAL_DIRECT",
+            notes: "Rateio oficial de 14 acertos apurado da Caixa Econômica Federal",
           };
         }
       }
@@ -486,11 +530,12 @@ export async function fetchAndScoreOfficialContestUI(
       db,
       {
         allowCorrection: options?.allowCorrection ?? false,
-        resultSource: res.source,
+        resultSource: "API_CAIXA",
         resultFetchedAt: res.fetchedAt,
         resultConfirmed: true,
-        resultConfirmedBy: "SISTEMA_AUTONOMO_CAIXA",
-        resultConfirmedAt: new Date().toISOString(),
+        resultConfirmedBy: "API_CAIXA_OFFICIAL_DIRECT",
+        resultConfirmedAt: res.resultProof.retrievedAt,
+        resultProof: res.resultProof,
         confirmedVariablePrizes,
       }
     );
@@ -772,95 +817,219 @@ export async function rectifyContestOfficialDrawUI(
   const db = await openAppDB();
   const canonicalNumbers = Object.freeze([...officialNumbers].sort((a, b) => a - b));
 
-  // 1. Verifica STORE_OFFICIAL_DRAWS
-  let previousOfficialDraw: StoredOfficialDraw | undefined;
-  if (db?.objectStoreNames?.contains && db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) {
-    previousOfficialDraw = await getStoredOfficialDraw(contestNumber, db);
-  }
+  return new Promise((resolve, reject) => {
+    const storesToOpen = [STORE_CONTESTS, STORE_AUDIT_EVENTS];
+    if (db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) {
+      storesToOpen.push(STORE_OFFICIAL_DRAWS);
+    }
+    const tx = db.transaction(storesToOpen, "readwrite");
+    const contestStore = tx.objectStore(STORE_CONTESTS);
+    const auditStore = tx.objectStore(STORE_AUDIT_EVENTS);
+    const officialStore = storesToOpen.includes(STORE_OFFICIAL_DRAWS)
+      ? tx.objectStore(STORE_OFFICIAL_DRAWS)
+      : null;
 
-  // 2. Verifica STORE_CONTESTS
-  const allContests = await getAllContestRecordsUI();
-  const userContest = allContests.find(c => c.contestNumber === contestNumber);
-  const previousContestNumbers = userContest?.officialResult;
+    let wasRectified = false;
+    let prevNumbers: readonly number[] | undefined = undefined;
 
-  const previousNumbers = previousOfficialDraw?.drawnNumbers || previousContestNumbers;
-  const isAlreadyCorrect =
-    previousNumbers &&
-    previousNumbers.length === 15 &&
-    canonicalNumbers.every((n, i) => n === previousNumbers[i]);
-
-  if (isAlreadyCorrect && userContest?.status === "COMPLETED") {
-    return {
-      rectified: false,
-      contestNumber,
-      previousNumbers,
-      officialNumbers: canonicalNumbers,
-      message: `Concurso #${contestNumber} já se encontra com as dezenas oficiais corretas da Caixa.`,
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("TRANSACTION_ABORTED"));
+    tx.oncomplete = async () => {
+      await loadOfficialDrawsFromStorage(db);
+      resolve({
+        rectified: wasRectified,
+        contestNumber,
+        previousNumbers: prevNumbers,
+        officialNumbers: canonicalNumbers,
+        message: wasRectified
+          ? `Concurso #${contestNumber} retificado com sucesso para as dezenas oficiais da Caixa: ${canonicalNumbers.join(", ")}.`
+          : `Concurso #${contestNumber} já se encontra com as dezenas oficiais corretas da Caixa.`,
+      });
     };
-  }
 
-  // 3. Atualiza STORE_OFFICIAL_DRAWS
-  if (db?.objectStoreNames?.contains && db.objectStoreNames.contains(STORE_OFFICIAL_DRAWS)) {
-    const updatedDraw: StoredOfficialDraw = {
-      contestNumber,
-      drawDate,
-      drawnNumbers: canonicalNumbers,
-      source: "Caixa Econômica Federal — Portal Oficial de Loterias (servicebus2.caixa.gov.br)",
-      retrievedAt: new Date().toISOString(),
+    const contestReq = contestStore.get(contestNumber);
+    contestReq.onsuccess = () => {
+      const userContest = contestReq.result as ContestRecord | undefined;
+      const prevContestNumbers = userContest?.officialResult;
+
+      const finishOperation = (existingOffDraw?: StoredOfficialDraw) => {
+        const prevDrawNumbers = existingOffDraw?.drawnNumbers;
+        prevNumbers = prevDrawNumbers || prevContestNumbers;
+        const isDrawAlreadyCorrect =
+          prevDrawNumbers &&
+          prevDrawNumbers.length === 15 &&
+          canonicalNumbers.every((n, i) => n === prevDrawNumbers[i]);
+
+        const isProofValid = Boolean(
+          existingOffDraw?.resultProof &&
+            validateOfficialCaixaDirectProof(
+              existingOffDraw.resultProof,
+              contestNumber,
+              canonicalNumbers
+            ).valid
+        );
+
+        const isContestAlreadyCorrect =
+          !userContest ||
+          (userContest.status === "COMPLETED" &&
+            userContest.officialResult &&
+            userContest.officialResult.length === 15 &&
+            canonicalNumbers.every((n, i) => n === userContest.officialResult![i]) &&
+            userContest.resultProof &&
+            validateOfficialCaixaDirectProof(
+              userContest.resultProof,
+              contestNumber,
+              canonicalNumbers
+            ).valid);
+
+        if (isDrawAlreadyCorrect && isProofValid && isContestAlreadyCorrect) {
+          wasRectified = false;
+          return;
+        }
+
+        wasRectified = true;
+        const nowIso = new Date().toISOString();
+
+        // 1. Prova de procedência direta da Caixa (OfficialCaixaDirectResultProof)
+        const payloadToHash = JSON.stringify({
+          numero: contestNumber,
+          dataApuracao: drawDate,
+          dezenasSorteadasOrdemSorteio: canonicalNumbers.map(n => String(n).padStart(2, "0")),
+        });
+        const payloadSha256 = syncSha256(payloadToHash);
+
+        const directProof: OfficialCaixaDirectResultProof = {
+          proofType: "OFFICIAL_CAIXA_DIRECT_ENDPOINT",
+          contestNumber,
+          officialEndpoint: `https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/${contestNumber}`,
+          drawDate,
+          drawnNumbers: canonicalNumbers,
+          retrievedAt: nowIso,
+          payloadSha256,
+          rawPayload: payloadToHash,
+        };
+
+        // 2. Gravação atômica em STORE_OFFICIAL_DRAWS
+        if (officialStore) {
+          const updatedDraw: StoredOfficialDraw = {
+            contestNumber,
+            drawDate,
+            drawnNumbers: canonicalNumbers,
+            source: "Caixa Econômica Federal — Portal Oficial de Loterias (servicebus2.caixa.gov.br)",
+            retrievedAt: nowIso,
+            resultProof: directProof,
+          };
+          officialStore.put(updatedDraw);
+        }
+
+        // 3. Se existir em STORE_CONTESTS, recalcula acertos e atualiza com prova direta
+        let totalPrize = 0;
+        let officialConfirmedPrize = 0;
+        const totalCost = userContest?.totalCost ?? 17.50;
+        let gameHits: number[] = [];
+
+        if (userContest && Array.isArray(userContest.games) && userContest.games.length > 0) {
+          gameHits = userContest.games.map(g => calculateHits(g, canonicalNumbers));
+          const bestHits = Math.max(...gameHits);
+          const bestHitsCount = gameHits.filter(h => h === bestHits).length;
+          const breakdown: Record<string, NonNullable<ContestRecord["prizeBreakdown"]>[string]> = {};
+
+          for (const h of [11, 12, 13, 14, 15] as const) {
+            const count = gameHits.filter(hits => hits === h).length;
+            if (count > 0 && h <= 13) {
+              const unitVal = h === 11 ? 7.0 : h === 12 ? 14.0 : 35.0;
+              const tot = count * unitVal;
+              totalPrize += tot;
+              officialConfirmedPrize += tot;
+              breakdown[String(h)] = {
+                contestNumber,
+                tier: h,
+                count,
+                unitValue: unitVal,
+                totalValue: tot,
+                isVariableRateio: false,
+                pendingRateio: false,
+                confirmationSource: "OFFICIAL_CAIXA",
+                isOfficialCaixaProof: true,
+                confirmedAt: nowIso,
+                operatorId: "API_CAIXA_OFFICIAL_DIRECT",
+                notes: "Prêmio fixo oficial Caixa recalculado após retificação atômica",
+              };
+            }
+          }
+
+          const officialNetBalance = officialConfirmedPrize - totalCost;
+          const officialRoiPercentage = totalCost > 0 ? (officialNetBalance / totalCost) * 100 : 0;
+
+          const updatedContest: ContestRecord = {
+            ...userContest,
+            status: "COMPLETED",
+            financialStatus: "HOMOLOGATED",
+            officialResult: canonicalNumbers,
+            gameHits,
+            bestHits,
+            bestHitsCount,
+            totalCost,
+            totalPrize,
+            officialConfirmedPrize,
+            manualConfirmedPrize: 0,
+            officialValidatedPrize: officialConfirmedPrize,
+            officialNetBalance,
+            officialRoiPercentage,
+            hasPendingVariableRateio: false,
+            hasProvisionalVariableRateio: false,
+            prizeBreakdown: breakdown,
+            resultSource: "API_CAIXA",
+            resultFetchedAt: nowIso,
+            resultConfirmed: true,
+            resultConfirmedAt: nowIso,
+            resultConfirmedBy: "API_CAIXA_OFFICIAL_DIRECT",
+            resultProof: directProof,
+            updatedAt: nowIso,
+          };
+          contestStore.put(updatedContest);
+        }
+
+        // 4. Gravação atômica em STORE_AUDIT_EVENTS
+        const auditEvent: ContestAuditEvent = {
+          id: `audit_rectify_${contestNumber}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+          contestNumber,
+          operation: "RECTIFY_OFFICIAL_RESULT",
+          financialStatus: "HOMOLOGATED",
+          resultConfirmed: true,
+          operatorId: "API_CAIXA_OFFICIAL_DIRECT",
+          timestamp: nowIso,
+          resultSource: "API_CAIXA",
+          financialSummary: {
+            totalCost,
+            totalPrize,
+            officialConfirmedPrize,
+            manualConfirmedPrize: 0,
+            officialValidatedPrize: officialConfirmedPrize,
+            netBalance: totalPrize - totalCost,
+            hasPendingVariableRateio: false,
+            hasProvisionalVariableRateio: false,
+            winningGamesCount: gameHits.filter(h => h >= 11).length,
+          },
+          createdAt: nowIso,
+        };
+        auditStore.put(auditEvent);
+      };
+
+      if (officialStore) {
+        const offReq = officialStore.get(contestNumber);
+        offReq.onsuccess = () => {
+          const offDraw = offReq.result as StoredOfficialDraw | undefined;
+          finishOperation(offDraw);
+        };
+        offReq.onerror = () => {
+          finishOperation(undefined);
+        };
+      } else {
+        finishOperation(undefined);
+      }
     };
-    await saveStoredOfficialDraw(updatedDraw, db);
-  }
-
-  // 4. Se existir em STORE_CONTESTS e estiver COMPLETED, re-apura atomicamente com allowCorrection
-  if (userContest && (userContest.status === "COMPLETED" || userContest.status === "FROZEN")) {
-    await scoreContestOperation210(contestNumber, canonicalNumbers, db, {
-      allowCorrection: true,
-      resultSource: "API_CAIXA",
-      resultFetchedAt: new Date().toISOString(),
-      resultConfirmed: true,
-      resultConfirmedBy: "SISTEMA_AUDITORIA_CAIXA",
-      resultConfirmedAt: new Date().toISOString(),
-    });
-  }
-
-  // 5. Registra evento de auditoria em STORE_AUDIT_EVENTS
-  if (db?.objectStoreNames?.contains && db.objectStoreNames.contains(STORE_AUDIT_EVENTS)) {
-    const totalCost = userContest?.totalCost ?? 17.50;
-    const totalPrize = userContest?.totalPrize ?? 0;
-    await saveAuditEvent({
-      id: `audit_rectify_${contestNumber}_${Date.now()}`,
-      contestNumber,
-      operation: "RECTIFY_OFFICIAL_RESULT",
-      financialStatus: "HOMOLOGATED",
-      resultConfirmed: true,
-      operatorId: "SISTEMA_AUDITORIA_CAIXA",
-      timestamp: new Date().toISOString(),
-      resultSource: "API_CAIXA",
-      financialSummary: {
-        totalCost,
-        totalPrize,
-        officialConfirmedPrize: userContest?.officialConfirmedPrize ?? totalPrize,
-        manualConfirmedPrize: userContest?.manualConfirmedPrize ?? 0,
-        officialValidatedPrize: userContest?.officialValidatedPrize ?? totalPrize,
-        netBalance: totalPrize - totalCost,
-        hasPendingVariableRateio: userContest?.hasPendingVariableRateio ?? false,
-        hasProvisionalVariableRateio: userContest?.hasProvisionalVariableRateio ?? false,
-        winningGamesCount: userContest?.gameHits ? userContest.gameHits.filter(h => h >= 11).length : 0,
-      },
-      createdAt: new Date().toISOString(),
-    });
-  }
-
-  // 6. Atualiza cache em memória
-  await loadOfficialDrawsFromStorage(db);
-
-  return {
-    rectified: true,
-    contestNumber,
-    previousNumbers,
-    officialNumbers: canonicalNumbers,
-    message: `Concurso #${contestNumber} retificado com sucesso para as dezenas oficiais da Caixa: ${canonicalNumbers.join(", ")}.`,
-  };
+  });
 }
 
 /**

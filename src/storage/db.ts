@@ -2,7 +2,7 @@
  * Camada de Persistência IndexedDB para Lotofácil C5-Memory
  */
 
-import { ContestRecord, MemoryHistory, C5Game, ContestAuditEvent } from "../c5-memory/types";
+import { ContestRecord, MemoryHistory, C5Game, ContestAuditEvent, OfficialCaixaDirectResultProof } from "../c5-memory/types";
 import { createMemoryHistory } from "../c5-memory/history";
 
 export const DB_NAME = "LotofacilC5DB";
@@ -151,6 +151,7 @@ export interface StoredOfficialDraw {
   readonly source: string;
   readonly retrievedAt: string;
   readonly rateio?: readonly any[];
+  readonly resultProof?: OfficialCaixaDirectResultProof;
 }
 
 export async function getAllStoredOfficialDraws(existingDb?: IDBDatabase): Promise<StoredOfficialDraw[]> {

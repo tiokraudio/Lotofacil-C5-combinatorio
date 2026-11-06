@@ -7,7 +7,7 @@
  * - Funções 100% puras (sem React, sem IndexedDB, sem mutações de estado).
  */
 
-import { ContestRecord, isValidIso8601Timestamp } from "../types";
+import { ContestRecord, isValidIso8601Timestamp, validateOfficialCaixaDirectProof } from "../types";
 import { calculateHits } from "../math";
 import {
   ContestPerformanceDTO,
@@ -153,13 +153,29 @@ export function getAuthoritativeHits(record: ContestRecord): AuthoritativeHitsVa
   }
 
   // 3. Validação de proveniência dos resultados:
-  // 3a. Se alegar API_CAIXA sem comprovação documental oficial, rejeita proveniência
-  if (record.resultSource === "API_CAIXA" && !record.resultProof) {
-    return {
-      valid: false,
-      errorCode: "UNVERIFIED_PROVENANCE",
-      errorMessage: "Origem do resultado declarada como API_CAIXA sem comprovação documental oficial.",
-    };
+  // 3a. Se alegar API_CAIXA sem comprovação documental oficial válida, rejeita proveniência
+  if (record.resultSource === "API_CAIXA") {
+    if (!record.resultProof) {
+      return {
+        valid: false,
+        errorCode: "UNVERIFIED_PROVENANCE",
+        errorMessage: "Origem do resultado declarada como API_CAIXA sem comprovação documental oficial.",
+      };
+    }
+    const proofValidation = validateOfficialCaixaDirectProof(
+      record.resultProof,
+      record.contestNumber,
+      record.officialResult
+    );
+    if (!proofValidation.valid) {
+      return {
+        valid: false,
+        errorCode: "UNVERIFIED_PROVENANCE",
+        errorMessage:
+          proofValidation.reason ||
+          "Origem do resultado declarada como API_CAIXA com prova de procedência inválida.",
+      };
+    }
   }
 
   // 3b. Se a fonte for API de terceiros (intermediária) ou API_LOTERIAS, exige conferência humana explícita

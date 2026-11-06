@@ -60,6 +60,7 @@ export type ResultSource =
 
 import type { Draft30, FrozenMemoryPayload30 } from "./engine30";
 import type { Draft210, FrozenMemoryPayload210 } from "./engine210";
+import { syncSha256 } from "./sha256";
 
 export type AnyDraft = Draft30 | Draft210 | Draft;
 export type AnyFrozenPayload = FrozenMemoryPayload30 | FrozenMemoryPayload210 | FrozenMemoryPayload;
@@ -119,9 +120,144 @@ export interface ContestRecord {
   readonly resultConfirmed?: boolean;
   readonly resultConfirmedAt?: string;
   readonly resultConfirmedBy?: string;
-  readonly resultProof?: string | any;
+  readonly resultProof?: OfficialCaixaDirectResultProof | string | any;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface OfficialCaixaDirectResultProof {
+  readonly proofType: "OFFICIAL_CAIXA_DIRECT_ENDPOINT";
+  readonly contestNumber: number;
+  readonly officialEndpoint: string;
+  readonly drawDate: string;
+  readonly drawnNumbers: readonly number[];
+  readonly retrievedAt: string;
+  readonly payloadSha256: string;
+  readonly rawPayload?: string;
+}
+
+export function validateOfficialCaixaDirectProof(
+  proof: unknown,
+  expectedContest?: number,
+  expectedNumbers?: readonly number[]
+): { valid: boolean; reason?: string } {
+  if (!proof || typeof proof !== "object") {
+    return { valid: false, reason: "Objeto de comprovação ausente ou inválido." };
+  }
+
+  const p = proof as Partial<OfficialCaixaDirectResultProof>;
+
+  if (p.proofType !== "OFFICIAL_CAIXA_DIRECT_ENDPOINT") {
+    return {
+      valid: false,
+      reason: `Tipo de prova inválido: esperado 'OFFICIAL_CAIXA_DIRECT_ENDPOINT', recebido '${String(p.proofType)}'.`,
+    };
+  }
+
+  if (typeof p.contestNumber !== "number" || !Number.isInteger(p.contestNumber) || p.contestNumber <= 0) {
+    return { valid: false, reason: `Número de concurso inválido no comprovante: ${String(p.contestNumber)}.` };
+  }
+
+  if (expectedContest !== undefined && p.contestNumber !== expectedContest) {
+    return {
+      valid: false,
+      reason: `Concurso no comprovante (#${p.contestNumber}) não coincide com o concurso esperado (#${expectedContest}).`,
+    };
+  }
+
+  if (typeof p.officialEndpoint !== "string" || p.officialEndpoint.trim().length === 0) {
+    return { valid: false, reason: "URL do endpoint oficial ausente ou vazia no comprovante." };
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(p.officialEndpoint);
+  } catch {
+    return { valid: false, reason: `URL do endpoint oficial malformada: ${p.officialEndpoint}.` };
+  }
+
+  if (parsedUrl.protocol !== "https:") {
+    return { valid: false, reason: `Protocolo '${parsedUrl.protocol}' inseguro. Comprovação Caixa exige 'https:'.` };
+  }
+
+  if (parsedUrl.username !== "" || parsedUrl.password !== "") {
+    return { valid: false, reason: "A URL do endpoint oficial não pode conter credenciais de autenticação embutidas." };
+  }
+
+  if (parsedUrl.port !== "" && parsedUrl.port !== "443") {
+    return { valid: false, reason: `Porta não autorizada '${parsedUrl.port}' na URL do endpoint oficial.` };
+  }
+
+  const rawHostname = parsedUrl.hostname.toLowerCase();
+  const isExactCaixa =
+    rawHostname === "caixa.gov.br" ||
+    rawHostname === "loterias.caixa.gov.br" ||
+    rawHostname === "servicebus2.caixa.gov.br";
+  const isSubdomainCaixa = rawHostname.endsWith(".caixa.gov.br") && !rawHostname.endsWith("..caixa.gov.br");
+  if (!isExactCaixa && !isSubdomainCaixa) {
+    return { valid: false, reason: `O hostname '${rawHostname}' não pertence ao domínio oficial *.caixa.gov.br.` };
+  }
+
+  if (typeof p.drawDate !== "string" || p.drawDate.trim().length === 0) {
+    return { valid: false, reason: "Data do sorteio ausente ou vazia no comprovante." };
+  }
+
+  if (!Array.isArray(p.drawnNumbers) || p.drawnNumbers.length !== 15) {
+    return {
+      valid: false,
+      reason: `O comprovante deve conter exatamente 15 dezenas (recebido: ${
+        Array.isArray(p.drawnNumbers) ? p.drawnNumbers.length : 0
+      }).`,
+    };
+  }
+
+  const seenNumbers = new Set<number>();
+  for (let i = 0; i < p.drawnNumbers.length; i++) {
+    const n = p.drawnNumbers[i];
+    if (typeof n !== "number" || !Number.isInteger(n) || n < 1 || n > 25) {
+      return { valid: false, reason: `Dezena inválida na posição ${i} do comprovante: ${n}.` };
+    }
+    if (seenNumbers.has(n)) {
+      return { valid: false, reason: `Dezena duplicada no comprovante: ${n}.` };
+    }
+    seenNumbers.add(n);
+  }
+
+  if (expectedNumbers !== undefined) {
+    const sortedExpected = [...expectedNumbers].sort((a, b) => a - b);
+    const sortedProof = [...p.drawnNumbers].sort((a, b) => a - b);
+    if (sortedExpected.length !== 15 || sortedProof.some((n, i) => n !== sortedExpected[i])) {
+      return {
+        valid: false,
+        reason: `Dezenas no comprovante (${sortedProof.join(", ")}) diferem das dezenas esperadas (${sortedExpected.join(", ")}).`,
+      };
+    }
+  }
+
+  if (!isValidIso8601Timestamp(p.retrievedAt)) {
+    return { valid: false, reason: `Data/hora de captura inválida no comprovante: ${String(p.retrievedAt)}.` };
+  }
+
+  if (typeof p.payloadSha256 !== "string" || !/^[0-9a-f]{64}$/.test(p.payloadSha256)) {
+    return {
+      valid: false,
+      reason: `SHA-256 do payload ausente ou com formato inválido (exige 64 hexadecimais minúsculos): ${String(
+        p.payloadSha256
+      )}.`,
+    };
+  }
+
+  if (typeof p.rawPayload === "string" && p.rawPayload.length > 0) {
+    const computed = syncSha256(p.rawPayload);
+    if (computed !== p.payloadSha256) {
+      return {
+        valid: false,
+        reason: `Divergência de hash SHA-256 entre payload bruto (${computed}) e payloadSha256 declarado (${p.payloadSha256}).`,
+      };
+    }
+  }
+
+  return { valid: true };
 }
 
 export type ContestFinancialStatus = "PENDING_HOMOLOGATION" | "HOMOLOGATED";

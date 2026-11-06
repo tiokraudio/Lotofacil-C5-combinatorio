@@ -462,7 +462,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
                 <span className="text-slate-500 block">Comparação Score:</span>
                 <span className="font-mono text-slate-200">
                   {draft.scoringHistorySource === "OFFICIAL_CONTEST_DRAWS"
-                    ? `Sorteios Oficiais (${draft.scoringHistorySize || 3816} conc.)`
+                    ? `Sorteios Oficiais (${draft.scoringHistorySize ?? draft.officialCoverage?.totalLoaded ?? 0} conc.)`
                     : `Histórico H (Rev ${draft.historyRevision})`}
                 </span>
               </div>
@@ -480,7 +480,7 @@ export const C5MemoryView: React.FC<C5MemoryViewProps> = ({
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>
-                    <strong>Base Histórica Completa:</strong> {draft.officialCoverage?.totalLoaded || 3816} concursos (concurso {draft.officialCoverage?.firstContest || 1} ao {draft.officialCoverage?.lastContest || 3816}) • Exclusão histórica 100% comprovada.
+                    <strong>Base Histórica Completa:</strong> {draft.officialCoverage?.totalLoaded ?? draft.scoringHistorySize ?? 0} concursos (concurso {draft.officialCoverage?.firstContest ?? 1} ao {draft.officialCoverage?.lastContest ?? 0}) • Exclusão histórica 100% comprovada.
                   </span>
                 </div>
                 <span className="font-mono text-[11px] text-slate-400 shrink-0">

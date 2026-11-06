@@ -18,7 +18,7 @@
  * 6. Preservação estrita da separação entre sorteios oficiais da Caixa e jogos gerados pelo usuário (H_gen).
  */
 
-import { C5Game, ContestRecord } from "./types";
+import { C5Game, ContestRecord, OfficialCaixaDirectResultProof, validateOfficialCaixaDirectProof } from "./types";
 import { formatGameCanonical } from "./history";
 import { isValidLotofacilGame, distanceBetweenGames } from "./math";
 import { syncSha256 } from "./sha256";
@@ -561,10 +561,19 @@ export async function loadOfficialDrawsFromStorage(
 
         const missingInStore: StoredOfficialDraw[] = [];
         for (const uc of userContests) {
+          const proofValidation = validateOfficialCaixaDirectProof(
+            uc.resultProof,
+            uc.contestNumber,
+            uc.officialResult
+          );
           if (
             !uc.isDemo &&
             !uc.isFixture &&
             uc.status === "COMPLETED" &&
+            uc.financialStatus === "HOMOLOGATED" &&
+            uc.resultConfirmed === true &&
+            uc.resultSource === "API_CAIXA" &&
+            proofValidation.valid &&
             uc.officialResult &&
             isValidLotofacilGame(uc.officialResult) &&
             uc.contestNumber > 3816 &&
@@ -581,8 +590,9 @@ export async function loadOfficialDrawsFromStorage(
               contestNumber: uc.contestNumber,
               drawDate: record.drawDate,
               drawnNumbers: sorted,
-              source: uc.resultSource || "HOMOLOGATED_CONTEST",
+              source: uc.resultSource || "API_CAIXA",
               retrievedAt: uc.resultFetchedAt || new Date().toISOString(),
+              resultProof: uc.resultProof as OfficialCaixaDirectResultProof,
             });
           }
         }
@@ -644,12 +654,22 @@ export async function syncMissingOfficialDraws(
   setVerifiedLatestOfficialReference(latestRef);
   const targetLast = latestRef.contestNumber;
 
-  if (currentLast >= targetLast) {
+  // 4. Busca incremental dos concursos ausentes (cobrindo inclusive lacunas internas na sequência 1..targetLast)
+  const { draws: currentLoadedDraws } = loadAndValidateHistoricalDraws();
+  const loadedSet = new Set(currentLoadedDraws.map(d => d.contestNumber));
+  const missingContests: number[] = [];
+  for (let c = 1; c <= targetLast; c++) {
+    if (!loadedSet.has(c)) {
+      missingContests.push(c);
+    }
+  }
+
+  if (missingContests.length === 0) {
     cov = getOfficialDrawsCoverageStatus({ verifiedReference: latestRef });
     return {
       success: true,
       syncedCount: 0,
-      lastContest: currentLast,
+      lastContest: cov.lastContest,
       latestExpectedContest: targetLast,
       isCoverageUpToDate: cov.isCoverageUpToDate,
       isCompleteHistoricalCoverage: cov.isCompleteHistoricalCoverage,
@@ -657,12 +677,12 @@ export async function syncMissingOfficialDraws(
     };
   }
 
-  // 4. Busca incremental dos concursos ausentes
+  // 5. Busca incremental de cada concurso ausente
   const newlySynced: StoredOfficialDraw[] = [];
   let syncFailed = false;
   let failureReason: string | undefined = undefined;
 
-  for (let c = currentLast + 1; c <= targetLast; c++) {
+  for (const c of missingContests) {
     const details = await fetchOfficialDrawDetails(c, customFetch, timeoutMs);
     if (!details) {
       syncFailed = true;
@@ -1048,13 +1068,22 @@ export function getAllOfficialLotofacilDraws(
     gameMap.set(formatGameCanonical(draw.drawnNumbers), draw.drawnNumbers);
   }
 
-  // 2. Incorpora novos concursos concluídos do usuário (se houver e se não forem fixtures)
+  // 2. Incorpora novos concursos concluídos do usuário (se houver e se atenderem a todos os 7 critérios oficiais)
   if (persistedContests && persistedContests.length > 0) {
     for (const c of persistedContests) {
+      const proofValidation = validateOfficialCaixaDirectProof(
+        c.resultProof,
+        c.contestNumber,
+        c.officialResult
+      );
       if (
         !c.isDemo &&
         !c.isFixture &&
         c.status === "COMPLETED" &&
+        c.financialStatus === "HOMOLOGATED" &&
+        c.resultConfirmed === true &&
+        c.resultSource === "API_CAIXA" &&
+        proofValidation.valid &&
         c.officialResult &&
         isValidLotofacilGame(c.officialResult)
       ) {
