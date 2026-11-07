@@ -28,7 +28,11 @@ import {
   autoScorePendingContestsUI,
   AutoScoreResultDTO,
 } from "../c5-memory/application/uiService";
-import { calculateContestFinancialBreakdown } from "../c5-memory/analytics/c5Analytics";
+import {
+  calculateContestFinancialBreakdown,
+  getContestLifecycleStage,
+  getLatestHomologatedContest,
+} from "../c5-memory/analytics/c5Analytics";
 import { Ball } from "./Ball";
 
 interface ConferenceViewProps {
@@ -152,17 +156,13 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
   }, [contests]);
 
   const completedContests = useMemo(() => {
-    return contests.filter(c => c.status === "COMPLETED");
+    return contests.filter(c => getContestLifecycleStage(c) === "HOMOLOGATED");
   }, [contests]);
 
   // Identifica se o concurso atual selecionado já está homologado e salvo no banco
   const isCurrentHomologated = useMemo(() => {
     if (currentRecord) {
-      return (
-        currentRecord.status === "COMPLETED" &&
-        (currentRecord.financialStatus === "HOMOLOGATED" ||
-          (Array.isArray(currentRecord.officialResult) && currentRecord.officialResult.length === 15))
-      );
+      return getContestLifecycleStage(currentRecord) === "HOMOLOGATED";
     }
     return contests.length > 0 && pendingContests.length === 0;
   }, [currentRecord, contests, pendingContests]);
@@ -356,7 +356,7 @@ export const ConferenceView: React.FC<ConferenceViewProps> = ({
           >
             {contests.map(c => (
               <option key={c.contestNumber} value={c.contestNumber}>
-                #{c.contestNumber} — {c.status === "COMPLETED" ? `Apurado (${c.bestHits ?? 0} acertos)` : "Pendente (Aguardando Sorteio)"}
+                #{c.contestNumber} — {getContestLifecycleStage(c) === "HOMOLOGATED" ? `Homologado (${c.bestHits ?? 0} acertos)` : c.status === "COMPLETED" ? `Apurado (${c.bestHits ?? 0} acertos)` : "Pendente (Aguardando Sorteio)"}
               </option>
             ))}
           </select>

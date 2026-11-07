@@ -824,10 +824,17 @@ export type ContestLifecycleStage =
   | "HOMOLOGATED";
 
 export function getContestLifecycleStage(record: ContestRecord): ContestLifecycleStage {
+  // P0 / P1: Se houver comprovante declarado, validação de procedência obrigatória
+  const isProofValid = !record.resultProof || (
+    record.resultProof.proofType === "OFFICIAL_CAIXA_DIRECT_ENDPOINT" &&
+    validateOfficialCaixaDirectProof(record.resultProof, record.contestNumber, record.officialResult).valid
+  );
+
   if (
     record.status === "COMPLETED" &&
     record.financialStatus === "HOMOLOGATED" &&
     record.hasPendingVariableRateio !== true &&
+    isProofValid &&
     getAuthoritativeHits(record).valid
   ) {
     return "HOMOLOGATED";
@@ -902,18 +909,18 @@ function _buildC5DashboardInternal(
   const confirmedContests = confirmed.length;
   const confirmedGames = confirmedContests * 5;
 
-  // Identifica concursos apurados (COMPLETED com acertos autoritativos válidos)
+  // Identifica concursos homologados canonicamente (com procedência oficial e sem rateio pendente)
   const completed = sorted.filter(
-    r => r.status === "COMPLETED" && getAuthoritativeHits(r).valid
+    r => getContestLifecycleStage(r) === "HOMOLOGATED"
   );
   const scoredContests = completed.length;
   const scoredGames = scoredContests * 5;
 
-  // Último resultado apurado mais recente
+  // Último resultado homologado canônico unificado
+  const latestHomologated = getLatestHomologatedContest(sorted);
   let lastCompletedPerformance: ContestPerformanceDTO | undefined = undefined;
-  if (completed.length > 0) {
-    const lastRecord = completed[completed.length - 1];
-    lastCompletedPerformance = buildC5ContestPerformance(lastRecord);
+  if (latestHomologated) {
+    lastCompletedPerformance = buildC5ContestPerformance(latestHomologated);
   }
 
   // Distribuição completa 0 a 15

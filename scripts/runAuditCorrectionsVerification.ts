@@ -35,6 +35,7 @@ import {
   generateMemoryDraftUI,
   confirmMemoryDraftUI,
   rectifyContestOfficialDrawUI,
+  getAllContestRecordsUI,
 } from "../src/c5-memory/application/uiService";
 import { getStoredOfficialDraw } from "../src/storage/db";
 
@@ -105,10 +106,16 @@ async function runAuditCorrectionsVerification(): Promise<void> {
     console.log(`  ✓ 1.5: Rejeição de protocolo inseguro confirmada: ${val5.reason}`);
 
     // 1.6 HTTP Status diferente de 200
-    const proofStatus500 = { ...validProof, httpStatus: 500 };
+    const proofStatus500 = { ...validProof, httpStatus: 500 as any };
     const val6 = validateOfficialCaixaDirectProof(proofStatus500, 3821, sampleNums);
     assert(!val6.valid && val6.reason?.includes("UNSUCCESSFUL_HTTP_STATUS"), "1.6: HTTP Status != 200 deve ser rejeitado");
     console.log(`  ✓ 1.6: Rejeição de HTTP Status não-200 confirmada: ${val6.reason}`);
+
+    // 1.6b P0-02 (2ª Auditoria): HTTP Status ausente / undefined deve ser estritamente rejeitado
+    const proofStatusUndefined = { ...validProof, httpStatus: undefined as any };
+    const val6b = validateOfficialCaixaDirectProof(proofStatusUndefined, 3821, sampleNums);
+    assert(!val6b.valid && val6b.reason?.includes("UNSUCCESSFUL_HTTP_STATUS"), "1.6b: HTTP Status ausente deve ser rejeitado");
+    console.log(`  ✓ 1.6b: Rejeição de HTTP Status ausente/indefinido confirmada: ${val6b.reason}`);
 
     // 1.7 Concurso no payload difere do concurso declarado
     const badContestJson = JSON.stringify({
@@ -339,6 +346,52 @@ async function runAuditCorrectionsVerification(): Promise<void> {
     assert(scoredComplete.financialStatus === "HOMOLOGATED", "4.3: Concurso com rateio confirmado passa a HOMOLOGATED");
     assert(scoredComplete.hasPendingVariableRateio === false, "4.4: hasPendingVariableRateio passa a false");
     console.log("  ✓ 4.3 e 4.4: Após comprovação do rateio variável, transição para HOMOLOGATED confirmada com sucesso.");
+
+    // 4.5 P0-05: Retificação com payload oficial sem rateio para faixa premiada (14 acertos)
+    const draft3846 = await generateMemoryDraftUI(3846);
+    await confirmMemoryDraftUI(3846, draft3846);
+    const unusedNumber3846 = allNums.find(n => !draft3846.games[0].includes(n))!;
+    const draw14Hits3846 = [...draft3846.games[0].slice(0, 14), unusedNumber3846].sort((a, b) => a - b);
+    const rawPayloadNoRateio = JSON.stringify({
+      numero: 3846,
+      dataApuracao: "06/11/2026",
+      listaDezenas: draw14Hits3846.map(n => String(n).padStart(2, "0")),
+      listaRateioPremio: [], // Sem rateio publicado!
+    });
+    const mockFetchNoRateio: typeof fetch = async () => new Response(rawPayloadNoRateio, { status: 200 });
+    const rectifyPendingRes = await rectifyContestOfficialDrawUI(3846, { customFetch: mockFetchNoRateio });
+    assert(rectifyPendingRes.rectified === true, "4.5: Retificação deve ser executada");
+    const allAfterPending = await getAllContestRecordsUI();
+    const rec3846 = allAfterPending.find(c => c.contestNumber === 3846);
+    assert(rec3846?.financialStatus === "PENDING_HOMOLOGATION", "4.5: Sem rateio no payload, deve permanecer PENDING_HOMOLOGATION");
+    assert(rec3846?.hasPendingVariableRateio === true, "4.5: hasPendingVariableRateio deve ser true");
+    console.log("  ✓ 4.5: Retificação com payload oficial sem rateio para 14 acertos preserva PENDING_HOMOLOGATION.");
+
+    // 4.6 P0-01: Rejeição de fabricação de prova — falha de consulta oficial mantém pendência
+    const rectifyOffline = await rectifyContestOfficialDrawUI(9999, {
+      customFetch: async () => { throw new Error("Falha na consulta oficial da Caixa (Network error)"); },
+    });
+    assert(rectifyOffline.pending === true && !rectifyOffline.rectified, "4.6: Falha oficial deve suspender e manter pendência");
+    console.log("  ✓ 4.6: Bloqueio estrito de fabricação de comprovante local em falhas oficiais confirmado.");
+
+    // 4.7 P0-05: Retificação com payload contendo rateios válidos homologa com sucesso
+    const rawPayloadWithRateio = JSON.stringify({
+      numero: 3846,
+      dataApuracao: "06/11/2026",
+      listaDezenas: draw14Hits3846.map(n => String(n).padStart(2, "0")),
+      listaRateioPremio: [
+        { faixa: 1, numeroDeGanhadores: 0, valorPremio: 0.0 },
+        { faixa: 2, numeroDeGanhadores: 150, valorPremio: 1950.0 },
+      ],
+    });
+    const mockFetchWithRateio: typeof fetch = async () => new Response(rawPayloadWithRateio, { status: 200 });
+    const rectifyHomologatedRes = await rectifyContestOfficialDrawUI(3846, { customFetch: mockFetchWithRateio });
+    assert(rectifyHomologatedRes.rectified === true, "4.7: Retificação deve atualizar");
+    const allAfterHomologated = await getAllContestRecordsUI();
+    const rec3846Homologated = allAfterHomologated.find(c => c.contestNumber === 3846);
+    assert(rec3846Homologated?.financialStatus === "HOMOLOGATED", "4.7: Com rateio no payload, passa a HOMOLOGATED");
+    assert(rec3846Homologated?.hasPendingVariableRateio === false, "4.7: hasPendingVariableRateio passa a false");
+    console.log("  ✓ 4.7: Rateio oficial extraído exclusivamente de rawPayload homologa concurso.");
   }
 
   // ==========================================================================
@@ -392,6 +445,12 @@ async function runAuditCorrectionsVerification(): Promise<void> {
     const latest = getLatestHomologatedContest([legacyRecord, mockRecHomologated]);
     assert(latest?.contestNumber === 3850, "5.4: Latest homologado deve considerar todos os concursos");
     console.log("  ✓ 5.4: Inclusão uniforme de registros legados sem silenciamento de versões antigas.");
+
+    // 5.5 P1: Unificação estrita entre Dashboard e Histórico no último concurso homologado
+    const dash = buildC5Dashboard([legacyRecord, mockRecHomologated, mockRecValidated], 3850);
+    assert(dash.lastCompletedPerformance?.contestNumber === 3850, "5.5: Dashboard deve apontar exatamente para o último homologado");
+    assert(latest?.contestNumber === dash.lastCompletedPerformance?.contestNumber, "5.5: Histórico e Dashboard devem concordar 100% no último concurso homologado");
+    console.log(`  ✓ 5.5: Concordância estrita entre Dashboard e Histórico (#${dash.lastCompletedPerformance?.contestNumber}) confirmada.`);
   }
 
   // ==========================================================================

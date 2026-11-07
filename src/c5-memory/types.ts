@@ -138,7 +138,7 @@ export interface OfficialCaixaDirectResultProof {
   readonly proofType: "OFFICIAL_CAIXA_DIRECT_ENDPOINT";
   readonly contestNumber: number;
   readonly officialEndpoint: string;
-  readonly httpStatus?: number; // Sucesso HTTP (estritamente 200)
+  readonly httpStatus: 200; // Sucesso HTTP (estritamente 200 obrigatório)
   readonly drawDate: string; // Data ISO YYYY-MM-DD
   readonly drawnNumbers: readonly number[]; // 15 dezenas 1..25 ordenadas
   readonly retrievedAt: string; // Timestamp ISO 8601 da captura
@@ -190,11 +190,11 @@ export function validateOfficialCaixaDirectProof(
     };
   }
 
-  // 1. P0-02: Código HTTP de sucesso obrigatório
-  if (p.httpStatus !== undefined && p.httpStatus !== 200) {
+  // 1. P0-02: Código HTTP de sucesso obrigatório (estritamente 200, ausência ou outro status rejeitado)
+  if (p.httpStatus !== 200) {
     return {
       valid: false,
-      reason: `UNSUCCESSFUL_HTTP_STATUS: Código HTTP inválido no comprovante: esperado 200 (recebido: ${p.httpStatus}).`,
+      reason: `UNSUCCESSFUL_HTTP_STATUS: Código HTTP inválido ou ausente no comprovante: esperado 200 (recebido: ${String(p.httpStatus)}).`,
     };
   }
 

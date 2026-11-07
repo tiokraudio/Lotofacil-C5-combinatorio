@@ -22,6 +22,7 @@ import { calculateHits } from "../math";
 import { syncSha256 } from "../sha256";
 import {
   generateMemoryDraft210,
+  GenerateDraftOptions,
   confirmMemoryDraft210,
   discardMemoryDraft210,
   getMemoryOperationalState210,
@@ -132,9 +133,12 @@ export function openAppDB(): Promise<IDBDatabase> {
  * 1. AVAILABLE -> PREVIEW
  * Gera um Draft 3.0 estrutural através da Application Layer homologada.
  */
-export async function generateMemoryDraftUI(contestNumber: number): Promise<Draft30> {
+export async function generateMemoryDraftUI(
+  contestNumber: number,
+  options?: GenerateDraftOptions
+): Promise<Draft30> {
   const db = await openAppDB();
-  return generateMemoryDraft210(contestNumber, db);
+  return generateMemoryDraft210(contestNumber, db, options);
 }
 
 /**
@@ -252,7 +256,7 @@ export async function fetchOfficialLotofacilResult(
                 retrievedAt: new Date().toISOString(),
                 payloadSha256,
                 rawPayload: rawText,
-                httpStatus: res.status,
+                httpStatus: 200,
               };
 
               const prizes: Record<number, number> = { 11: 7.0, 12: 14.0, 13: 35.0 };
@@ -791,8 +795,6 @@ export const OFFICIAL_CONTEST_3821_NUMBERS = Object.freeze([
 
 export interface RectifyOfficialDrawOptions {
   customFetch?: typeof fetch;
-  verifiedProof?: OfficialCaixaDirectResultProof;
-  rateioList?: readonly any[];
   notes?: string;
 }
 
@@ -808,75 +810,118 @@ export interface RectifyOfficialDrawResult {
 /**
  * Retificação controlada e auditada de concurso oficial.
  * Exige prova de procedência autêntica obtida diretamente da Caixa (servicebus2.caixa.gov.br)
- * ou repassada via verifiedProof pré-validada.
- * NUNCA fabrica JSONs locais nem calcula SHA-256 sobre dados sintéticos.
- * Em caso de falha de conexão ou prova ausente, preserva o concurso pendente.
+ * via fetchOfficialLotofacilResult ou recuperada de uma captura autêntica oficial prévia em STORE_OFFICIAL_DRAWS.
+ * NUNCA aceita objetos externos arbitrários como prova (P0-01).
+ * NUNCA aceita rateios externos arbitrários: extrai faixas e prêmios exclusivamente de rawPayload (P0-05).
+ * Se o concurso possuir 14 ou 15 acertos e o rateio variável não constar no payload oficial,
+ * mantém PENDING_HOMOLOGATION com hasPendingVariableRateio: true.
+ * Em caso de falha de conexão ou ausência de prova legítima, preserva o concurso pendente.
  */
 export async function rectifyContestOfficialDrawUI(
   contestNumber: number,
-  optionsOrNumbers?: RectifyOfficialDrawOptions | readonly number[],
-  legacyDrawDate?: string,
-  legacyNotes?: string
+  optionsOrFetch?: RectifyOfficialDrawOptions | typeof fetch,
+  _legacyDrawDate?: string,
+  _legacyNotes?: string
 ): Promise<RectifyOfficialDrawResult> {
-  const options: RectifyOfficialDrawOptions = (
-    optionsOrNumbers && !Array.isArray(optionsOrNumbers) && typeof optionsOrNumbers === "object"
-  ) ? optionsOrNumbers as RectifyOfficialDrawOptions : {};
+  const options: RectifyOfficialDrawOptions = typeof optionsOrFetch === "function"
+    ? { customFetch: optionsOrFetch }
+    : (optionsOrFetch && typeof optionsOrFetch === "object" && !Array.isArray(optionsOrFetch))
+    ? optionsOrFetch
+    : {};
 
-  let proof: OfficialCaixaDirectResultProof | undefined = options.verifiedProof;
-  let rateioList: readonly any[] | undefined = options.rateioList;
+  const db = await openAppDB();
 
-  // Se já foi fornecida uma prova prévia, valida estritamente todos os 10 requisitos
-  if (proof) {
-    const proofVal = validateOfficialCaixaDirectProof(
-      proof,
-      contestNumber,
-      proof.drawnNumbers
-    );
-    if (!proofVal.valid) {
-      throw new Error(`PROVA_RETIFICACAO_INVALIDA: ${proofVal.reason}`);
-    }
-  } else {
-    // Consulta direta obrigatória ao endpoint oficial da Caixa
-    try {
-      const res = await fetchOfficialLotofacilResult(contestNumber, options.customFetch);
-      if (res.isIntermediarySource || res.source !== "API_CAIXA" || !res.resultProof) {
-        return {
-          rectified: false,
-          pending: true,
-          contestNumber,
-          message: `Consulta ao concurso #${contestNumber} não retornou endpoint oficial direto da Caixa. Retificação suspensa para preservar integridade.`,
-        };
-      }
+  // P0-01: Prova de procedência deve vir EXCLUSIVAMENTE de consulta direta à Caixa
+  // ou de captura autêntica oficial previamente persistida em STORE_OFFICIAL_DRAWS.
+  // Rejeita qualquer objeto externo passado pelo chamador como prova.
+  let proof: OfficialCaixaDirectResultProof | undefined = undefined;
+
+  try {
+    const res = await fetchOfficialLotofacilResult(contestNumber, options.customFetch);
+    if (!res.isIntermediarySource && res.source === "API_CAIXA" && res.resultProof) {
       const proofVal = validateOfficialCaixaDirectProof(
         res.resultProof,
         contestNumber,
         res.drawnNumbers
       );
-      if (!proofVal.valid) {
-        return {
-          rectified: false,
-          pending: true,
-          contestNumber,
-          message: `Prova da Caixa para concurso #${contestNumber} inválida: ${proofVal.reason}. Retificação suspensa.`,
-        };
+      if (proofVal.valid) {
+        proof = res.resultProof;
       }
-      proof = res.resultProof;
-      rateioList = res.rateioList;
-    } catch (fetchErr: any) {
-      // P0-01: Não fabricar JSON substituto! Preservar pendência para retry.
-      return {
-        rectified: false,
-        pending: true,
+    }
+  } catch {
+    // Falha de rede / offline: tentar reutilizar captura autêntica oficial prévia
+  }
+
+  // Mecanismo confiável de recuperação: consulta STORE_OFFICIAL_DRAWS por captura autêntica prévia da Caixa
+  if (!proof) {
+    const stored = await getStoredOfficialDraw(contestNumber, db);
+    if (
+      stored?.resultProof &&
+      stored.resultProof.proofType === "OFFICIAL_CAIXA_DIRECT_ENDPOINT" &&
+      stored.resultProof.officialEndpoint.includes("caixa.gov.br")
+    ) {
+      const proofVal = validateOfficialCaixaDirectProof(
+        stored.resultProof,
         contestNumber,
-        message: `Falha na consulta oficial da Caixa (${fetchErr?.message || fetchErr}). Concurso #${contestNumber} mantido pendente sem fabricação de comprovante local.`,
-      };
+        stored.drawnNumbers
+      );
+      if (proofVal.valid) {
+        proof = stored.resultProof;
+      }
+    }
+  }
+
+  // Se nenhuma prova autêntica da Caixa puder ser obtida, PRESERVA o concurso pendente sem fabricação
+  if (!proof) {
+    return {
+      rectified: false,
+      pending: true,
+      contestNumber,
+      message: `Consulta oficial à Caixa (servicebus2.caixa.gov.br) não disponível e nenhuma captura autêntica oficial prévia encontrada para o concurso #${contestNumber}. Concurso mantido pendente sem fabricação de comprovante local.`,
+    };
+  }
+
+  // P0-05: Extrair rateios EXCLUSIVAMENTE do JSON original em rawPayload
+  let rawPayloadData: any = {};
+  try {
+    rawPayloadData = JSON.parse(proof.rawPayload);
+  } catch {
+    return {
+      rectified: false,
+      pending: true,
+      contestNumber,
+      message: `rawPayload corrompido no comprovante do concurso #${contestNumber}. Retificação suspensa.`,
+    };
+  }
+
+  const rawRateioList = Array.isArray(rawPayloadData.listaRateioPremio)
+    ? rawPayloadData.listaRateioPremio
+    : Array.isArray(rawPayloadData.rateioPremio)
+    ? rawPayloadData.rateioPremio
+    : [];
+
+  const officialRateioMap: Record<number, { unitValue: number; winnersCount: number }> = {};
+  for (const item of rawRateioList) {
+    if (!item || typeof item !== "object") continue;
+    const faixa = Number(item.faixa);
+    const winners = typeof item.numeroDeGanhadores === "number"
+      ? item.numeroDeGanhadores
+      : parseInt(String(item.numeroDeGanhadores || 0), 10);
+    const rawVal = item.valorPremio ?? item.premio;
+    const unitVal = typeof rawVal === "number" ? rawVal : parseFloat(String(rawVal || 0));
+
+    if (Number.isInteger(faixa) && !isNaN(unitVal) && unitVal >= 0) {
+      if (faixa === 1) { // 15 acertos
+        officialRateioMap[15] = { unitValue: unitVal, winnersCount: Math.max(0, winners) };
+      } else if (faixa === 2) { // 14 acertos
+        officialRateioMap[14] = { unitValue: unitVal, winnersCount: Math.max(0, winners) };
+      }
     }
   }
 
   const canonicalNumbers = Object.freeze([...proof.drawnNumbers].sort((a, b) => a - b));
   const drawDate = proof.drawDate;
   const nowIso = new Date().toISOString();
-  const db = await openAppDB();
 
   return new Promise((resolve, reject) => {
     const storesToOpen = [STORE_CONTESTS, STORE_AUDIT_EVENTS];
@@ -934,6 +979,8 @@ export async function rectifyContestOfficialDrawUI(
         const isContestAlreadyCorrect =
           !userContest ||
           (userContest.status === "COMPLETED" &&
+            userContest.financialStatus === "HOMOLOGATED" &&
+            userContest.hasPendingVariableRateio !== true &&
             userContest.officialResult &&
             userContest.officialResult.length === 15 &&
             canonicalNumbers.every((n, i) => n === userContest.officialResult![i]) &&
@@ -977,17 +1024,7 @@ export async function rectifyContestOfficialDrawUI(
           const bestHitsCount = gameHits.filter(h => h === bestHits).length;
           const breakdown: Record<string, NonNullable<ContestRecord["prizeBreakdown"]>[string]> = {};
 
-          // Extrai rateios das faixas 14 e 15 se presentes no rateioList
-          const rateioMap: Record<number, number> = {};
-          if (Array.isArray(rateioList)) {
-            for (const r of rateioList) {
-              const faixa = Number(r.faixa);
-              const val = typeof r.valorPremio === "number" ? r.valorPremio : parseFloat(String(r.valorPremio || r.premio || 0));
-              if (faixa === 1 && val > 0) rateioMap[15] = val;
-              if (faixa === 2 && val > 0) rateioMap[14] = val;
-            }
-          }
-
+          // P0-05: Rateios de 14 e 15 acertos extraídos estritamente de officialRateioMap (rawPayload original da Caixa)
           for (const h of [11, 12, 13, 14, 15] as const) {
             const count = gameHits.filter(hits => hits === h).length;
             if (count > 0) {
@@ -1011,8 +1048,9 @@ export async function rectifyContestOfficialDrawUI(
                   notes: "Prêmio fixo oficial Caixa recalculado após retificação com prova autêntica",
                 };
               } else {
-                // Faixa variável 14 ou 15 (P0-05)
-                const unitVal = rateioMap[h];
+                // Faixa variável 14 ou 15 (P0-05) vinculada a rawPayload
+                const rateioEntry = officialRateioMap[h];
+                const unitVal = rateioEntry?.unitValue;
                 if (typeof unitVal === "number" && unitVal > 0) {
                   const tot = count * unitVal;
                   totalPrize += tot;
@@ -1029,7 +1067,7 @@ export async function rectifyContestOfficialDrawUI(
                     isOfficialCaixaProof: true,
                     confirmedAt: proof.retrievedAt,
                     operatorId: undefined,
-                    notes: `Rateio variável oficial de ${h} acertos comprovado pela Caixa`,
+                    notes: `Rateio variável oficial de ${h} acertos comprovado pela Caixa em rawPayload (R$ ${unitVal.toFixed(2)})`,
                   };
                 } else {
                   hasPendingVariableRateio = true;

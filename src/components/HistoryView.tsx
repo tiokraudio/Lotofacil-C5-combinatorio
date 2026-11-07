@@ -35,6 +35,8 @@ import {
   isContestPendingProvisionalRateio,
   isRecordFixture,
   FIXED_PRIZES,
+  getContestLifecycleStage,
+  getLatestHomologatedContest,
 } from "../c5-memory/analytics/c5Analytics";
 import { calculateHits } from "../c5-memory/math";
 import { Ball } from "./Ball";
@@ -166,10 +168,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
         if (filterStatus !== "ALL" && r.status !== filterStatus) {
           return false;
         }
-        if (filterConference === "CHECKED" && r.status !== "COMPLETED") {
+        if (filterConference === "CHECKED" && getContestLifecycleStage(r) !== "HOMOLOGATED") {
           return false;
         }
-        if (filterConference === "PENDING" && r.status === "COMPLETED") {
+        if (filterConference === "PENDING" && getContestLifecycleStage(r) === "HOMOLOGATED") {
           return false;
         }
         const prize = calculateContestPrize(r);
@@ -219,17 +221,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
     filterAlgorithm,
   ]);
 
-  // Cálculo rigoroso dos 16 Indicadores Financeiros e Operacionais
+  // Cálculo rigoroso dos 16 Indicadores Financeiros e Operacionais (Classificação Canônica P1)
   const financialSummary = useMemo(() => {
     const totalRegistered = filteredRecords.length;
     const confirmed = filteredRecords.filter(r => r.status === "FROZEN" || r.status === "COMPLETED");
     const completed = filteredRecords.filter(
-      r => r.status === "COMPLETED" && Array.isArray(r.officialResult) && r.officialResult.length === 15
+      r => !isRecordFixture(r) && getContestLifecycleStage(r) === "HOMOLOGATED"
     );
-    const pendingContests = filteredRecords.filter(r => r.status !== "COMPLETED");
+    const pendingContests = filteredRecords.filter(r => getContestLifecycleStage(r) !== "HOMOLOGATED");
 
     const productionConfirmed = confirmed.filter(r => !isRecordFixture(r));
-    const productionCompleted = completed.filter(r => !isRecordFixture(r));
+    const productionCompleted = completed;
 
     const confirmedCount = confirmed.length;
     const completedCount = completed.length;
@@ -376,7 +378,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
       if (r.status === "FROZEN" || r.status === "COMPLETED") {
         entry.cost += r.totalCost ?? COST_PER_CONTEST;
       }
-      if (r.status === "COMPLETED") {
+      if (getContestLifecycleStage(r) === "HOMOLOGATED") {
         entry.prize += calculateContestPrize(r);
         entry.completedCount++;
       }
@@ -427,7 +429,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
       if (r.status === "FROZEN" || r.status === "COMPLETED") {
         entry.cost += r.totalCost ?? COST_PER_CONTEST;
       }
-      if (r.status === "COMPLETED") {
+      if (getContestLifecycleStage(r) === "HOMOLOGATED") {
         entry.prize += calculateContestPrize(r);
         entry.completedCount++;
       }
@@ -603,18 +605,27 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
     setTimeout(() => setCopiedReport(false), 2000);
   };
 
-  const getStatusBadge = (status: ContestStatus, financialStatus?: string) => {
-    switch (status) {
-      case "COMPLETED":
-        if (financialStatus === "PENDING_HOMOLOGATION") {
-          return { label: "Apurado (Pendente)", classes: "bg-amber-500/10 text-amber-300 border-amber-500/20" };
-        }
+  const latestHomologatedContest = useMemo(() => {
+    return getLatestHomologatedContest(records);
+  }, [records]);
+
+  const getRecordStatusBadge = (rec: ContestRecord) => {
+    const stage = getContestLifecycleStage(rec);
+    switch (stage) {
+      case "HOMOLOGATED":
         return { label: "Homologado", classes: "bg-purple-500/10 text-purple-300 border-purple-500/20" };
-      case "FROZEN":
-        return { label: "Confirmado", classes: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20" };
-      case "PREVIEW":
-        return { label: "Preview", classes: "bg-amber-500/10 text-amber-300 border-amber-500/20" };
+      case "RESULT_VALIDATED":
+        return { label: "Apurado (Pendente)", classes: "bg-amber-500/10 text-amber-300 border-amber-500/20" };
+      case "RESULT_RECEIVED":
+        return { label: "Resultado Recebido", classes: "bg-blue-500/10 text-blue-300 border-blue-500/20" };
+      case "RECORDED":
       default:
+        if (rec.status === "FROZEN") {
+          return { label: "Confirmado", classes: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20" };
+        }
+        if (rec.status === "PREVIEW") {
+          return { label: "Preview", classes: "bg-amber-500/10 text-amber-300 border-amber-500/20" };
+        }
         return { label: "Disponível", classes: "bg-blue-500/10 text-blue-300 border-blue-500/20" };
     }
   };
@@ -625,18 +636,26 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-xs uppercase font-mono tracking-wider text-emerald-400 font-semibold">
                 Registro Histórico & Financeiro
               </span>
               <span className="text-slate-600">•</span>
               <span className="text-xs text-slate-400">C5-Memory 3.0 • Atividade Auditada</span>
+              {latestHomologatedContest && (
+                <>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-xs text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20 font-mono font-semibold">
+                    Último Homologado: #{latestHomologatedContest.contestNumber}
+                  </span>
+                </>
+              )}
             </div>
             <h1 className="text-2xl font-bold text-slate-100">
               Histórico & Painel Financeiro
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Filtros multicritério.
+              Filtros multicritério e conciliação canônica unificada.
             </p>
           </div>
 
@@ -1073,11 +1092,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
             </div>
           ) : (
             filteredRecords.map(rec => {
-              const badge = getStatusBadge(rec.status, rec.financialStatus);
+              const badge = getRecordStatusBadge(rec);
               const prize = calculateContestPrize(rec);
               const cost = rec.totalCost ?? COST_PER_CONTEST;
               const net = prize - cost;
-              const isCompleted = rec.status === "COMPLETED";
+              const isHomologated = getContestLifecycleStage(rec) === "HOMOLOGATED";
 
               return (
                 <div
@@ -1115,7 +1134,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
                         )}
                       </div>
                       <div className="text-xs text-slate-300 mt-1 font-mono">
-                        5 Jogos C5 • {isCompleted ? `Apurado (${rec.bestHits ?? 0} acertos)` : "Pendente de resultado"}
+                        5 Jogos C5 • {isHomologated ? `Homologado (${rec.bestHits ?? 0} acertos)` : rec.status === "COMPLETED" ? `Apurado (${rec.bestHits ?? 0} acertos)` : "Pendente de resultado"}
                       </div>
                     </div>
                   </div>
@@ -1123,9 +1142,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
                   <div className="flex items-center gap-6 justify-between sm:justify-end">
                     <div className="text-right font-mono">
                       <span className="text-[10px] text-slate-400 block">
-                        Custo: R$ {cost.toFixed(2)} {isCompleted && `• Prêmio: R$ ${prize.toFixed(2)}`}
+                        Custo: R$ {cost.toFixed(2)} {isHomologated && `• Prêmio: R$ ${prize.toFixed(2)}`}
                       </span>
-                      {isCompleted ? (
+                      {isHomologated ? (
                         <span
                           className={`text-xs font-bold ${
                             net >= 0 ? "text-emerald-400" : "text-amber-400"
@@ -1134,7 +1153,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ records }) => {
                           Saldo: {net >= 0 ? "+" : ""}R$ {net.toFixed(2)}
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-500">Aguardando apuração</span>
+                        <span className="text-xs text-slate-500">Aguardando homologação</span>
                       )}
                     </div>
 

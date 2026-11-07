@@ -168,11 +168,19 @@ async function runCriticalValidation() {
   // EXECUÇÃO DA RETIFICAÇÃO CONTROLADA E AUDITADA
   // --------------------------------------------------------------------------
   console.log("\n>> Executando retificação controlada e auditada...");
+  const customFetch3821: typeof fetch = async () => {
+    return new Response(JSON.stringify(caixaApiResponse), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
   const rectifyResult = await rectifyContestOfficialDrawUI(
     CONTEST_3821_NUM,
-    caixaNumbers,
-    "2026-11-04",
-    "Retificação auditada: conformidade com o resultado oficial Caixa do concurso 3821"
+    {
+      customFetch: customFetch3821,
+      notes: "Retificação auditada: conformidade com o resultado oficial Caixa do concurso 3821",
+    }
   );
   console.log(`Resultado da retificação: ${rectifyResult.message}`);
 

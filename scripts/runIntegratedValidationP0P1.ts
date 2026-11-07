@@ -80,6 +80,7 @@ async function runAllSuites() {
       retrievedAt: new Date().toISOString(),
       payloadSha256: syncSha256(validRawPayload),
       rawPayload: validRawPayload,
+      httpStatus: 200,
     };
     const valA1 = validateOfficialCaixaDirectProof(validProof, 3821, [1, 5, 6, 9, 10, 12, 14, 17, 18, 19, 20, 21, 22, 23, 25]);
     assert(valA1.valid, `A.1: Prova legítima Caixa deve ser válida (erro: ${valA1.reason})`);
@@ -160,7 +161,7 @@ async function runAllSuites() {
       );
     };
     // Cria prévia e congela concurso 3825 para teste
-    const draft3825 = await generateMemoryDraftUI(3825);
+    const draft3825 = await generateMemoryDraftUI(3825, { skipDynamicVerification: true });
     await confirmMemoryDraftUI(3825, draft3825);
 
     let blockedIntermediary = false;
@@ -181,7 +182,7 @@ async function runAllSuites() {
   console.log("\n=== SUÍTE B: Restrição de Entrada na Base A (STORE_OFFICIAL_DRAWS) (P0)");
   {
     // Concurso de teste 3830 em FROZEN
-    const draft3830 = await generateMemoryDraftUI(3830);
+    const draft3830 = await generateMemoryDraftUI(3830, { skipDynamicVerification: true });
     await confirmMemoryDraftUI(3830, draft3830);
 
     // B.1 Scoring de terceiros confirmado por operador: entra em contests, mas NÃO entra em STORE_OFFICIAL_DRAWS
@@ -202,7 +203,7 @@ async function runAllSuites() {
     console.log("  ✓ B.1: Concurso homologado de terceiros bloqueado de entrar na Base A (falta API_CAIXA direta).");
 
     // B.2 Concurso demonstrativo ou fixture: NÃO entra em STORE_OFFICIAL_DRAWS
-    const draft3831 = await generateMemoryDraftUI(3831);
+    const draft3831 = await generateMemoryDraftUI(3831, { skipDynamicVerification: true });
     await confirmMemoryDraftUI(3831, draft3831);
     await scoreContestAtomic210(
       db,
@@ -235,25 +236,16 @@ async function runAllSuites() {
         { faixa: 2, numeroDeGanhadores: 200, valorPremio: 1500.0 },
       ],
     });
-    const verifiedProof3821: OfficialCaixaDirectResultProof = {
-      proofType: "OFFICIAL_CAIXA_DIRECT_ENDPOINT",
-      contestNumber: 3821,
-      officialEndpoint: "https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/3821",
-      drawDate: "2026-11-04",
-      drawnNumbers: OFFICIAL_CONTEST_3821_NUMBERS,
-      retrievedAt: nowIso,
-      payloadSha256: syncSha256(rawPayload3821),
-      rawPayload: rawPayload3821,
-      httpStatus: 200,
+    const mockCaixaFetch3821: typeof fetch = async () => {
+      return new Response(rawPayload3821, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     };
 
-    // Executa a retificação atômica com prova autêntica
+    // Executa a retificação atômica com consulta oficial direta da Caixa (HTTP 200 e rawPayload)
     const rectifyRes = await rectifyContestOfficialDrawUI(3821, {
-      verifiedProof: verifiedProof3821,
-      rateioList: [
-        { faixa: 1, numeroDeGanhadores: 1, valorPremio: 1500000.0 },
-        { faixa: 2, numeroDeGanhadores: 200, valorPremio: 1500.0 },
-      ],
+      customFetch: mockCaixaFetch3821,
       notes: "Retificação auditada oficial Caixa",
     });
     console.log(`  ✓ C.1: Retificação atômica executada: ${rectifyRes.message}`);
@@ -291,11 +283,7 @@ async function runAllSuites() {
 
     // Idempotência da retificação
     const secondRectify = await rectifyContestOfficialDrawUI(3821, {
-      verifiedProof: verifiedProof3821,
-      rateioList: [
-        { faixa: 1, numeroDeGanhadores: 1, valorPremio: 1500000.0 },
-        { faixa: 2, numeroDeGanhadores: 200, valorPremio: 1500.0 },
-      ],
+      customFetch: mockCaixaFetch3821,
     });
     assert(!secondRectify.rectified, "C.5: Segunda retificação com as mesmas dezenas deve ser no-op idempotente");
     console.log("  ✓ C.5: Idempotência comprovada (nenhuma re-gravação duplicada).");
@@ -309,22 +297,26 @@ async function runAllSuites() {
     // Verifica detecção de lacuna: se faltar um concurso no intervalo 1..targetLast
     const mockSyncFetch: typeof fetch = async (url: RequestInfo | URL) => {
       const urlStr = String(url);
-      if (urlStr.includes("api/lotofacil") && !urlStr.includes("/3822")) {
+      if (urlStr.endsWith("api/lotofacil") || urlStr.endsWith("api/lotofacil/")) {
         // Retorna o latest como 3822
         return new Response(
           JSON.stringify({ numero: 3822, dataApuracao: "05/11/2026" }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         );
       }
-      if (urlStr.includes("/3822")) {
-        return new Response(
-          JSON.stringify({
-            numero: 3822,
-            dataApuracao: "05/11/2026",
-            listaDezenas: ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15"],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
-        );
+      const match = urlStr.match(/\/(\d+)$/);
+      if (match) {
+        const num = Number(match[1]);
+        if (num >= 3817 && num <= 3822) {
+          return new Response(
+            JSON.stringify({
+              numero: num,
+              dataApuracao: "05/11/2026",
+              listaDezenas: ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15"],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
       }
       return new Response(null, { status: 404 });
     };

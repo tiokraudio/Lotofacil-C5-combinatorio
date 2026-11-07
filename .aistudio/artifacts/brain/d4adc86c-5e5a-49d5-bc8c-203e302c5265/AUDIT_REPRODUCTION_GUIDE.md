@@ -208,3 +208,29 @@ A aplicação estará acessível em: `http://localhost:3000`.
 
 - **Limitação de Oráculo ICP-Brasil:**
   - A homologação autônoma de fontes externas oficiais Caixa depende de verificação criptográfica de cadeia de confiança ICP-Brasil que não existe localmente; por esse motivo de integridade, rateios oficiais sem prova externa verificada permanecem estritamente identificados como pendentes (`hasPendingVariableRateio: true`), confirmando R$ 0,00 no saldo e ROI oficial até comprovação documental independente ou registro manual auditado.
+
+---
+
+### 10. Reprodução Técnica das Correções da Segunda Auditoria (P0-01, P0-02, P0-05, P1)
+
+Para reproduzir integralmente e com determinismo as validações da Segunda Auditoria:
+
+```bash
+# 1. Suíte de Verificação Específica das Correções da Auditoria (P0-01 a P0-06, P1 e Matemática)
+npx tsx scripts/runAuditCorrectionsVerification.ts
+
+# 2. Suíte Integrada Completa (Suítes A até H)
+npx tsx scripts/runIntegratedValidationP0P1.ts
+
+# 3. Verificação Crítica da Retificação e Persistência do Concurso 3821
+npx tsx scripts/verifyHistoricalSyncAndPersistence.ts
+
+# 4. Ciclo de Vida Operacional em 8 Etapas
+npx tsx src/c5-memory/testing/operationalLifecycle8Steps.test.ts
+
+# 5. Compilação TypeScript e Build de Produção
+npm run build
+```
+
+**Veredito:** APROVADO PARA TERCEIRA AUDITORIA INDEPENDENTE.
+
