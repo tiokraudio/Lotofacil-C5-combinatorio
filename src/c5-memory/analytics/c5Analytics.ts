@@ -310,8 +310,12 @@ function _calculateContestPrizeInternal(
     return 0;
   }
 
-  // P1-1 (Sexta Rodada): Concurso com status financeiro PENDING_HOMOLOGATION não gera prêmios confirmados
-  if (record.financialStatus === "PENDING_HOMOLOGATION") {
+  // P1-1 (Sexta Rodada): Concurso com status financeiro PENDING_HOMOLOGATION ou SIMULATED_NO_FINANCIAL_IMPACT não gera prêmios confirmados
+  if (
+    record.financialStatus === "PENDING_HOMOLOGATION" ||
+    record.financialStatus === "SIMULATED_NO_FINANCIAL_IMPACT" ||
+    record.recordMode === "HISTORICAL_REPLAY"
+  ) {
     return 0;
   }
 
@@ -433,6 +437,26 @@ export interface ContestFinancialBreakdown {
 function _calculateContestFinancialBreakdownInternal(
   record: ContestRecord
 ): ContestFinancialBreakdown {
+  const isSimulated = record.recordMode === "HISTORICAL_REPLAY" || record.financialStatus === "SIMULATED_NO_FINANCIAL_IMPACT";
+  if (isSimulated) {
+    return {
+      cost: 0,
+      fixedPrize: 0,
+      manualInformedPrize: 0,
+      manualConfirmedPrize: 0,
+      officialValidatedPrize: 0,
+      officialTotalPrize: 0,
+      totalAuditedPrize: 0,
+      officialNetBalance: 0,
+      officialRoiPercentage: 0,
+      netBalance: 0,
+      roiPercentage: 0,
+      hasPendingVariableRateio: false,
+      hasPendingOfficialProof: false,
+      hasProvisionalVariableRateio: false,
+    };
+  }
+
   const isFixture = isRecordFixture(record);
   const totalCost = isFixture
     ? 0

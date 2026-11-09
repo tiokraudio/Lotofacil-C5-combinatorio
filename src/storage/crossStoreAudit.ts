@@ -13,6 +13,7 @@
 import { ContestRecord, MemoryHistory, C5Game } from "../c5-memory/types";
 import { formatGameCanonical, createMemoryHistory } from "../c5-memory/history";
 import { STORE_CONTESTS, STORE_MEMORY_HISTORY, DB_NAME, DB_VERSION } from "./memoryTransaction";
+import { reconstructHistoryCrossVersion } from "./storageManager210";
 
 export const CANONICAL_STORAGE_SOURCE = "contests";
 export const DERIVED_STORAGE_SOURCE = "c5_memory_history";
@@ -23,25 +24,7 @@ export const DERIVED_STORAGE_SOURCE = "c5_memory_history";
 export function reconstructHistoryFromCanonicalContests(
   contests: readonly ContestRecord[]
 ): MemoryHistory {
-  // Filtra apenas concursos confirmados (FROZEN ou COMPLETED) que não sejam demo
-  const confirmed = contests.filter(
-    c => !c.isDemo &&
-      (c.algorithmVersion === "C5-Memory-2.0.0" || c.algorithmVersion === "C5-Memory-2.1.0") &&
-      (c.status === "FROZEN" || c.status === "COMPLETED")
-  );
-
-  // Ordena por concurso crescente para garantir determinismo estrito
-  const sorted = [...confirmed].sort((a, b) => a.contestNumber - b.contestNumber);
-
-  const accumulatedGames: C5Game[] = [];
-  for (const c of sorted) {
-    for (const g of c.games) {
-      accumulatedGames.push(g);
-    }
-  }
-
-  const revision = sorted.length;
-  return createMemoryHistory(accumulatedGames, revision);
+  return reconstructHistoryCrossVersion(contests);
 }
 
 /**

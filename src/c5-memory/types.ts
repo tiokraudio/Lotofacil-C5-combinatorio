@@ -72,6 +72,18 @@ export interface ContestRecord {
   readonly contestDate: string; // YYYY-MM-DD
   readonly status: ContestStatus;
   readonly algorithmVersion: AlgorithmVersion;
+  readonly recordMode?: "OPERATIONAL" | "HISTORICAL_REPLAY";
+  readonly replayExecutionId?: string;
+  readonly executedAt?: string;
+  readonly simulationConference?: {
+    readonly contestNumber: number;
+    readonly officialResult: readonly number[];
+    readonly gameHits: readonly number[];
+    readonly bestHits: number;
+    readonly bestHitsCount: number;
+    readonly hitDistribution: Record<number, number>;
+    readonly simulatedAt: string;
+  };
   readonly games: readonly C5Game[];
   readonly draft?: AnyDraft;
   readonly frozenPayload?: AnyFrozenPayload;
@@ -381,7 +393,7 @@ export function validateOfficialCaixaDirectProof(
   return { valid: true };
 }
 
-export type ContestFinancialStatus = "PENDING_HOMOLOGATION" | "HOMOLOGATED";
+export type ContestFinancialStatus = "PENDING_HOMOLOGATION" | "HOMOLOGATED" | "SIMULATED_NO_FINANCIAL_IMPACT";
 
 /**
  * Expressão regular estrita para validação de formato ISO 8601 com data e horário completos

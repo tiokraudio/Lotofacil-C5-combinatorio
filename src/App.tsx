@@ -4,6 +4,7 @@ import { C5DashboardView } from "./components/C5DashboardView";
 import { C5MemoryView } from "./components/C5MemoryView";
 import { ConferenceView } from "./components/ConferenceView";
 import { HistoryView } from "./components/HistoryView";
+import { HistoricalReplayView } from "./components/HistoricalReplayView";
 import { ContestRecord } from "./c5-memory/types";
 import {
   getAllContestRecordsUI,
@@ -131,6 +132,12 @@ export const App: React.FC = () => {
             <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
             <p className="text-sm">Inicializando C5-Memory 3.0...</p>
           </div>
+        ) : activeTab === "reconstruction" ? (
+          <HistoricalReplayView
+            onNavigateToDashboard={() => setActiveTab("dashboard")}
+            onNavigateToGenerator={() => setActiveTab("generator")}
+            onRefreshAppState={handleContestUpdated}
+          />
         ) : !isContestConfirmed || currentContestNumber === null ? (
           <div className="max-w-xl mx-auto my-12 bg-slate-900 border border-amber-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl">
             <div className="flex items-center gap-3 text-amber-400 mb-4">
@@ -186,6 +193,16 @@ export const App: React.FC = () => {
                 {manualContestError && (
                   <p className="mt-2 text-xs text-rose-400">{manualContestError}</p>
                 )}
+              </div>
+
+              <div className="pt-4 border-t border-slate-800 text-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("reconstruction")}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 underline font-medium cursor-pointer"
+                >
+                  Ou inicialize a Reconstrução Histórica Completa C5 (Concursos 1..N)
+                </button>
               </div>
             </form>
           </div>

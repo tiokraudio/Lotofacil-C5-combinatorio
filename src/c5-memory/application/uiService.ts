@@ -184,7 +184,8 @@ export async function getMemoryAuditDetailsUI(
   return getMemoryAuditDetails210(contestNumber, db);
 }
 
-import { ScoreContestOptions } from "../../storage/storageManager210";
+import { ScoreContestOptions, syncMemoryHistoryFromCanonical } from "../../storage/storageManager210";
+export { syncMemoryHistoryFromCanonical };
 import { ResultSource } from "../types";
 
 export interface OfficialLotofacilResultData {
@@ -1168,7 +1169,9 @@ export async function rectifyContestOfficialDrawUI(
  * mas NÃO insere nem retifica concursos sinteticamente no banco limpo.
  */
 export async function initializeSeedDataUI(): Promise<void> {
+  const db = await openAppDB();
   await migrateExistingDemoDataUI();
+  await syncMemoryHistoryFromCanonical(db);
 }
 
 /**

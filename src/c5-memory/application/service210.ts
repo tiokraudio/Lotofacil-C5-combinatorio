@@ -44,6 +44,7 @@ import { syncSha256 } from "../sha256";
 import {
   STORE_CONTESTS,
   reconstructHistoryCrossVersion,
+  syncMemoryHistoryFromCanonical,
   confirmMemoryBetAtomic210,
   scoreContestAtomic210,
   ScoreContestOptions,
@@ -171,6 +172,9 @@ export async function generateMemoryDraft210(
 
   // Assegura que todos os sorteios em STORE_OFFICIAL_DRAWS estejam carregados na memória
   await loadOfficialDrawsFromStorage(db);
+
+  // Sincroniza e reconcilia c5_memory_history a partir da fonte canônica 'contests'
+  await syncMemoryHistoryFromCanonical(db);
 
   // Carrega histórico canônico a partir dos concursos confirmados no banco
   const allContests = await getAllContestsFromStore(db);

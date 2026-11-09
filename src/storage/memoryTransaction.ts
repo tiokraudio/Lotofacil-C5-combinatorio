@@ -12,6 +12,7 @@
 import { ContestRecord, Draft, FrozenMemoryPayload, MemoryHistory, C5Game } from "../c5-memory/types";
 import { freezeDraft } from "../c5-memory/draft";
 import { formatGameCanonical, createMemoryHistory } from "../c5-memory/history";
+import { reconstructHistoryCrossVersion } from "./storageManager210";
 
 import {
   DB_NAME,
@@ -74,27 +75,27 @@ export async function confirmMemoryBetAtomic(
         return;
       }
 
-      // 2. Ler histórico atual para OCC e Hard Block anti-duplicação
-      const histReq = historyStore.get("singleton");
-      histReq.onsuccess = () => {
-        const currentHistWrapper = histReq.result;
-        const currentHistory: MemoryHistory = currentHistWrapper?.history || createMemoryHistory([], 0);
+      // 2. Ler todos os concursos da fonte canônica 'contests' dentro da mesma transação
+      const allContestsReq = contestStore.getAll();
+      allContestsReq.onsuccess = () => {
+        const allContestsInStore = (allContestsReq.result || []) as ContestRecord[];
+        const currentCanonicalHistory = reconstructHistoryCrossVersion(allContestsInStore);
 
         // Validação OCC por revision e fingerprint
-        if (currentHistory.revision !== expectedRevision) {
+        if (currentCanonicalHistory.revision !== expectedRevision) {
           tx.abort();
-          reject(new Error(`OCC_REVISION_MISMATCH: esperado ${expectedRevision}, encontrado ${currentHistory.revision}`));
+          reject(new Error(`OCC_REVISION_MISMATCH: esperado ${expectedRevision}, encontrado ${currentCanonicalHistory.revision}`));
           return;
         }
 
-        if (currentHistory.fingerprint !== expectedFingerprint) {
+        if (currentCanonicalHistory.fingerprint !== expectedFingerprint) {
           tx.abort();
-          reject(new Error(`OCC_FINGERPRINT_MISMATCH: esperado ${expectedFingerprint}, encontrado ${currentHistory.fingerprint}`));
+          reject(new Error(`OCC_FINGERPRINT_MISMATCH: esperado ${expectedFingerprint}, encontrado ${currentCanonicalHistory.fingerprint}`));
           return;
         }
 
         // 3. HARD BLOCK DE REPETIÇÃO: nenhum jogo pode já existir em H
-        const historySignatures = new Set(currentHistory.games.map(formatGameCanonical));
+        const historySignatures = new Set(currentCanonicalHistory.games.map(formatGameCanonical));
         for (let i = 0; i < draft.games.length; i++) {
           const gameSig = formatGameCanonical(draft.games[i]);
           if (historySignatures.has(gameSig)) {
@@ -119,9 +120,9 @@ export async function confirmMemoryBetAtomic(
           updatedAt: new Date().toISOString(),
         };
 
-        // 5. Atualizar histórico H (adicionar os 5 jogos confirmados)
-        const updatedGames: C5Game[] = [...currentHistory.games, ...draft.games];
-        const newHistoryRevision = currentHistory.revision + 1;
+        // 5. Atualizar histórico H canônico com os 5 jogos estruturais
+        const updatedGames: C5Game[] = [...currentCanonicalHistory.games, ...draft.games];
+        const newHistoryRevision = currentCanonicalHistory.revision + 1;
         const updatedHistory = createMemoryHistory(updatedGames, newHistoryRevision);
 
         // Gravações atômicas na mesma transação
@@ -132,9 +133,9 @@ export async function confirmMemoryBetAtomic(
         nextHistory = updatedHistory;
       };
 
-      histReq.onerror = () => {
+      allContestsReq.onerror = () => {
         tx.abort();
-        reject(histReq.error);
+        reject(allContestsReq.error);
       };
     };
 

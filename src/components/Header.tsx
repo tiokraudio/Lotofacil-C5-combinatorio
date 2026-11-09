@@ -1,7 +1,7 @@
 import React from "react";
-import { LayoutDashboard, Sparkles, CheckCircle2, History, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Sparkles, CheckCircle2, History, Layers } from "lucide-react";
 
-export type NavTab = "dashboard" | "generator" | "conference" | "history";
+export type NavTab = "dashboard" | "generator" | "conference" | "history" | "reconstruction";
 
 interface HeaderProps {
   activeTab: NavTab;
@@ -19,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: "generator", label: "Gerador", icon: <Sparkles className="w-4 h-4" /> },
     { id: "conference", label: "Conferência", icon: <CheckCircle2 className="w-4 h-4" /> },
     { id: "history", label: "Histórico", icon: <History className="w-4 h-4" /> },
+    { id: "reconstruction", label: "Reconstrução C5", icon: <Layers className="w-4 h-4" /> },
   ];
 
   return (

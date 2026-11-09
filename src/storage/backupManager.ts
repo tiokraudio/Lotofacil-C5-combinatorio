@@ -17,6 +17,7 @@ import {
   STORE_CONTESTS,
   STORE_MEMORY_HISTORY,
   reconstructHistoryCrossVersion,
+  isC5MemoryAlgorithmVersion,
 } from "./storageManager210";
 import { ALGORITHM_VERSION_2_1_0 } from "../c5-memory/engine210";
 
@@ -113,7 +114,7 @@ export function validateBackupPackage(pkg: any): { valid: boolean; errors: strin
     }
 
     // Validação de algoritmo
-    if (c.algorithmVersion !== "C5-Memory-2.0.0" && c.algorithmVersion !== ALGORITHM_VERSION_2_1_0) {
+    if (!isC5MemoryAlgorithmVersion(c.algorithmVersion)) {
       errors.push(
         `UNKNOWN_ALGORITHM_VERSION: Concurso ${c.contestNumber} possui algoritmo desconhecido '${c.algorithmVersion}'.`
       );
